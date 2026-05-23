@@ -145,6 +145,7 @@ Request:
 {
   "template_id": "plasma" | "voronoi-cells" | "gradient-noise",
   "image_base64": "data:image/png;base64,...",   // ≤ 1 MB
+  "device": "auto" | "cuda" | "cpu",             // optional, default "auto"
   "max_steps": 500,                              // optional, server caps at 500
   "wall_clock_cap_sec": 30                       // optional, server enforces
 }
@@ -152,11 +153,18 @@ Request:
 Response 202:
 {
   "job_id": "uuid",
-  "ws_url": "/optimize/stream/{job_id}"          // relative
+  "ws_url": "/optimize/stream/{job_id}",         // relative
+  "resolved_device": "cuda" | "cpu"              // what the server actually chose
 }
 
 Response 4xx: { "error": "human readable" }
 ```
+
+**`device` semantics:**
+- `"auto"` (default) — server uses `cuda` if `torch.cuda.is_available()`, else `cpu`.
+- `"cuda"` — explicit. If not available, return **400** `{"error": "cuda requested but unavailable"}`.
+- `"cpu"` — explicit. Forces CPU even if a GPU is present.
+- `resolved_device` is echoed so the UX can show "Running on GPU" / "Running on CPU (slow)".
 
 ### WebSocket — `/optimize/stream/{job_id}`
 
@@ -175,7 +183,13 @@ type OptimizeFrame =
 - `error` frame → toast + offer pre-recorded backup.
 - No frames for 5s → treat as stalled, show progress spinner becoming a warning.
 
-**Local-dev contract:** `backend/Makefile` `make dev` runs at `http://localhost:8000`. UX reads `VITE_BACKEND_URL` and falls back to that. CORS allows `http://localhost:5173`.
+**Local-dev contract:** `backend/Makefile` `make dev` runs at `http://0.0.0.0:8000`. UX reads `VITE_BACKEND_URL` and falls back to `http://localhost:8000`.
+
+**CORS allowlist** (server side):
+- `http://localhost:5173` — desktop dev.
+- `http://*:5173` (regex match on LAN IPs) — phone-on-same-wifi dev via `vite --host`.
+- `https://*.trycloudflare.com` — cloudflared quick tunnel (only way to test iOS camera, since `getUserMedia` requires HTTPS).
+- The deployed frontend origin (set via env var on the backend in prod).
 
 **Test harness:** `backend/scripts/mock_server.py` — pure-Python WebSocket that streams pre-recorded frames. UX team uses it on machines without a GPU.
 
