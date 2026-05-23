@@ -30,6 +30,16 @@ export { formatParameterForDisplay, formatParameterAsGlslLiteral, isColor } from
 export { reparse, normalizeGlsl, extractDisplayName } from './reparse';
 
 export {
+  useCardsStore,
+  generateCardId,
+  cloneRecipeWithFreshIds,
+} from './state';
+export type { CardsState } from './state';
+
+export { STARTER_RECIPES } from './starter-recipes';
+export type { StarterRecipe } from './starter-recipes';
+
+export {
   CARD_LIBRARY,
   CARD_LIBRARY_LIST,
   lookupCardDef,
