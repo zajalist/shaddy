@@ -1,6 +1,6 @@
 # CONTRACTS
 
-The three tracks are physically isolated under `web/src/{renderer,editor,ux}/`. They only meet through the interfaces in this file. **No module imports from a sibling module's internals.** If you need something across a seam, propose a contract change here and get a sign-off from the other owner before merging.
+The four tracks are physically isolated under `web/src/{renderer,editor,cards,ux}/`. They only meet through the interfaces in this file. **No module imports from a sibling module's internals.** If you need something across a seam, propose a contract change here and get a sign-off from the other owner before merging.
 
 This file is the law. The `web/src/integration/` folder is the only place those seams are wired up.
 
@@ -131,7 +131,90 @@ export type Ast = unknown; // opaque to consumers
 
 ---
 
-## 3. UX ↔ Integration
+## 3. Cards ↔ everyone
+
+**Module:** `web/src/cards/`
+**Owner:** andyhandev
+**Public surface:** `web/src/cards/index.ts`
+
+The card system: the Recipe (ordered list of typed Cards + Wildcards), a Recipe→GLSL compiler, and a reverse parser that maps user edits in the compiled GLSL back to recipe deltas. The Recipe is the **source of truth** for what's on the canvas; everything else is a projection.
+
+```ts
+// web/src/cards/index.ts — DO NOT IMPORT ANYTHING ELSE FROM cards/
+
+export type Recipe = {
+  cards: Card[];
+  canvasAspect: 'square' | 'portrait' | 'landscape';
+};
+
+export type Card = TypedCard | WildcardCard;
+
+export type TypedCard = {
+  kind: 'typed';
+  id: string;
+  type: string;                          // matches a CardDef.type
+  enabled: boolean;
+  params: Record<string, Parameter>;
+};
+
+export type WildcardCard = {
+  kind: 'wildcard';
+  id: string;
+  enabled: boolean;
+  rawSource: string;                     // raw GLSL emitted verbatim
+  displayName: string | null;            // first line-comment in rawSource
+};
+
+export type Parameter = {
+  value: number | readonly [number, number, number];
+  animation: null;                       // PR #2 fills this in
+};
+
+// ─── Compile (Recipe → GLSL) ───────────────────────────────────────
+export type CompiledShader = {
+  glsl: string;                          // fragment-shader BODY only;
+                                         // renderer.wrapFragmentSource adds
+                                         // the standard preamble
+  spans: Span[];                         // one per card, body-relative lines
+  uniforms: UniformBinding[];            // for renderer.setUniform per tick
+};
+
+export function compile(recipe: Recipe): CompiledShader;
+
+// ─── Reverse parse (GLSL edit → Recipe delta) ───────────────────────
+export function reparse(
+  prevRecipe: Recipe,
+  prevCompiled: CompiledShader,
+  nextSource: string,
+): ReparseResult;
+
+// ─── React surface ─────────────────────────────────────────────────
+export function CardStack(props: { onEditCode: (cardId: string) => void }): JSX.Element;
+export function CodeView(props: CodeViewProps): JSX.Element;
+
+// ─── Library + starters ────────────────────────────────────────────
+export const CARD_LIBRARY_LIST: CardDef[];
+export const STARTER_RECIPES: StarterRecipe[];
+
+// + types: ColorRgb, CardCategory, ParamDef, CardDef, Span, UniformBinding,
+//          ReparseEvent, ReparseResult, CodeViewHandle, CodeViewProps,
+//          CardsState, StarterRecipe
+// + helpers: lookupCardDef, useCardsStore, cloneRecipeWithFreshIds,
+//            generateCardId, isColor, formatParameterForDisplay,
+//            formatParameterAsGlslLiteral, normalizeGlsl, validateRecipe,
+//            uniformNameFor, MARKER_PREFIX, END_MARKER
+```
+
+**Hard rules:**
+- The Recipe is the source of truth. The compiled GLSL is a projection.
+- The compiler emits the **fragment body** only; `renderer.wrapFragmentSource()` adds the standard preamble (`#version`, `precision`, standard uniform decls, `out vec4 fragColor`). Code-view consumers wrap with `FRAGMENT_PREAMBLE` to show the user the full source.
+- `compile(recipe)` is byte-deterministic for any given recipe (modulo marker comments showing live param values).
+- `reparse()` is **pattern-tolerant** — adding comments / reflowing whitespace inside a card span does NOT mutate the recipe; any structural change does (typed card → wildcard).
+- Cards may import `@/editor` (entry only) for AST helpers (`findPatternsFromAst`). Cards may NOT import `@/renderer`, `@/ux`, or `@/integration` — the renderer is consumed by the integration layer, which then feeds compiled GLSL + uniforms to the renderer.
+
+---
+
+## 4. UX ↔ Integration
 
 **Module:** `web/src/ux/`
 **Owner:** andyhandev
@@ -156,7 +239,7 @@ UX is the module that composes `renderer/` and `editor/` into a UI. That's what 
 
 ---
 
-## 4. Integration
+## 5. Integration
 
 **Module:** `web/src/integration/`
 **Owners:** both
@@ -172,10 +255,12 @@ This is where:
 ## Dependency direction (enforced by ESLint — see `web/eslint.config.js`)
 
 ```
-integration/  ──────────┐
-   │  │  │              │
-   ▼  ▼  ▼              ▼
-ux/  editor/  renderer/  shared/
+integration/  ───────────────┐
+   │  │  │  │                │
+   ▼  ▼  ▼  ▼                ▼
+ux/  cards/  editor/  renderer/  shared/
+       │
+       └── may import @/editor entry (for AST helpers)
 ```
 
 Arrows point to modules that may be imported. Anything that draws an arrow the wrong way is a bug.

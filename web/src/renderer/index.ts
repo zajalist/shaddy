@@ -53,3 +53,9 @@ export { createRenderer } from './runtime';
 export { createLensStack } from './lens-stack';
 export { TEMPLATES, generateThumbnails } from './templates/manifest';
 export type { Template } from './templates/manifest';
+
+// Preamble metadata — the renderer prepends this to every user source before
+// sending to the GL driver. Consumers showing the source to the user (e.g.
+// the cards code-view) wrap with it so the preamble shows as read-only
+// scaffolding above the editable card body.
+export { FRAGMENT_PREAMBLE, USER_LINE_OFFSET, wrapFragmentSource } from './gl/preamble';
