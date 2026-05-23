@@ -28,7 +28,7 @@ jobs:
           if [ -f package.json ] && npm run -s lint --if-present; then :; else echo "no lint script — skipping"; fi
 
   backend:
-    name: backend (lint + test)
+    name: backend (test)
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -176,7 +176,9 @@ type OptimizeFrame =
   | { type: 'error'; message: string };
 ```
 
-`preview_b64` is a 256×256 PNG. `glsl` is the final template with literals filled — drop straight into the renderer.
+`preview_b64` is a 256×256 **JPEG quality 85** (data URL prefix included). 10× smaller payload than PNG over flaky wifi; visually indistinguishable at preview scale. `glsl` is the final template with literals filled — drop straight into the renderer.
+
+**Image format on the request side** (`image_base64`): accept anything PIL can parse — PNG, JPEG, WebP. The client is responsible for downscaling images >1MB to ≤1024px on the longest side before sending; the server rejects anything still >1MB with **400** after base64 decode.
 
 **Failure behavior the UX must handle:**
 - Connection drops → reconnect once, then surface "demo backup video" affordance.
