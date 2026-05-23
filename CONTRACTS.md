@@ -1,8 +1,10 @@
 # CONTRACTS
 
-The four tracks are physically isolated under `web/src/{renderer,editor,ux}/` and `backend/`. They only meet through the interfaces in this file. **No module imports from a sibling module's internals.** If you need something across a seam, propose a contract change here and get a sign-off from the other owner before merging.
+The three tracks are physically isolated under `web/src/{renderer,editor,ux}/`. They only meet through the interfaces in this file. **No module imports from a sibling module's internals.** If you need something across a seam, propose a contract change here and get a sign-off from the other owner before merging.
 
 This file is the law. The `web/src/integration/` folder is the only place those seams are wired up.
+
+> The product is now **frontend-only**. The ML backend (`POST /optimize`, WS streaming, PyTorch optimizer) has been cut — photo-match is deferred. See [`docs/decisions/2026-05-23-frontend-only.md`](./docs/decisions/2026-05-23-frontend-only.md) and the "Deferred" callout in [`SPEC.md`](./SPEC.md).
 
 ---
 
@@ -122,82 +124,14 @@ export type Ast = unknown; // opaque to consumers
 **Hard rules for this seam:**
 - The source string is the single source of truth. There is no separate "handle state". Drag = mutate source = re-emit.
 - The editor never imports the renderer. It receives `errors[]` as props.
-- The editor never imports the backend. UX is the only thing that knows the backend exists.
+- The editor never imports `integration/` — that's the seam, and seams are one-way.
 
 **Test harness:**
 - `web/src/editor/__mocks__/editor.ts` — a textarea that calls `onSourceChange`. Lets renderer + UX teams build without CodeMirror.
 
 ---
 
-## 3. ML Backend ↔ UX
-
-**Module:** `backend/`
-**Owner:** zajalist
-**Public surface:** HTTP + WebSocket. Schema declared in `backend/openapi.yaml` and mirrored to `web/src/shared/backend-types.ts`.
-
-### REST
-
-```
-POST /optimize
-Content-Type: application/json
-
-Request:
-{
-  "template_id": "plasma" | "voronoi-cells" | "gradient-noise",
-  "image_base64": "data:image/png;base64,...",   // ≤ 1 MB
-  "device": "auto" | "cuda" | "cpu",             // optional, default "auto"
-  "max_steps": 500,                              // optional, server caps at 500
-  "wall_clock_cap_sec": 30                       // optional, server enforces
-}
-
-Response 202:
-{
-  "job_id": "uuid",
-  "ws_url": "/optimize/stream/{job_id}",         // relative
-  "resolved_device": "cuda" | "cpu"              // what the server actually chose
-}
-
-Response 4xx: { "error": "human readable" }
-```
-
-**`device` semantics:**
-- `"auto"` (default) — server uses `cuda` if `torch.cuda.is_available()`, else `cpu`.
-- `"cuda"` — explicit. If not available, return **400** `{"error": "cuda requested but unavailable"}`.
-- `"cpu"` — explicit. Forces CPU even if a GPU is present.
-- `resolved_device` is echoed so the UX can show "Running on GPU" / "Running on CPU (slow)".
-
-### WebSocket — `/optimize/stream/{job_id}`
-
-Server → client messages (JSON, one per frame):
-```ts
-type OptimizeFrame =
-  | { type: 'progress'; step: number; total: number; loss: number; preview_b64: string }
-  | { type: 'done'; final_params: Record<string, number | number[]>; glsl: string; loss: number }
-  | { type: 'error'; message: string };
-```
-
-`preview_b64` is a 256×256 **JPEG quality 85** (data URL prefix included). 10× smaller payload than PNG over flaky wifi; visually indistinguishable at preview scale. `glsl` is the final template with literals filled — drop straight into the renderer.
-
-**Image format on the request side** (`image_base64`): accept anything PIL can parse — PNG, JPEG, WebP. The client is responsible for downscaling images >1MB to ≤1024px on the longest side before sending; the server rejects anything still >1MB with **400** after base64 decode.
-
-**Failure behavior the UX must handle:**
-- Connection drops → reconnect once, then surface "demo backup video" affordance.
-- `error` frame → toast + offer pre-recorded backup.
-- No frames for 5s → treat as stalled, show progress spinner becoming a warning.
-
-**Local-dev contract:** `backend/Makefile` `make dev` runs at `http://0.0.0.0:8000`. UX reads `VITE_BACKEND_URL` and falls back to `http://localhost:8000`.
-
-**CORS allowlist** (server side):
-- `http://localhost:5173` — desktop dev.
-- `http://*:5173` (regex match on LAN IPs) — phone-on-same-wifi dev via `vite --host`.
-- `https://*.trycloudflare.com` — cloudflared quick tunnel (only way to test iOS camera, since `getUserMedia` requires HTTPS).
-- The deployed frontend origin (set via env var on the backend in prod).
-
-**Test harness:** `backend/scripts/mock_server.py` — pure-Python WebSocket that streams pre-recorded frames. UX team uses it on machines without a GPU.
-
----
-
-## 4. UX ↔ Integration
+## 3. UX ↔ Integration
 
 **Module:** `web/src/ux/`
 **Owner:** andyhandev
@@ -211,7 +145,6 @@ export function AppShell(props: {
   editorSource: string;
   onEditorSourceChange(next: string): void;
   errors: import('../renderer').GLSLError[];
-  onPhotoMatch(file: File, templateId: string): Promise<void>;
 }): JSX.Element;
 
 /** URL-hash share format. Stable, versioned. Bumps require both owners' review. */
@@ -219,33 +152,30 @@ export function encodeShareUrl(state: { source: string; uniforms?: Record<string
 export function decodeShareUrl(url: string): { source: string; uniforms?: Record<string, number> } | null;
 ```
 
-UX is the *only* module allowed to import from `renderer/`, `editor/`, and `shared/backend-types`. It assembles them. That's what makes it the integration layer for the frontend.
+UX is the module that composes `renderer/` and `editor/` into a UI. That's what makes it the integration layer for the frontend.
 
 ---
 
-## 5. Integration
+## 4. Integration
 
 **Module:** `web/src/integration/`
 **Owners:** both
 
 This is where:
-- `App.tsx` instantiates `createRenderer()`, holds the source string in Zustand, passes everything into `<AppShell>`.
+- `App.tsx` / `AppShell.tsx` instantiates `createRenderer()`, holds the source string in Zustand, passes everything into the UX shell.
 - `main.tsx` mounts to `#root`.
-- The backend WebSocket client lives. UX calls a single `optimizePhoto(file, templateId, onFrame)` function exported from `integration/backend-client.ts` — it knows the backend wire format; UX does not.
 
 `integration/` may import from anywhere. Every other module may NOT import from `integration/`.
 
 ---
 
-## Dependency direction (enforce mentally; later via ESLint)
+## Dependency direction (enforced by ESLint — see `web/eslint.config.js`)
 
 ```
-integration/  ─────────┐
-   │  │  │             │
-   ▼  ▼  ▼             ▼
+integration/  ──────────┐
+   │  │  │              │
+   ▼  ▼  ▼              ▼
 ux/  editor/  renderer/  shared/
-
-backend/  (separate process, talks via HTTP/WS only)
 ```
 
 Arrows point to modules that may be imported. Anything that draws an arrow the wrong way is a bug.

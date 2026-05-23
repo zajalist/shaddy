@@ -1,7 +1,4 @@
-// The 12 starter templates (issue #10). Each entry's `id` is stable —
-// the backend uses `plasma`, `voronoi-cells`, and `gradient-noise` as
-// template_id values in POST /optimize (see CONTRACTS.md §3), so renaming
-// those three is a contract change.
+// The 12 starter templates (issue #10).
 //
 // `thumbnail` is the empty string at module-load. The integration layer
 // can call generateThumbnails() at first-load to fill them via the real
