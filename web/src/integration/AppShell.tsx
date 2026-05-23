@@ -2,33 +2,46 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createRenderer, type RendererAPI, TEMPLATES } from '@/renderer';
 
-const HIGHLIGHTS = [
+// Palette extracted from plasma shader output
+const COLORS = {
+  accent1: '#d926ef', // magenta
+  accent2: '#0ea5e9', // cyan
+  accent3: '#facc15', // yellow
+};
+
+const BENEFITS = [
   {
-    title: 'Code and canvas are one surface',
-    description: 'Drag a visual handle, watch the GLSL update. Edit the GLSL, watch the image move.',
+    icon: '⟳',
+    title: 'Drag-to-edit',
+    description: 'Change a number in the code, the canvas updates. Drag a visual handle, the GLSL reflects it back.',
   },
   {
-    title: 'Frontend-only, instant share',
-    description: 'Everything runs in your browser. Share a shader as a URL - no sign-up, no server.',
+    icon: '⌘',
+    title: 'Zero friction',
+    description: 'Browser-only. No backend, no sign-up, no secrets. Share via URL hash—open on any device.',
   },
   {
-    title: '12 starter templates',
-    description: 'Jump from circles to plasma, noise fields, and raymarching in a single click.',
+    icon: '◾',
+    title: 'Readable math',
+    description: '12 templates from circles to raymarching. Each is 20–40 lines of real GLSL you can learn from.',
   },
 ];
 
 const STEPS = [
   {
-    title: 'Pick a template',
-    description: 'Start from a short, readable shader that already looks good.',
+    number: '1',
+    title: 'Pick a shader',
+    description: 'Start with one of 12 templates. Plasma. Checkerboard. Voronoi. Gradient noise. All live.',
   },
   {
-    title: 'Drag the canvas',
-    description: 'Direct manipulation surfaces the math behind the visuals.',
+    number: '2',
+    title: 'Drag or code',
+    description: 'Drag a visual handle on the canvas and watch the GLSL rewrite itself. Or type directly.',
   },
   {
-    title: 'Ship the share link',
-    description: 'Send the URL hash and your shader rehydrates instantly.',
+    number: '3',
+    title: 'Share a URL',
+    description: 'Hit share. Your shader lives in the URL hash. Send it to anyone. It just works.',
   },
 ];
 
@@ -38,6 +51,7 @@ export function AppShell() {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);
   const [heroError, setHeroError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const templateNames = TEMPLATES.map((t) => t.name);
 
   useEffect(() => {
@@ -52,6 +66,7 @@ export function AppShell() {
     renderer.mount(host);
     renderer.compile(HERO_SOURCE);
     rendererRef.current = renderer;
+    setLoaded(true);
 
     const resize = () => {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -73,168 +88,167 @@ export function AppShell() {
 
   return (
     <main className="min-h-dvh bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-6 pb-16 pt-8">
-        <nav className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto max-w-5xl px-6 py-16">
+        {/* Compact nav */}
+        <nav className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">Shaddy</p>
-            <p className="text-lg font-semibold">Will the real slim shader please stand up?</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Shaddy</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">Shaders should be as easy to learn as Scratch.</h1>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <a href="#how" className="text-zinc-300 hover:text-white">
-              How it works
-            </a>
-            <a href="#templates" className="text-zinc-300 hover:text-white">
-              Templates
-            </a>
-            <Link
-              to="/view"
-              className="rounded-full border border-zinc-700 px-4 py-2 font-medium text-white transition hover:border-zinc-400"
-            >
-              Open playground
-            </Link>
-          </div>
+          <Link
+            to="/view"
+            className="inline-block rounded-full bg-white px-6 py-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-100"
+          >
+            Launch editor
+          </Link>
         </nav>
 
-        <section className="mt-16 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/40 px-4 py-2 text-xs uppercase tracking-[0.3em] text-zinc-300">
-              frontend-only / live WebGL2
+        {/* Hero section with live preview */}
+        <section className="mt-14 grid gap-10 lg:grid-cols-2 lg:items-start">
+          <div className="flex flex-col justify-start space-y-5">
+            <div className="inline-block w-fit rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-zinc-300">
+              Built 36 hours / Frontend-only
             </div>
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-              Learn shaders by playing them.
-            </h1>
-            <p className="text-lg text-zinc-300">
-              Shaddy makes GLSL tactile. The canvas and the code are the same surface - drag to edit
-              literals, type to reshape the art, and share a URL that recreates the exact shader.
+
+            <h2 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+              Code and canvas are one surface.
+            </h2>
+
+            <p className="max-w-prose text-lg leading-relaxed text-zinc-300">
+              Drag a circle on the canvas. The GLSL updates. Edit a number in the code. The circle moves. There is no abstraction layer between you and the math.
             </p>
-            <div className="flex flex-wrap gap-3">
+
+            <ul className="space-y-3 pt-2">
+              {BENEFITS.map((b) => (
+                <li key={b.title} className="flex gap-3">
+                  <span className="flex-shrink-0 text-xl text-zinc-400">{b.icon}</span>
+                  <div>
+                    <p className="font-semibold text-white">{b.title}</p>
+                    <p className="text-sm text-zinc-400">{b.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 to="/view"
-                className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                className="rounded-full bg-white px-5 py-2 font-semibold text-zinc-950 transition hover:bg-zinc-100"
               >
-                Launch the live editor
+                Open the editor
               </Link>
               <a
                 href="#how"
-                className="rounded-full border border-zinc-700 px-5 py-2 text-sm font-semibold text-white transition hover:border-zinc-400"
+                className="rounded-full border border-zinc-700 px-5 py-2 font-semibold text-white transition hover:border-zinc-400"
               >
-                See the flow
+                See how it works
               </a>
             </div>
           </div>
 
+          {/* Live shader preview */}
           <div className="relative">
-            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-fuchsia-500/20 via-indigo-500/10 to-cyan-500/20 blur-2xl" />
-            <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 shadow-2xl">
+            <div
+              className="absolute -inset-4 rounded-3xl blur-3xl"
+              style={{
+                background: `linear-gradient(135deg, ${COLORS.accent1}20, ${COLORS.accent2}20, ${COLORS.accent3}20)`,
+              }}
+            />
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-2xl">
               {heroError ? (
-                <div className="flex h-[360px] items-center justify-center px-8 text-center text-sm text-zinc-300">
+                <div className="flex h-80 items-center justify-center px-6 text-center text-sm text-zinc-400">
                   {heroError}
                 </div>
               ) : (
-                <div ref={hostRef} className="h-[360px] w-full" />
+                <>
+                  <div ref={hostRef} className={`h-80 w-full transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
+                  {!loaded && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-pulse text-xs text-zinc-400">Loading shader...</div>
+                    </div>
+                  )}
+                </>
               )}
-              <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-xs text-zinc-400">
-                <span>Shader preview / move your cursor</span>
-                <span>{TEMPLATES.length} templates ready</span>
+              <div className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-500">
+                Live WebGL2 preview / Move your cursor
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-16 grid gap-4 md:grid-cols-3">
-          {HIGHLIGHTS.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6"
-            >
-              <h3 className="text-lg font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm text-zinc-300">{item.description}</p>
-            </div>
-          ))}
-        </section>
-
-        <section id="how" className="mt-16 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-4">
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">How it works</p>
-            <h2 className="text-3xl font-semibold tracking-tight">A shader lab that teaches itself.</h2>
-            <p className="text-zinc-300">
-              Start with a short, readable shader. The editor keeps the source as the single source
-              of truth, and every drag gesture maps back into the GLSL literals so you learn the
-              math by feel.
-            </p>
+        {/* How it works */}
+        <section id="how" className="mt-20 space-y-10">
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">How it works</p>
+            <h2 className="text-3xl font-bold tracking-tight">Three actions. That's it.</h2>
           </div>
-          <div className="space-y-4">
-            {STEPS.map((step, idx) => (
-              <div key={step.title} className="flex gap-4 rounded-2xl border border-zinc-800 p-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-zinc-950">
-                  {idx + 1}
+
+          <div className="grid gap-6 sm:grid-cols-3">
+            {STEPS.map((step) => (
+              <div key={step.number} className="space-y-3">
+                <div
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full font-bold"
+                  style={{
+                    background: COLORS.accent1,
+                    color: 'white',
+                  }}
+                >
+                  {step.number}
                 </div>
-                <div>
-                  <h3 className="font-semibold">{step.title}</h3>
-                  <p className="mt-1 text-sm text-zinc-300">{step.description}</p>
-                </div>
+                <h3 className="font-semibold">{step.title}</h3>
+                <p className="max-w-prose text-sm leading-relaxed text-zinc-400">{step.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="templates" className="mt-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">Template library</p>
-              <h2 className="text-3xl font-semibold tracking-tight">
-                Start from a look you already love.
-              </h2>
-            </div>
-            <Link to="/view" className="text-sm font-semibold text-white underline decoration-zinc-700">
-              Explore them in the editor
-            </Link>
+        {/* Templates */}
+        <section id="templates" className="mt-20 space-y-8">
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Template library</p>
+            <h2 className="text-3xl font-bold tracking-tight">Start from a shader that already looks good.</h2>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {templateNames.map((name) => (
-              <div
+              <Link
                 key={name}
-                className="rounded-xl border border-zinc-800 bg-zinc-900/30 px-4 py-3 text-sm text-zinc-200"
+                to="/view"
+                className="group rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/60"
               >
                 {name}
-              </div>
+              </Link>
             ))}
           </div>
         </section>
 
-        <section className="mt-16 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900/60 to-zinc-900/20 p-8">
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">
-                Demo-ready on phone + desktop
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-                One responsive app, zero installs.
-              </h2>
-              <p className="mt-3 text-zinc-300">
-                Shaddy runs entirely in the browser. Open it on a phone, pinch and drag the canvas,
-                and share the URL with your team in seconds.
-              </p>
+        {/* Tech credibility */}
+        <section className="mt-20 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8">
+          <div className="grid gap-8 sm:grid-cols-3">
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Stack</p>
+              <p className="text-sm text-zinc-300">React + Vite + TypeScript. WebGL2 (works everywhere).</p>
             </div>
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 text-sm text-zinc-300">
-              <p className="font-semibold text-white">Best demo flow</p>
-              <p className="mt-3">1. Pick a template.</p>
-              <p className="mt-2">2. Drag a handle; watch GLSL update.</p>
-              <p className="mt-2">3. Copy the share link to replay it anywhere.</p>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Performance</p>
+              <p className="text-sm text-zinc-300">60 fps target on mid-range phones. Adaptive resolution on slow hardware.</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Scope</p>
+              <p className="text-sm text-zinc-300">Frontend only. Share via URL hash. No backend, no server needed.</p>
             </div>
           </div>
         </section>
 
-        <section className="mt-16 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">Ready to make your first shader?</h2>
-          <p className="mt-3 text-zinc-300">
-            Jump into the live editor and start dragging the math.
-          </p>
+        {/* Final CTA */}
+        <section className="mt-20 text-center">
+          <h2 className="text-3xl font-bold tracking-tight">Ready to drag some math?</h2>
+          <p className="mt-3 text-zinc-400">Open the editor and pick a template. 30 seconds to your first live shader.</p>
           <Link
             to="/view"
-            className="mt-6 inline-flex rounded-full bg-white px-6 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+            className="mt-6 inline-block rounded-full bg-white px-6 py-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-100"
           >
-            Open the playground
+            Let's go
           </Link>
         </section>
       </div>
