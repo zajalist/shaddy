@@ -1,6 +1,0 @@
-# Run AFTER `pip install -r requirements.txt` to swap CPU torch for CUDA torch.
-# Targets CUDA 12.1. If your driver supports a different CUDA, change the URL.
-
---extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.5.1+cu121
-torchvision==0.20.1+cu121

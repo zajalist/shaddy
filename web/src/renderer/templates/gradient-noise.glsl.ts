@@ -1,6 +1,4 @@
-// Backend-tunable template (#10 + backend §3): value-noise field with
-// tunable scale + color palette. Backend mirrors the literal layout to
-// optimize against a target photo.
+// Value-noise field — hash-based 2D noise interpolated through one color ramp.
 
 export const GRADIENT_NOISE_BODY = `
 float hash(vec2 p) {

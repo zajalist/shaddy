@@ -1,5 +1,4 @@
-// Backend-tunable template (#10 + backend §3): cellular noise with
-// tunable density and palette.
+// Voronoi cells — animated cellular noise with dark seams between cells.
 
 export const VORONOI_CELLS_BODY = `
 vec2 hash2(vec2 p) {

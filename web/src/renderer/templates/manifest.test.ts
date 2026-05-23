@@ -11,7 +11,7 @@ describe('TEMPLATES manifest', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('includes the three backend-tunable ids (CONTRACTS.md §3 template_id)', () => {
+  it('includes the headline starter ids', () => {
     const ids = new Set(TEMPLATES.map((t) => t.id));
     expect(ids.has('plasma')).toBe(true);
     expect(ids.has('voronoi-cells')).toBe(true);

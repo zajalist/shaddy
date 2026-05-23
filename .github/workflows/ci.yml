@@ -7,7 +7,7 @@ on:
 
 jobs:
   web:
-    name: web (typecheck + lint)
+    name: web (typecheck + lint + test)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,21 +26,6 @@ jobs:
       - name: Lint
         run: |
           if [ -f package.json ] && npm run -s lint --if-present; then :; else echo "no lint script — skipping"; fi
-
-  backend:
-    name: backend (test)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install
-        run: |
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; else echo "no requirements.txt yet — skipping"; fi
       - name: Test
         run: |
-          if [ -d tests ]; then pytest -q; else echo "no tests/ yet — skipping"; fi
+          if [ -f package.json ] && npm run -s test --if-present; then :; else echo "no test script — skipping"; fi

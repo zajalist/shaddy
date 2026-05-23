@@ -1,5 +1,4 @@
-// Backend-tunable template (#10 + backend §3): the literals here are the
-// surface the ML optimizer can match a target photo against.
+// Plasma — sin/cos field of four waves blended through three colors.
 
 export const PLASMA_BODY = `
 void main() {
