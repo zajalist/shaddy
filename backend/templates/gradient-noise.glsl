@@ -22,7 +22,8 @@ float noise(vec2 p) {
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / u_resolution * 4.0;
-    float v = noise(uv + u_time * 0.2);
-    fragColor = vec4(vec3(v), 1.0);
+    vec2 uv = gl_FragCoord.xy / u_resolution * /*PARAM:scale*/;
+    float v = noise(uv + u_time * /*PARAM:speed*/);
+    vec3 c = mix(/*PARAM:color_a*/, /*PARAM:color_b*/, v);
+    fragColor = vec4(c, 1.0);
 }
