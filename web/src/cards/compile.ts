@@ -13,9 +13,12 @@
 
 import {
   CARD_LIBRARY_LIST,
+  GLSL_HELPERS,
+  HELPER_EMISSION_ORDER,
   WILDCARD_DISPLAY_NAME_FALLBACK,
   WILDCARD_FRIENDLY_NAME,
   lookupCardDef,
+  resolveHelperClosure,
 } from './library';
 import { END_MARKER, formatCardMarker } from './markers';
 import { formatParameterForDisplay, substitutePlaceholders } from './format';
@@ -61,13 +64,40 @@ export function compile(recipe: Recipe): CompiledShader {
     }
   });
 
-  // ── Pass 2: emit the GLSL body, tracking spans line by line ──
+  // ── Pass 2: collect helper functions referenced by any card ──
+  const requestedHelpers = new Set<string>();
+  for (const card of recipe.cards) {
+    if (card.kind !== 'typed') continue;
+    const def = lookupCardDef(card.type);
+    if (!def?.helpers) continue;
+    for (const h of def.helpers) requestedHelpers.add(h);
+  }
+  const helperClosure = resolveHelperClosure(requestedHelpers);
+
+  // ── Pass 3: emit the GLSL body, tracking spans line by line ──
   const lines: string[] = [];
 
   if (uniformDecls.length > 0) {
     lines.push('// === per-card uniforms ===');
     for (const decl of uniformDecls) lines.push(decl);
     lines.push('');
+  }
+
+  // Helpers emitted exactly once, in the fixed order so dependents follow
+  // their dependencies.
+  const emittedHelpers: string[] = [];
+  for (const name of HELPER_EMISSION_ORDER) {
+    if (!helperClosure.has(name)) continue;
+    const body = GLSL_HELPERS[name];
+    if (!body) continue;
+    emittedHelpers.push(body);
+  }
+  if (emittedHelpers.length > 0) {
+    lines.push('// === helpers ===');
+    for (const body of emittedHelpers) {
+      for (const helperLine of body.split('\n')) lines.push(helperLine);
+      lines.push('');
+    }
   }
 
   lines.push('void main() {');

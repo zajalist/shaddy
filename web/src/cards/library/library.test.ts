@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_LIBRARY, CARD_LIBRARY_LIST, lookupCardDef } from './index';
+import {
+  CARD_LIBRARY,
+  CARD_LIBRARY_LIST,
+  GLSL_HELPERS,
+  HELPER_EMISSION_ORDER,
+  lookupCardDef,
+  resolveHelperClosure,
+} from './index';
 
 describe('CARD_LIBRARY', () => {
-  it('ships 4 typed cards covering all four categories', () => {
-    expect(CARD_LIBRARY_LIST.length).toBe(4);
+  it('ships 15 typed cards covering all four categories', () => {
+    expect(CARD_LIBRARY_LIST.length).toBe(15);
     const cats = new Set(CARD_LIBRARY_LIST.map((c) => c.category));
     expect(cats).toEqual(new Set(['shape', 'distortion', 'color', 'effect']));
+  });
+
+  it('each category has at least 3 cards', () => {
+    const byCat: Record<string, number> = {};
+    for (const c of CARD_LIBRARY_LIST) byCat[c.category] = (byCat[c.category] ?? 0) + 1;
+    for (const n of Object.values(byCat)) expect(n).toBeGreaterThanOrEqual(3);
   });
 
   it('has unique types', () => {
@@ -45,5 +58,34 @@ describe('CARD_LIBRARY', () => {
   it('lookupCardDef returns null for unknown types', () => {
     expect(lookupCardDef('nope')).toBeNull();
     expect(lookupCardDef('radial_gradient')).not.toBeNull();
+  });
+
+  it('every declared helper name exists in GLSL_HELPERS', () => {
+    for (const c of CARD_LIBRARY_LIST) {
+      for (const h of c.helpers ?? []) {
+        expect(GLSL_HELPERS).toHaveProperty(h);
+      }
+    }
+  });
+});
+
+describe('helpers', () => {
+  it('every helper in HELPER_EMISSION_ORDER exists in GLSL_HELPERS', () => {
+    for (const name of HELPER_EMISSION_ORDER) {
+      expect(GLSL_HELPERS).toHaveProperty(name);
+    }
+  });
+
+  it('resolveHelperClosure pulls in transitive dependencies', () => {
+    // noise2 depends on hash21.
+    const closure = resolveHelperClosure(['noise2']);
+    expect(closure.has('noise2')).toBe(true);
+    expect(closure.has('hash21')).toBe(true);
+  });
+
+  it('resolveHelperClosure ignores unknown names', () => {
+    const closure = resolveHelperClosure(['no-such-helper', 'hash21']);
+    expect(closure.has('hash21')).toBe(true);
+    expect(closure.has('no-such-helper')).toBe(false);
   });
 });

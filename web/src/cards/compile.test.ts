@@ -117,6 +117,71 @@ describe('uniformNameFor', () => {
   });
 });
 
+describe('helper emission', () => {
+  it('emits transitive helpers (noise_field requires hash21 via noise2)', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed',
+          id: 'n0',
+          type: 'noise_field',
+          enabled: true,
+          params: { scale: { value: 4, animation: null } },
+        },
+      ],
+    };
+    const out = compile(recipe);
+    expect(out.glsl).toContain('// === helpers ===');
+    expect(out.glsl).toContain('float noise2(vec2 p)');
+    expect(out.glsl).toContain('float hash21(vec2 p)');
+    // hash21 must appear BEFORE noise2 (dependency order).
+    expect(out.glsl.indexOf('float hash21')).toBeLessThan(out.glsl.indexOf('float noise2'));
+  });
+
+  it('emits each helper exactly once even when multiple cards reference it', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed',
+          id: 'g0',
+          type: 'grain',
+          enabled: true,
+          params: { amount: { value: 0.05, animation: null } },
+        },
+        {
+          kind: 'typed',
+          id: 'g1',
+          type: 'grain',
+          enabled: true,
+          params: { amount: { value: 0.1, animation: null } },
+        },
+      ],
+    };
+    const out = compile(recipe);
+    const occurrences = out.glsl.split('float hash21').length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it('omits the helpers block when no card needs helpers', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed',
+          id: 'c0',
+          type: 'radial_gradient',
+          enabled: true,
+          params: { softness: { value: 1, animation: null } },
+        },
+      ],
+    };
+    const out = compile(recipe);
+    expect(out.glsl).not.toContain('// === helpers ===');
+  });
+});
+
 describe('validateRecipe', () => {
   it('returns empty when all cards are known', () => {
     expect(validateRecipe(RECIPE_RGV)).toEqual([]);
