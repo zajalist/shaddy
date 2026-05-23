@@ -50,13 +50,6 @@ export interface LensStackAPI {
 }
 
 export { createRenderer } from './runtime';
+export { createLensStack } from './lens-stack';
 export { TEMPLATES, generateThumbnails } from './templates/manifest';
 export type { Template } from './templates/manifest';
-
-export function createLensStack(): LensStackAPI {
-  return {
-    capture: (_fragmentSource, _breakLines) => {
-      throw new Error('renderer.lensStack.capture: not yet implemented (issue #12)');
-    },
-  };
-}
