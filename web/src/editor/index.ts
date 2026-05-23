@@ -90,6 +90,8 @@ export function replaceLiteral(
 
 // --- Pattern matchers (sub-project F) ----------------------------------------
 
-export function findPatterns(_ast: Ast): PatternHandle[] {
-  return [];
+import { findPatternsFromAst } from './parse/patterns';
+
+export function findPatterns(ast: Ast): PatternHandle[] {
+  return findPatternsFromAst(ast);
 }
