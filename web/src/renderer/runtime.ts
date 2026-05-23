@@ -6,15 +6,16 @@
 //   #6  — compile() + onCompile() with hot-swap + last-good fallback
 //   #7  — GLSL info-log normalization (in ./gl/error-log.ts)
 //   #8  — standard uniforms u_time, u_resolution, u_mouse
+//   #9  — setUniform / resize / snapshot / getFps
 //
-// Still stubbed: setUniform / resize / snapshot / getFps (#9), mobile perf
-// guardrails (#13).
+// Still stubbed: mobile perf guardrails (#13).
 
 import type { CompileResult, RendererAPI, Uniform } from './index';
 import { FULLSCREEN_TRIANGLE_VERT, linkProgram } from './gl/program';
 import { USER_LINE_OFFSET, wrapFragmentSource } from './gl/preamble';
 import { parseGlslErrors } from './gl/error-log';
 import { DEBUG_FRAGMENT_BODY } from './templates/debug.glsl';
+import { FpsCounter } from './fps';
 
 type StandardLocs = {
   uTime: WebGLUniformLocation | null;
@@ -32,9 +33,11 @@ class Renderer implements RendererAPI {
   private rafHandle: number | null = null;
   private startTime = 0;
   private compileSubs = new Set<(r: CompileResult) => void>();
+  // Caller-set uniforms; persist across compiles, applied every frame.
+  private uniforms = new Map<string, Uniform>();
+  private fpsCounter = new FpsCounter();
 
-  // u_mouse — normalized [0,1] across the host. Origin at lower-left
-  // (y-up) so shaders can compare against uv directly. Starts centered.
+  // u_mouse — normalized [0,1] across the host. Origin at lower-left (y-up).
   private mouseX = 0.5;
   private mouseY = 0.5;
   private pointerMoveHandler: ((e: PointerEvent) => void) | null = null;
@@ -56,7 +59,10 @@ class Renderer implements RendererAPI {
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
 
-    const gl = canvas.getContext('webgl2');
+    // preserveDrawingBuffer: true means snapshot() can call toDataURL at any
+    // time without having to time it precisely against the compositor.
+    // Modest perf cost; acceptable for a learning environment.
+    const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
     if (!gl) throw new Error('renderer: WebGL2 not available in this browser');
 
     const vao = gl.createVertexArray();
@@ -110,11 +116,40 @@ class Renderer implements RendererAPI {
     return result;
   }
 
+  setUniform(name: string, value: Uniform | null): void {
+    if (value === null) this.uniforms.delete(name);
+    else this.uniforms.set(name, value);
+  }
+
+  resize(width: number, height: number): void {
+    if (!this.canvas) {
+      throw new Error('renderer.resize: call mount() before resize()');
+    }
+    const w = Math.max(1, Math.floor(width));
+    const h = Math.max(1, Math.floor(height));
+    this.canvas.width = w;
+    this.canvas.height = h;
+    // Viewport + u_resolution are reapplied each frame in loop(), so we
+    // don't have to do anything else here.
+  }
+
+  snapshot(): Promise<string> {
+    const canvas = this.canvas;
+    if (!canvas) {
+      return Promise.reject(new Error('renderer.snapshot: call mount() before snapshot()'));
+    }
+    return Promise.resolve(canvas.toDataURL('image/png'));
+  }
+
   onCompile(cb: (r: CompileResult) => void): () => void {
     this.compileSubs.add(cb);
     return () => {
       this.compileSubs.delete(cb);
     };
+  }
+
+  getFps(): number {
+    return this.fpsCounter.get();
   }
 
   private notifySubs(result: CompileResult): void {
@@ -126,8 +161,6 @@ class Renderer implements RendererAPI {
       const r = host.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) return;
       this.mouseX = clamp01((clientX - r.left) / r.width);
-      // y-up: shader convention (origin at lower-left), so flip the
-      // browser's top-down y-axis.
       this.mouseY = 1 - clamp01((clientY - r.top) / r.height);
     };
 
@@ -160,17 +193,26 @@ class Renderer implements RendererAPI {
     const locs = this.stdLocs;
     if (!gl || !canvas || !program || !locs) return;
 
+    const now = performance.now();
+    this.fpsCounter.tick(now);
+
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(program);
 
     if (locs.uTime) {
-      gl.uniform1f(locs.uTime, (performance.now() - this.startTime) / 1000);
+      gl.uniform1f(locs.uTime, (now - this.startTime) / 1000);
     }
     if (locs.uResolution) {
       gl.uniform2f(locs.uResolution, canvas.width, canvas.height);
     }
     if (locs.uMouse) {
       gl.uniform2f(locs.uMouse, this.mouseX, this.mouseY);
+    }
+
+    // Apply caller-set uniforms (only the ones the current shader uses).
+    for (const [name, u] of this.uniforms) {
+      const loc = gl.getUniformLocation(program, name);
+      if (loc !== null) applyUniform(gl, loc, u);
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -184,6 +226,7 @@ class Renderer implements RendererAPI {
       this.rafHandle = null;
     }
     this.detachPointerListeners();
+    this.fpsCounter.reset();
     if (this.gl && this.program) this.gl.deleteProgram(this.program);
     if (this.gl && this.vao) this.gl.deleteVertexArray(this.vao);
     if (this.canvas && this.canvas.parentElement) {
@@ -196,19 +239,22 @@ class Renderer implements RendererAPI {
     this.stdLocs = null;
     this.host = null;
   }
+}
 
-  // Stubs — implemented in #9.
-  setUniform(_name: string, _value: Uniform | null): void {
-    throw new Error('renderer.setUniform: not yet implemented (issue #9)');
-  }
-  resize(_width: number, _height: number): void {
-    throw new Error('renderer.resize: not yet implemented (issue #9)');
-  }
-  snapshot(): Promise<string> {
-    return Promise.reject(new Error('renderer.snapshot: not yet implemented (issue #9)'));
-  }
-  getFps(): number {
-    throw new Error('renderer.getFps: not yet implemented (issue #9)');
+function applyUniform(gl: WebGL2RenderingContext, loc: WebGLUniformLocation, u: Uniform): void {
+  switch (u.kind) {
+    case 'float':
+      gl.uniform1f(loc, u.value);
+      return;
+    case 'vec2':
+      gl.uniform2f(loc, u.value[0], u.value[1]);
+      return;
+    case 'vec3':
+      gl.uniform3f(loc, u.value[0], u.value[1], u.value[2]);
+      return;
+    case 'vec4':
+      gl.uniform4f(loc, u.value[0], u.value[1], u.value[2], u.value[3]);
+      return;
   }
 }
 
