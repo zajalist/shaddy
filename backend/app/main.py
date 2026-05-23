@@ -19,3 +19,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from app import health
+
+app.include_router(health.router)
