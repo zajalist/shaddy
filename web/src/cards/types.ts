@@ -77,6 +77,10 @@ export type Span = {
   /** 1-based line number of the LAST line of this card's body (inclusive),
    *  i.e. the line right before the next `//#card` / `//#end` marker. */
   endLine: number;
+  /** The body the compiler emitted for this card (excludes the marker line).
+   *  The reverse parser normalizes the user's current source against this to
+   *  decide "still matches the card's shape" vs "convert to wildcard." */
+  expectedBody: string;
 };
 
 export type UniformBinding = {

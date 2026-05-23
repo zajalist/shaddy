@@ -25,6 +25,9 @@ export type {
 
 export { MARKER_PREFIX, END_MARKER } from './markers';
 
+export { compile, uniformNameFor, validateRecipe } from './compile';
+export { formatParameterForDisplay, formatParameterAsGlslLiteral, isColor } from './format';
+
 export {
   CARD_LIBRARY,
   CARD_LIBRARY_LIST,
