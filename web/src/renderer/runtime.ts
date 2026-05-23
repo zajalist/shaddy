@@ -16,6 +16,12 @@ import { USER_LINE_OFFSET, wrapFragmentSource } from './gl/preamble';
 import { parseGlslErrors } from './gl/error-log';
 import { DEBUG_FRAGMENT_BODY } from './templates/debug.glsl';
 import { FpsCounter } from './fps';
+import {
+  FpsWatchdog,
+  halveBufferSize,
+  initialBufferSize,
+  isCoarsePointerDevice,
+} from './mobile-perf';
 
 type StandardLocs = {
   uTime: WebGLUniformLocation | null;
@@ -36,6 +42,7 @@ class Renderer implements RendererAPI {
   // Caller-set uniforms; persist across compiles, applied every frame.
   private uniforms = new Map<string, Uniform>();
   private fpsCounter = new FpsCounter();
+  private fpsWatchdog = new FpsWatchdog();
 
   // u_mouse — normalized [0,1] across the host. Origin at lower-left (y-up).
   private mouseX = 0.5;
@@ -54,10 +61,14 @@ class Renderer implements RendererAPI {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    const w = Math.max(host.clientWidth, 1);
-    const h = Math.max(host.clientHeight, 1);
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
+    const size = initialBufferSize({
+      cssWidth: host.clientWidth,
+      cssHeight: host.clientHeight,
+      devicePixelRatio: dpr,
+      isCoarsePointer: isCoarsePointerDevice(),
+    });
+    canvas.width = size.width;
+    canvas.height = size.height;
 
     // preserveDrawingBuffer: true means snapshot() can call toDataURL at any
     // time without having to time it precisely against the compositor.
@@ -196,6 +207,16 @@ class Renderer implements RendererAPI {
     const now = performance.now();
     this.fpsCounter.tick(now);
 
+    if (this.fpsWatchdog.shouldHalve(this.fpsCounter.get(), now)) {
+      const next = halveBufferSize({ width: canvas.width, height: canvas.height });
+      this.resize(next.width, next.height);
+      this.fpsCounter.reset();
+      console.warn(
+        `[shaddy renderer] fps below threshold for >2s — halved drawing buffer to ${next.width}x${next.height}. ` +
+          `Subscribe to onCompile / poll getFps() for further perf insight.`,
+      );
+    }
+
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(program);
 
@@ -227,6 +248,7 @@ class Renderer implements RendererAPI {
     }
     this.detachPointerListeners();
     this.fpsCounter.reset();
+    this.fpsWatchdog = new FpsWatchdog();
     if (this.gl && this.program) this.gl.deleteProgram(this.program);
     if (this.gl && this.vao) this.gl.deleteVertexArray(this.vao);
     if (this.canvas && this.canvas.parentElement) {
