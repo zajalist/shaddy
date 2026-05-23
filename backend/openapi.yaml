@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Shaddy backend
+  version: 0.1.0
+  description: |
+    Photo->shader optimization service. Source-of-truth schema for the
+    request/response and WebSocket frame format. Mirrored by:
+      - backend/app/schemas.py        (Python, Pydantic)
+      - web/src/shared/backend-types.ts (TypeScript)
+    Any change here MUST land in the same PR as both mirrors.
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: liveness probe
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, device]
+                properties:
+                  ok: { type: boolean }
+                  device:
+                    type: string
+                    enum: [cuda, cpu]
+
+  /optimize:
+    post:
+      operationId: postOptimize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OptimizeRequest" }
+      responses:
+        "202":
+          description: job accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OptimizeAccepted" }
+        "400":
+          description: bad request (oversized image, cuda unavailable, etc.)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OptimizeError" }
+        "422":
+          description: validation error
+        "503":
+          description: another job in progress
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OptimizeError" }
+
+  /optimize/stream/{job_id}:
+    get:
+      operationId: wsOptimizeStream
+      summary: WebSocket - streams OptimizeFrame messages until close.
+      description: |
+        Although this is documented as a GET for OpenAPI tooling, the actual
+        protocol is a WebSocket upgrade. Server messages are JSON-encoded
+        OptimizeFrame objects (tagged union by `type`). Server closes after
+        sending a `done` or `error` frame, or with code 1008 if job_id is
+        unknown.
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema: { type: string }
+      responses:
+        "101":
+          description: Switching protocols (WebSocket upgrade)
+
+components:
+  schemas:
+    OptimizeRequest:
+      type: object
+      required: [template_id, image_base64]
+      properties:
+        template_id:
+          type: string
+          enum: [plasma, voronoi-cells, gradient-noise]
+        image_base64:
+          type: string
+          description: PNG/JPEG/WebP, base64 or data-URL, <= 1MB decoded.
+        device:
+          type: string
+          enum: [auto, cuda, cpu]
+          default: auto
+        max_steps:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 500
+        wall_clock_cap_sec:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 30
+
+    OptimizeAccepted:
+      type: object
+      required: [job_id, ws_url, resolved_device]
+      properties:
+        job_id: { type: string }
+        ws_url: { type: string }
+        resolved_device:
+          type: string
+          enum: [cuda, cpu]
+
+    OptimizeError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    ProgressFrame:
+      type: object
+      required: [type, step, total, loss, preview_b64]
+      properties:
+        type: { type: string, enum: [progress] }
+        step: { type: integer }
+        total: { type: integer }
+        loss: { type: number }
+        preview_b64:
+          type: string
+          description: data:image/jpeg;base64,... (256x256 JPEG q85)
+
+    DoneFrame:
+      type: object
+      required: [type, final_params, glsl, loss]
+      properties:
+        type: { type: string, enum: [done] }
+        final_params:
+          type: object
+          additionalProperties:
+            oneOf:
+              - { type: number }
+              - { type: array, items: { type: number } }
+        glsl: { type: string }
+        loss: { type: number }
+
+    ErrorFrame:
+      type: object
+      required: [type, message]
+      properties:
+        type: { type: string, enum: [error] }
+        message: { type: string }
+
+    OptimizeFrame:
+      oneOf:
+        - $ref: "#/components/schemas/ProgressFrame"
+        - $ref: "#/components/schemas/DoneFrame"
+        - $ref: "#/components/schemas/ErrorFrame"
+      discriminator:
+        propertyName: type
