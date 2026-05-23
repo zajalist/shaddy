@@ -27,6 +27,7 @@ export { MARKER_PREFIX, END_MARKER } from './markers';
 
 export { compile, uniformNameFor, validateRecipe } from './compile';
 export { formatParameterForDisplay, formatParameterAsGlslLiteral, isColor } from './format';
+export { reparse, normalizeGlsl, extractDisplayName } from './reparse';
 
 export {
   CARD_LIBRARY,

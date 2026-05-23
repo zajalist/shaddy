@@ -107,6 +107,7 @@ export type CompiledShader = {
 export type ReparseEvent =
   | { kind: 'param-updated'; cardId: string; paramKey: string; newValue: ParameterValue }
   | { kind: 'card-became-wildcard'; cardId: string; capturedSource: string }
+  | { kind: 'wildcard-updated'; cardId: string; capturedSource: string }
   | { kind: 'wildcard-inserted'; afterCardId: string | null; capturedSource: string }
   | { kind: 'card-deleted'; cardId: string };
 
