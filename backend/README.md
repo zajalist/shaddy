@@ -66,8 +66,33 @@ make test
 
 Sub-project B replaces the WS handler's stub with real PyTorch optimization. Wire format stays identical.
 
+## Mock server (for UX without a GPU)
+
+The mock backend ships pre-recorded progress frames over the real wire format — useful for UX dev on machines without a GPU.
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m scripts.mock_server   # http://localhost:8001
+```
+
+Point `VITE_BACKEND_URL=http://localhost:8001` on the frontend and the UI behaves as if a real optimization is streaming.
+
+## Deploy to Modal
+
+Requires a Modal account + `pip install modal` + `modal token new` (one-time).
+
+```powershell
+cd backend
+modal deploy deploy/modal_app.py
+```
+
+Modal will print a URL like `https://<account>--shaddy-backend-fastapi-app.modal.run`. Set that as `VITE_BACKEND_URL` on the frontend.
+
+LPIPS VGG weights are baked into the image build so the first request doesn't pay the cold-start tax of a ~58 MB weight download.
+
 ## Deployment
 
-- Demo day: Modal or Replicate (free tier). Image uses `requirements-gpu.txt`.
+- Demo day: Modal (free tier). Image uses `requirements-gpu.txt`.
 - Dev: local CUDA or automatic CPU fallback at 64×64.
 - Backup: pre-recorded demo video (the UX track owns recording it).
