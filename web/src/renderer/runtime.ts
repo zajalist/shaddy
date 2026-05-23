@@ -8,9 +8,10 @@
 // Still stubbed: setUniform / resize / snapshot / getFps (#9), standard
 // uniforms u_resolution / u_mouse (#8), mobile perf guardrails (#13).
 
-import type { CompileResult, GLSLError, RendererAPI, Uniform } from './index';
+import type { CompileResult, RendererAPI, Uniform } from './index';
 import { FULLSCREEN_TRIANGLE_VERT, linkProgram } from './gl/program';
 import { USER_LINE_OFFSET, wrapFragmentSource } from './gl/preamble';
+import { parseGlslErrors } from './gl/error-log';
 import { DEBUG_FRAGMENT_BODY } from './templates/debug.glsl';
 
 class Renderer implements RendererAPI {
@@ -152,13 +153,8 @@ class Renderer implements RendererAPI {
   }
 }
 
-// Placeholder error formatting — proper line/column parsing lands in #7.
-// For now we surface the whole driver log as a single GLSLError pinned to
-// line 1 so the editor still gets *something* it can render. The line
-// number will be corrected by #7's parser once it lands.
-function parseErrors(infoLog: string): GLSLError[] {
-  void USER_LINE_OFFSET; // referenced so the constant stays alive for #7.
-  return [{ line: 1, column: 1, message: infoLog.trim() || 'shader compile failed' }];
+function parseErrors(infoLog: string) {
+  return parseGlslErrors(infoLog, USER_LINE_OFFSET);
 }
 
 export function createRenderer(): RendererAPI {
