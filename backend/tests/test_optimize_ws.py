@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -6,22 +8,16 @@ from app.main import app
 from app.schemas import DoneFrame
 from tests._helpers import png_data_url
 
+# _reset_registry and _force_cpu are autouse fixtures from conftest.py.
 
-@pytest.fixture(autouse=True)
-def _reset_registry():
-    from app.main import registry
-    registry._slot = None
-    yield
-    registry._slot = None
-
-
-@pytest.fixture(autouse=True)
-def _force_cpu(monkeypatch):
-    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
 
 def test_ws_sends_one_done_frame_with_template_glsl():
-    """End-to-end stub: POST then WS receives a single DoneFrame and closes."""
+    """End-to-end stub: POST then WS receives a single DoneFrame and closes.
+
+    Per spec §7: the returned GLSL must match the template file byte-for-byte.
+    """
     sync_client = TestClient(app)
     r = sync_client.post("/optimize", json={
         "template_id": "plasma",
@@ -37,7 +33,9 @@ def test_ws_sends_one_done_frame_with_template_glsl():
     frame = DoneFrame.model_validate(payload)
     assert frame.type == "done"
     assert frame.loss == 0.0
-    assert "void main" in frame.glsl
+
+    expected_glsl = (_TEMPLATES_DIR / "plasma.glsl").read_text(encoding="utf-8")
+    assert frame.glsl == expected_glsl, "DoneFrame.glsl must match plasma.glsl byte-for-byte"
     assert "freq_x" in frame.final_params
 
 

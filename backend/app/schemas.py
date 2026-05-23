@@ -1,7 +1,9 @@
-from typing import Literal, Union
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
+# Canonical type aliases. `device.py` imports `Device` / `RequestedDevice`
+# from here — do not duplicate.
 TemplateId = Literal["plasma", "voronoi-cells", "gradient-noise"]
 RequestedDevice = Literal["auto", "cuda", "cpu"]
 Device = Literal["cuda", "cpu"]
@@ -48,4 +50,8 @@ class ErrorFrame(BaseModel):
     message: str
 
 
-OptimizeFrame = Union[ProgressFrame, DoneFrame, ErrorFrame]
+# Discriminated union — matches openapi.yaml's `discriminator: type`.
+OptimizeFrame = Annotated[
+    Union[ProgressFrame, DoneFrame, ErrorFrame],
+    Field(discriminator="type"),
+]

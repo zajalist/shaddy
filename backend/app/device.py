@@ -1,9 +1,6 @@
-from typing import Literal
-
 import torch
 
-Device = Literal["cuda", "cpu"]
-RequestedDevice = Literal["auto", "cuda", "cpu"]
+from app.schemas import Device, RequestedDevice
 
 
 class CudaUnavailable(Exception):

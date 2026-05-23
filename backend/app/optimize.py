@@ -1,17 +1,20 @@
 import asyncio
 import base64
 import io
+import logging
 import re
 import time
 import uuid
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 
 from app import device, templates
 from app.jobs import Job, JobRegistry, SlotBusy
-from app.schemas import DoneFrame, OptimizeAccepted, OptimizeError, OptimizeRequest
+from app.schemas import DoneFrame, ErrorFrame, OptimizeAccepted, OptimizeError, OptimizeRequest
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -42,6 +45,7 @@ async def _gc_unclaimed(registry: JobRegistry, job_id: str, ttl: float) -> None:
         return
     current = registry.current()
     if current is not None and current.job_id == job_id and not current.ws_attached:
+        log.warning("gc: job %s never attached a websocket after %.2fs, releasing slot", job_id, ttl)
         await registry.release()
 
 
@@ -55,10 +59,12 @@ async def post_optimize(req: OptimizeRequest, request: Request):
     if len(image_bytes) > MAX_IMAGE_BYTES:
         return _err("image exceeds 1MB", 400)
 
-    # 2. Confirm it's a real image PIL can parse.
+    # 2. Confirm it's a real image PIL can parse. verify() raises a variety of
+    # exception types (UnidentifiedImageError for unknown formats, OSError for
+    # truncated/corrupt files), so catch broadly.
     try:
         Image.open(io.BytesIO(image_bytes)).verify()
-    except (UnidentifiedImageError, Exception):
+    except Exception:
         return _err("unsupported image format", 400)
 
     # 3. Resolve device.
@@ -120,5 +126,15 @@ async def ws_optimize_stream(ws: WebSocket, job_id: str):
     except WebSocketDisconnect:
         # Client vanished mid-frame; nothing to do.
         pass
+    except Exception as exc:
+        # Server bug while building the done frame. Spec §6: log + ErrorFrame + close.
+        log.exception("ws error while serving job %s", job_id)
+        try:
+            err = ErrorFrame(type="error", message=str(exc) or exc.__class__.__name__)
+            await ws.send_json(err.model_dump())
+            await ws.close(code=1011)
+        except Exception:
+            # Best-effort: if we can't even send the error frame, just stop.
+            pass
     finally:
         await registry.release()

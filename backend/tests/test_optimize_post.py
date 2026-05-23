@@ -1,21 +1,8 @@
 import asyncio
-import pytest
 
 from tests._helpers import oversized_data_url, png_data_url
 
-
-@pytest.fixture(autouse=True)
-def _reset_registry():
-    """Each test gets a clean serial slot."""
-    from app.main import registry
-    registry._slot = None
-    yield
-    registry._slot = None
-
-
-@pytest.fixture(autouse=True)
-def _force_cpu(monkeypatch):
-    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+# _reset_registry and _force_cpu are autouse fixtures from conftest.py.
 
 
 async def test_post_optimize_accepts_valid_request(client):
@@ -54,6 +41,20 @@ async def test_post_optimize_rejects_unparseable_image(client):
     })
     assert r.status_code == 400
     assert "unsupported" in r.json()["error"]
+
+
+async def test_post_optimize_rejects_invalid_base64(client):
+    # `!!!` is not valid base64 — exercises the _decode_image_b64 ValueError path.
+    # (Pydantic accepts any string; the handler does the decode.)
+    r = await client.post("/optimize", json={
+        "template_id": "plasma",
+        "image_base64": "!!!",
+    })
+    assert r.status_code == 400
+    # Either "invalid base64" (decode raised) or "unsupported image format"
+    # (decode succeeded into a tiny non-image byte string) is acceptable —
+    # both are 400 errors on bad input, which is what matters.
+    assert r.json()["error"] in {"invalid base64", "unsupported image format"}
 
 
 async def test_post_optimize_rejects_cuda_when_unavailable(client):
