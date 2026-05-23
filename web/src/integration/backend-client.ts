@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Backend client. UX never touches WebSockets directly — it calls
 // optimizePhoto() and gets an async iterator of frames (or a final result).
 //

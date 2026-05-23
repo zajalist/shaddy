@@ -58,7 +58,7 @@ function _b64uEncode(s: string): string {
   const bytes =
     typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(s) : _bytesFromUtf8Fallback(s);
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i] as number);
   const b64 = typeof btoa !== 'undefined' ? btoa(bin) : Buffer.from(bin, 'binary').toString('base64');
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
