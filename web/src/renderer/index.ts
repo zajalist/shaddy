@@ -49,24 +49,12 @@ export interface LensStackAPI {
   capture(fragmentSource: string, breakLines: number[]): Promise<string[]>;
 }
 
-const NOT_IMPLEMENTED = (method: string): never => {
-  throw new Error(`renderer.${method}: not implemented`);
-};
-
-export function createRenderer(): RendererAPI {
-  return {
-    mount: (_host) => NOT_IMPLEMENTED('mount'),
-    compile: (_fragmentSource) => NOT_IMPLEMENTED('compile'),
-    setUniform: (_name, _value) => NOT_IMPLEMENTED('setUniform'),
-    resize: (_width, _height) => NOT_IMPLEMENTED('resize'),
-    snapshot: () => NOT_IMPLEMENTED('snapshot'),
-    onCompile: (_cb) => NOT_IMPLEMENTED('onCompile'),
-    getFps: () => NOT_IMPLEMENTED('getFps'),
-  };
-}
+export { createRenderer } from './runtime';
 
 export function createLensStack(): LensStackAPI {
   return {
-    capture: (_fragmentSource, _breakLines) => NOT_IMPLEMENTED('lensStack.capture'),
+    capture: (_fragmentSource, _breakLines) => {
+      throw new Error('renderer.lensStack.capture: not yet implemented (issue #12)');
+    },
   };
 }
