@@ -54,7 +54,6 @@ export function CodeMirrorPane({ source, onSourceChange, errors }: EditorProps) 
       view.destroy();
       viewRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync external source changes (e.g. template-load, optimize-done) into the editor.
