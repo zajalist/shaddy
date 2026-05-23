@@ -1,7 +1,8 @@
 // Module-boundary enforcement for CONTRACTS.md "Dependency direction".
 //
-// Allowed direction:    integration → { ux, editor, renderer, shared }
-//                       ux → { renderer (entry only), editor (entry only), shared }
+// Allowed direction:    integration → { ux, cards, editor, renderer, shared }
+//                       ux → { renderer (entry), editor (entry), cards (entry), shared }
+//                       cards → { editor (entry), shared }
 //                       renderer, editor, shared → ∅  (leaves)
 //
 // Anything pointing the wrong way is a bug. We enforce with core ESLint's
@@ -86,12 +87,27 @@ export default tseslint.config(
     ]),
   },
 
-  // ux/ — composes renderer + editor entry points, may not import integration.
+  // ux/ — composes renderer + editor + cards entry points, may not import integration.
   {
     files: ['src/ux/**/*.{ts,tsx}'],
     rules: restrict([
       xModule('integration', 'ux is consumed by integration, not the other way around'),
       deepSibling('renderer'),
+      deepSibling('editor'),
+      deepSibling('cards'),
+    ]),
+  },
+
+  // cards/ — may import @/editor (entry, for AST helpers); must not import
+  // @/renderer / @/ux / @/integration. The renderer is consumed by the
+  // integration layer; cards/ produces GLSL strings + uniform bindings as
+  // pure data.
+  {
+    files: ['src/cards/**/*.{ts,tsx}'],
+    rules: restrict([
+      xModule('renderer', 'cards/ produces GLSL strings; renderer is consumed by integration/'),
+      xModule('ux', 'cards is a leaf-side module to ux/'),
+      xModule('integration', 'cards is a leaf-side module to integration/'),
       deepSibling('editor'),
     ]),
   },
