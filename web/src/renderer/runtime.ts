@@ -1,14 +1,17 @@
 // Renderer implementation. Private to renderer/; consumers import the
 // factory and types from ./index.ts only.
 //
-// Scope so far: #5 — WebGL2 context, fullscreen triangle, debug shader,
-// requestAnimationFrame loop. compile/setUniform/resize/snapshot/onCompile
-// remain stubbed for #6–#9; mount() does enough to satisfy #5's acceptance
-// ("mounting to a <div> shows a moving color gradient").
+// Scope so far:
+//   #5  — context, VAO, fullscreen triangle, RAF loop
+//   #6  — compile() + onCompile() with hot-swap + last-good fallback
+//
+// Still stubbed: setUniform / resize / snapshot / getFps (#9), standard
+// uniforms u_resolution / u_mouse (#8), mobile perf guardrails (#13).
 
-import type { CompileResult, RendererAPI, Uniform } from './index';
+import type { CompileResult, GLSLError, RendererAPI, Uniform } from './index';
 import { FULLSCREEN_TRIANGLE_VERT, linkProgram } from './gl/program';
-import { DEBUG_FRAGMENT_SHADER } from './templates/debug.glsl';
+import { USER_LINE_OFFSET, wrapFragmentSource } from './gl/preamble';
+import { DEBUG_FRAGMENT_BODY } from './templates/debug.glsl';
 
 class Renderer implements RendererAPI {
   private host: HTMLElement | null = null;
@@ -18,6 +21,7 @@ class Renderer implements RendererAPI {
   private program: WebGLProgram | null = null;
   private rafHandle: number | null = null;
   private startTime = 0;
+  private compileSubs = new Set<(r: CompileResult) => void>();
 
   mount(host: HTMLElement): void {
     if (this.host === host) return;
@@ -38,26 +42,65 @@ class Renderer implements RendererAPI {
     const gl = canvas.getContext('webgl2');
     if (!gl) throw new Error('renderer: WebGL2 not available in this browser');
 
-    // Fullscreen-triangle geometry is generated in the vertex shader from
-    // gl_VertexID — we only need a VAO bound for the draw call.
     const vao = gl.createVertexArray();
     if (!vao) throw new Error('renderer: failed to create vertex array');
     gl.bindVertexArray(vao);
 
-    const linked = linkProgram(gl, FULLSCREEN_TRIANGLE_VERT, DEBUG_FRAGMENT_SHADER);
-    if (!linked.ok) {
-      throw new Error(`renderer: debug shader failed to compile: ${linked.infoLog}`);
-    }
-
     this.canvas = canvas;
     this.gl = gl;
     this.vao = vao;
-    this.program = linked.program;
 
     host.appendChild(canvas);
 
+    // Compile the debug shader through the same compile() path. If this
+    // ever fails, the constructor invariant ("there is always a program")
+    // is broken and the renderer surfaces the error loudly.
+    const initial = this.compile(DEBUG_FRAGMENT_BODY);
+    if (!initial.ok) {
+      throw new Error(
+        `renderer: built-in debug shader failed to compile — ${initial.errors[0]?.message ?? '?'}`,
+      );
+    }
+
     this.startTime = performance.now();
     this.loop();
+  }
+
+  compile(fragmentSource: string): CompileResult {
+    if (!this.gl) {
+      throw new Error('renderer.compile: call mount() before compile()');
+    }
+    const gl = this.gl;
+
+    const wrapped = wrapFragmentSource(fragmentSource);
+    const linked = linkProgram(gl, FULLSCREEN_TRIANGLE_VERT, wrapped);
+
+    if (!linked.ok) {
+      const errors = parseErrors(linked.infoLog);
+      const result: CompileResult = { ok: false, errors };
+      this.notifySubs(result);
+      return result;
+    }
+
+    // Success: delete the old program and swap in the new one. The old
+    // program may be null on the very first compile (from mount()).
+    if (this.program) gl.deleteProgram(this.program);
+    this.program = linked.program;
+
+    const result: CompileResult = { ok: true };
+    this.notifySubs(result);
+    return result;
+  }
+
+  onCompile(cb: (r: CompileResult) => void): () => void {
+    this.compileSubs.add(cb);
+    return () => {
+      this.compileSubs.delete(cb);
+    };
+  }
+
+  private notifySubs(result: CompileResult): void {
+    for (const cb of this.compileSubs) cb(result);
   }
 
   private loop = (): void => {
@@ -82,7 +125,7 @@ class Renderer implements RendererAPI {
       cancelAnimationFrame(this.rafHandle);
       this.rafHandle = null;
     }
-    if (this.gl && this.program) gl_safeDelete(this.gl, this.program);
+    if (this.gl && this.program) this.gl.deleteProgram(this.program);
     if (this.gl && this.vao) this.gl.deleteVertexArray(this.vao);
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -94,12 +137,7 @@ class Renderer implements RendererAPI {
     this.host = null;
   }
 
-  // Stubs — implemented across #6–#9. Kept as 'not yet implemented' so that
-  // consumers fail loudly rather than silently no-op (compare with mock,
-  // which is intentionally a no-op).
-  compile(_fragmentSource: string): CompileResult {
-    throw new Error('renderer.compile: not yet implemented (issue #6)');
-  }
+  // Stubs — implemented in #8 / #9.
   setUniform(_name: string, _value: Uniform | null): void {
     throw new Error('renderer.setUniform: not yet implemented (issue #9)');
   }
@@ -109,16 +147,18 @@ class Renderer implements RendererAPI {
   snapshot(): Promise<string> {
     return Promise.reject(new Error('renderer.snapshot: not yet implemented (issue #9)'));
   }
-  onCompile(_cb: (r: CompileResult) => void): () => void {
-    throw new Error('renderer.onCompile: not yet implemented (issue #6)');
-  }
   getFps(): number {
     throw new Error('renderer.getFps: not yet implemented (issue #9)');
   }
 }
 
-function gl_safeDelete(gl: WebGL2RenderingContext, program: WebGLProgram): void {
-  gl.deleteProgram(program);
+// Placeholder error formatting — proper line/column parsing lands in #7.
+// For now we surface the whole driver log as a single GLSLError pinned to
+// line 1 so the editor still gets *something* it can render. The line
+// number will be corrected by #7's parser once it lands.
+function parseErrors(infoLog: string): GLSLError[] {
+  void USER_LINE_OFFSET; // referenced so the constant stays alive for #7.
+  return [{ line: 1, column: 1, message: infoLog.trim() || 'shader compile failed' }];
 }
 
 export function createRenderer(): RendererAPI {
