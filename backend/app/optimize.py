@@ -113,15 +113,14 @@ async def ws_optimize_stream(ws: WebSocket, job_id: str):
         job.gc_task.cancel()
     job.ws_attached = True
 
+    # Imported here to avoid a circular import at module load (runner imports
+    # from app.* during startup).
+    from optim.runner import run_optimization
+
     await ws.accept()
     try:
-        frame = DoneFrame(
-            type="done",
-            final_params=templates.defaults(job.template_id),
-            glsl=templates.glsl(job.template_id),
-            loss=0.0,
-        )
-        await ws.send_json(frame.model_dump())
+        async for frame in run_optimization(job):
+            await ws.send_json(frame.model_dump())
         await ws.close()
     except WebSocketDisconnect:
         # Client vanished mid-frame; nothing to do.
