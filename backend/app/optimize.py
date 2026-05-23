@@ -5,13 +5,13 @@ import re
 import time
 import uuid
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
 
 from app import device, templates
 from app.jobs import Job, JobRegistry, SlotBusy
-from app.schemas import OptimizeAccepted, OptimizeError, OptimizeRequest
+from app.schemas import DoneFrame, OptimizeAccepted, OptimizeError, OptimizeRequest
 
 router = APIRouter()
 
@@ -91,3 +91,34 @@ async def post_optimize(req: OptimizeRequest, request: Request):
         ws_url=f"/optimize/stream/{job.job_id}",
         resolved_device=resolved,
     )
+
+
+@router.websocket("/optimize/stream/{job_id}")
+async def ws_optimize_stream(ws: WebSocket, job_id: str):
+    registry: JobRegistry = ws.app.state.registry
+    job = registry.get(job_id)
+    if job is None:
+        # 1008 = policy violation. Matches spec §6.
+        await ws.close(code=1008)
+        return
+
+    # We have a real job. Cancel the TTL gc if it's still pending.
+    if job.gc_task is not None and not job.gc_task.done():
+        job.gc_task.cancel()
+    job.ws_attached = True
+
+    await ws.accept()
+    try:
+        frame = DoneFrame(
+            type="done",
+            final_params=templates.defaults(job.template_id),
+            glsl=templates.glsl(job.template_id),
+            loss=0.0,
+        )
+        await ws.send_json(frame.model_dump())
+        await ws.close()
+    except WebSocketDisconnect:
+        # Client vanished mid-frame; nothing to do.
+        pass
+    finally:
+        await registry.release()
