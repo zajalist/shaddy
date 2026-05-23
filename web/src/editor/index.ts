@@ -68,24 +68,28 @@ export function _resetParseCache(): void {
   }
 }
 
-// --- Stubbed surface (sub-projects E and F will implement) -------------------
+// --- Literal extraction + mutation (sub-project E) ---------------------------
 
-export function findLiterals(_ast: Ast): LiteralHandle[] {
-  // Sub-project E (issue #18, #19, #23). Returns [] until then.
-  return [];
+import { findLiteralsFromAst, replaceLiteralInSource } from './parse/literals';
+
+/** Walk the AST and return every numeric literal and `vec3(f, f, f)` color
+ *  literal in source order. IDs are stable across literal-value edits. */
+export function findLiterals(ast: Ast): LiteralHandle[] {
+  return findLiteralsFromAst(ast);
 }
+
+/** Replace a literal by handle id, returning the new source string.
+ *  Source is the single source of truth — there is no separate handle state. */
+export function replaceLiteral(
+  src: string,
+  handleId: string,
+  newValue: number | [number, number, number],
+): string {
+  return replaceLiteralInSource(src, handleId, newValue);
+}
+
+// --- Pattern matchers (sub-project F) ----------------------------------------
 
 export function findPatterns(_ast: Ast): PatternHandle[] {
-  // Sub-project F (issues #20, #21, #22). Returns [] until then.
   return [];
-}
-
-export function replaceLiteral(
-  _src: string,
-  _handleId: string,
-  _newValue: number | [number, number, number],
-): string {
-  // Sub-project E (issue #23). Throw loudly so wrong call-sites surface during
-  // dev rather than silently no-op.
-  throw new Error('editor.replaceLiteral: not implemented yet (sub-project E)');
 }

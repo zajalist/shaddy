@@ -28,15 +28,18 @@ describe('editor public surface', () => {
     expect(findPatterns(ast)).toEqual([]);
   });
 
-  it('findLiterals stub returns [] (sub-project E)', () => {
-    expect(findLiterals(parse(VALID))).toEqual([]);
+  it('findLiterals returns the floats from a valid shader', () => {
+    const handles = findLiterals(parse(VALID));
+    const floats = handles.filter((h) => h.kind === 'float');
+    // Source has vec4(1.0, 0.0, 0.0, 1.0) → 4 floats.
+    expect(floats.map((h) => h.value)).toEqual([1.0, 0.0, 0.0, 1.0]);
   });
 
-  it('findPatterns stub returns [] (sub-project F)', () => {
+  it('findPatterns stub still returns [] (sub-project F)', () => {
     expect(findPatterns(parse(VALID))).toEqual([]);
   });
 
-  it('replaceLiteral throws explicitly (sub-project E)', () => {
-    expect(() => replaceLiteral(VALID, 'foo', 1)).toThrow(/not implemented/);
+  it('replaceLiteral throws on unknown handle id', () => {
+    expect(() => replaceLiteral(VALID, 'float-99', 1)).toThrow(/no float/);
   });
 });
