@@ -4,6 +4,16 @@
 
 ---
 
+## ⚠️ Status update (2026-05-23): photo-match deferred, product is frontend-only
+
+The **Photo → shader (gradient descent)** feature — the FastAPI / PyTorch backend, the `POST /optimize` endpoint, the WebSocket streaming, the differentiable PyTorch templates — is **deferred / out of scope for the current build**. Reasons + reversal path live in [`docs/decisions/2026-05-23-frontend-only.md`](./docs/decisions/2026-05-23-frontend-only.md).
+
+What is still in scope: everything in §4 Tier 1, plus the **Lens stack** from Tier 2. The product is a pure WebGL/React playground that runs entirely in the browser.
+
+The sections below that describe the backend (especially §3 architecture, §5 backend stack, §7 photo→shader impl, §10 ML role, §11 risks tied to GPU) are kept as **historical product context** so a future iteration can pick them up. Each such section is annotated below with a `🚫 DEFERRED` marker.
+
+---
+
 ## 1. The pitch (60 seconds)
 
 Shadertoy is the most distinctive native art form the GPU has produced — but it has no on-ramp. Blender and Unreal are built for production pipelines, not for the pure-math, single-fragment-shader aesthetic that defines Shadertoy culture.
@@ -36,26 +46,22 @@ The 30-second demo: judge takes the phone, drags a circle larger, sees the code 
 │  - Same codebase on phone + desktop, layout adapts          │
 │  - React + TypeScript + Vite                                │
 │  - WebGL2 for shader rendering (works everywhere)           │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-        ▼                 ▼
-┌──────────────┐   ┌──────────────────────────┐
-│  Client-only │   │  Optional Python backend  │
-│  features    │   │  (FastAPI + PyTorch)      │
-│              │   │                           │
-│ - Editor     │   │ - Photo → shader endpoint │
-│ - Renderer   │   │   (differentiable render) │
-│ - Lens stack │   │ - Returns: parameter JSON │
-│ - Sharing    │   │   + generated GLSL        │
-│   (URL hash) │   └──────────────────────────┘
-└──────────────┘
+│                                                             │
+│  Modules (folder-isolated, contracts in CONTRACTS.md):      │
+│    renderer/    — shader compile, fullscreen quad, FBO      │
+│    editor/      — CodeMirror, GLSL parsing, bindings        │
+│    ux/          — layout, gestures, share URL               │
+│    integration/ — wires them together (App.tsx, main.tsx)   │
+│                                                             │
+│  Nothing leaves the browser. URL-hash sharing only.         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **Why one responsive web app instead of separate native phone app:** a native app doubles scope, and WebGL2 works on iOS Safari and Android Chrome. Touch events give us all the gestures we need. We get phone + desktop for the price of one codebase. The only thing we lose is App Store presence — irrelevant for a hackathon demo.
 
-**Why Python backend for gradient descent:** PyTorch on a server with CUDA is dramatically simpler than wrangling WebGPU compute shaders or ONNX in the browser, and a hackathon GPU instance (Modal, Replicate, RunPod, or a teammate's gaming desktop with ngrok) is enough.
+**Why no backend:** 🚫 DEFERRED. The original spec called for a FastAPI + PyTorch backend that ran gradient descent against differentiable shaders for the photo-match feature. That track has been cut for the current build (see the status callout at the top of this file). If/when it returns, the architecture below is the intended shape:
+
+> **Why Python backend for gradient descent:** PyTorch on a server with CUDA is dramatically simpler than wrangling WebGPU compute shaders or ONNX in the browser, and a hackathon GPU instance (Modal, Replicate, RunPod, or a teammate's gaming desktop with ngrok) is enough.
 
 ---
 
@@ -79,7 +85,7 @@ These are the non-negotiables. If any of these don't work, the demo collapses.
 These are what take the demo from "neat tool" to "memorable." Pick at least one of (lens stack, photo→shader) to ship — both if time permits.
 
 - **Lens stack view.** A side panel showing the shader as a vertical sequence of named operations, each with a live thumbnail of what the output looks like *at that step*. Implemented by re-running the shader N times with `discard` after line K. Toggleable.
-- **Photo → shader (gradient descent).**
+- **Photo → shader (gradient descent).** 🚫 DEFERRED (server required; current build is frontend-only).
   - User uploads or captures a photo.
   - Client sends image + chosen template to Python backend.
   - Backend runs PyTorch optimization (Adam, ~500 iterations, perceptual loss via small pretrained VGG) on the template's exposed parameters.
@@ -122,7 +128,9 @@ These are what take the demo from "neat tool" to "memorable." Pick at least one 
 | Styling | Tailwind | Fast iteration |
 | Mobile detection | CSS media queries + `pointer: coarse` | Touch vs mouse via standard APIs |
 
-### Backend (gradient descent only)
+### Backend (gradient descent only) — 🚫 DEFERRED
+
+Frozen for reference. Not built in the current iteration.
 
 | Concern | Choice | Why |
 |---|---|---|
@@ -132,13 +140,13 @@ These are what take the demo from "neat tool" to "memorable." Pick at least one 
 | Optimizer | Adam, lr=0.02, 500 iters | Standard, converges fast |
 | Hosting | Modal or Replicate for demo day; local CUDA box during dev | Modal has generous free tier and serverless GPU |
 
-### Differentiable shader implementation
+### Differentiable shader implementation — 🚫 DEFERRED
 
-The template shaders for photo-matching are implemented **twice**:
+If/when photo-match returns, the template shaders for photo-matching would be implemented **twice**:
 1. As GLSL for the live renderer.
 2. As a PyTorch function with identical math, so gradients flow.
 
-Keep this set small for v1 — 3 templates is enough (plasma, voronoi-cells, gradient-noise). Document the math sharing in code comments so they don't drift.
+(Today: only the GLSL side exists — see `web/src/renderer/templates/`. The 12 templates already cover plasma, voronoi-cells, and gradient-noise; a photo-match reimplementation would need to mirror their math in a differentiable form, ideally on the frontend via WebGL2 + manual gradients or TensorFlow.js to stay frontend-only.)
 
 ---
 
@@ -160,7 +168,7 @@ This is the technically hardest part. Approach:
 
 ---
 
-## 7. Photo → shader — implementation notes
+## 7. Photo → shader — implementation notes (🚫 DEFERRED)
 
 ```
 [user uploads photo] → POST /optimize {template_id, image_base64}
@@ -265,12 +273,10 @@ Canvas on top, editor below, swipe up on a handle to switch which fills the scre
 
 - **Renderer / WebGL person.** Owns shader compilation, the canvas, performance, the template library.
 - **Editor / parser person.** Owns CodeMirror integration, GLSL parsing, the bidirectional binding logic. Hardest job.
-- **ML / backend person.** Owns the PyTorch optimization, FastAPI server, WebSocket streaming, deployment.
+- **ML / backend person.** 🚫 DEFERRED — no backend to own this build. If photo-match returns this role comes back.
 - **UX / mobile / demo person.** Owns layout, responsive design, touch gestures, the share flow, and rehearsing the pitch. Floats to help wherever's behind.
 
-If team is 3: collapse renderer + UX into one role.
-
-If team is 2: cut Tier 2 photo→shader entirely. Demo lens stack instead. Be honest about what you can build.
+With photo-match cut, the lens stack is the headline Tier-2 "whoa".
 
 ---
 
@@ -279,9 +285,9 @@ If team is 2: cut Tier 2 photo→shader entirely. Demo lens stack instead. Be ho
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | Bidirectional binding is harder than expected | High | Ship with just 2 recognized patterns (numeric scrub + color swatch). Don't promise general code↔canvas equivalence. |
-| Photo→shader produces ugly results | Medium | Three random inits, return the best. Curate which photos you demo with — high-contrast, clear color palette photos work best. |
+| Photo→shader produces ugly results | 🚫 DEFERRED | Three random inits, return the best. Curate which photos you demo with — high-contrast, clear color palette photos work best. |
 | Phone performance is bad | Medium | Test on a real mid-range phone weekly during dev. Cap canvas resolution on mobile. |
-| Backend GPU times out during demo | Medium | Pre-record the photo→shader demo as a backup video. Always. |
+| Backend GPU times out during demo | 🚫 DEFERRED | Pre-record the photo→shader demo as a backup video. Always. |
 | Scope creep | Very high | Tier 3 features are *not* in v1. Write this on a sticky note and put it on the wall. |
 
 ---

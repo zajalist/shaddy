@@ -16,3 +16,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# claude code agent state + transient worktrees
+.claude/
