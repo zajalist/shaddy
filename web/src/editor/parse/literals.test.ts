@@ -25,8 +25,8 @@ describe('findLiteralsFromSource', () => {
     const colors = handles.filter((h) => h.kind === 'vec3-color');
     // Only vec3(0.8, 0.2, 0.4) is a color literal — vec4(c, 1.0) is not (c is identifier).
     expect(colors).toHaveLength(1);
-    expect(colors[0].id).toBe('vec3-color-0');
-    expect(colors[0].value).toEqual([0.8, 0.2, 0.4]);
+    expect(colors[0]!.id).toBe('vec3-color-0');
+    expect(colors[0]!.value).toEqual([0.8, 0.2, 0.4]);
   });
 
   it('returns [] for unparseable source', () => {

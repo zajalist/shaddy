@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Public-API-facing literal extraction and mutation.
 //
 // IDs are sequential per-kind in source order:
@@ -59,7 +60,7 @@ export function findLiteralsFromAst(ast: unknown, src?: string): LiteralHandle[]
       id: `vec3-color-${colorIdx++}`,
       kind: 'vec3-color',
       loc: { start: leaf.start, end: leaf.end, ..._lineCol(src, leaf.start) },
-      value: [triple[0], triple[1], triple[2]],
+      value: [triple[0] as number, triple[1] as number, triple[2] as number],
     });
   }
 
@@ -110,7 +111,7 @@ export function replaceLiteralInSource(
       throw new Error('editor.replaceLiteral: vec3-color target has malformed children');
     }
     for (let k = 0; k < 3; k++) {
-      children[k].token = _formatFloat(newValue[k]);
+      children[k].token = _formatFloat(newValue[k] as number);
     }
     return generateSource(ast);
   }

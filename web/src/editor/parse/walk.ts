@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Collect numeric literals and vec3-color spans from a shaderfrog AST, in
 // document order, with source positions in `generate(ast)`.
 //
@@ -128,7 +129,7 @@ export function findNumericLeaves(ast: any): Leaf[] {
       const loc = numericLocations.get(r.node);
       if (!loc) continue;
       out.push({ kind: r.kind, start: loc.start, end: loc.end, text: loc.text, node: r.node });
-    } else {
+    } else if (r.kind === 'function_call_vec3_color') {
       // vec3-color span: from the start of "vec3" preceding the first numeric
       // child, to the matching ")" after the last numeric child.
       const first = numericLocations.get(r.numericChildren[0]);
