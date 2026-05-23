@@ -11,7 +11,7 @@ float hash21(vec2 p) {
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / u_resolution * 8.0;
+    vec2 uv = gl_FragCoord.xy / u_resolution * /*PARAM:cells*/;
     vec2 i = floor(uv);
     vec2 f = fract(uv);
     float d = 1.0;
@@ -22,5 +22,6 @@ void main() {
             d = min(d, length(g + p - f));
         }
     }
-    fragColor = vec4(vec3(d), 1.0);
+    vec3 c = mix(/*PARAM:color_a*/, /*PARAM:color_b*/, d);
+    fragColor = vec4(c, 1.0);
 }

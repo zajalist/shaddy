@@ -113,13 +113,13 @@ async def ws_optimize_stream(ws: WebSocket, job_id: str):
         job.gc_task.cancel()
     job.ws_attached = True
 
-    # Imported here to avoid a circular import at module load (runner imports
-    # from app.* during startup).
-    from optim.runner import run_optimization
+    # Imported here to avoid a circular import at module load (the optim
+    # package imports from app.* during startup).
+    from optim.parallel import run_parallel
 
     await ws.accept()
     try:
-        async for frame in run_optimization(job):
+        async for frame in run_parallel(job):
             await ws.send_json(frame.model_dump())
         await ws.close()
     except WebSocketDisconnect:

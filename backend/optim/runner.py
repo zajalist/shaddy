@@ -19,7 +19,7 @@ from app import templates as templates_pkg
 from app.jobs import Job
 from app.schemas import DoneFrame, OptimizeFrame, ProgressFrame
 from optim import glsl_fill, image, loss
-from templates import plasma
+from templates import gradient_noise, plasma, voronoi
 
 PROGRESS_EVERY_N: int = 25
 CPU_RES: tuple[int, int] = (64, 64)
@@ -27,6 +27,12 @@ GPU_RES: tuple[int, int] = (256, 256)
 CPU_MAX_STEPS: int = 200
 GPU_MAX_STEPS: int = 500
 LEARNING_RATE: float = 0.02
+
+TEMPLATE_RENDERERS = {
+    "plasma": plasma.render,
+    "voronoi-cells": voronoi.render,
+    "gradient-noise": gradient_noise.render,
+}
 
 
 def _make_params(defaults: dict, device: str) -> dict[str, torch.Tensor]:
@@ -66,6 +72,7 @@ async def run_optimization(job: Job) -> AsyncIterator[OptimizeFrame]:
     perceptual = loss.PerceptualLoss(device=device)
     optimizer = torch.optim.Adam(list(params.values()), lr=LEARNING_RATE)
     template_src = templates_pkg.glsl(job.template_id)
+    render_fn = TEMPLATE_RENDERERS[job.template_id]
 
     start = time.monotonic()
     last_loss = float("inf")
@@ -73,7 +80,7 @@ async def run_optimization(job: Job) -> AsyncIterator[OptimizeFrame]:
 
     for step in range(steps):
         optimizer.zero_grad()
-        rendered = plasma.render(params, h=h, w=w, t=0.0)
+        rendered = render_fn(params, h=h, w=w, t=0.0)
         loss_val = perceptual(rendered, target)
         loss_val.backward()
         optimizer.step()
