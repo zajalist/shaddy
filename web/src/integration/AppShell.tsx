@@ -11,19 +11,19 @@ const COLORS = {
 
 const BENEFITS = [
   {
-    icon: '⟳',
     title: 'Drag-to-edit',
     description: 'Change a number in the code, the canvas updates. Drag a visual handle, the GLSL reflects it back.',
+    color: COLORS.accent1,
   },
   {
-    icon: '⌘',
     title: 'Zero friction',
-    description: 'Browser-only. No backend, no sign-up, no secrets. Share via URL hash—open on any device.',
+    description: 'Browser-only. No backend, no sign-up. Share via URL hash. Open on any device.',
+    color: COLORS.accent2,
   },
   {
-    icon: '◾',
     title: 'Readable math',
-    description: '12 templates from circles to raymarching. Each is 20–40 lines of real GLSL you can learn from.',
+    description: '12 templates. Each is 20–40 lines of real GLSL you can learn from and modify.',
+    color: COLORS.accent3,
   },
 ];
 
@@ -90,10 +90,10 @@ export function AppShell() {
     <main className="min-h-dvh bg-zinc-950 text-white">
       <div className="mx-auto max-w-5xl px-6 py-16">
         {/* Compact nav */}
-        <nav className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+        <nav className="flex items-center justify-between gap-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Shaddy</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">Shaders should be as easy to learn as Scratch.</h1>
+            <p className="text-sm text-zinc-400">Drag. Code. Share. Learn shaders.</p>
           </div>
           <Link
             to="/view"
@@ -104,24 +104,22 @@ export function AppShell() {
         </nav>
 
         {/* Hero section with live preview */}
-        <section className="mt-14 grid gap-10 lg:grid-cols-2 lg:items-start">
-          <div className="flex flex-col justify-start space-y-5">
-            <div className="inline-block w-fit rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-zinc-300">
-              Built 36 hours / Frontend-only
+        <section className="mt-16 grid gap-12 lg:grid-cols-2">
+          <div className="flex flex-col space-y-6">
+            <div>
+              <h1 className="text-5xl font-bold tracking-tight leading-tight">
+                Shaders should be as easy to learn as Scratch.
+              </h1>
             </div>
 
-            <h2 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-              Code and canvas are one surface.
-            </h2>
-
-            <p className="max-w-prose text-lg leading-relaxed text-zinc-300">
+            <p className="text-lg leading-relaxed text-zinc-300">
               Drag a circle on the canvas. The GLSL updates. Edit a number in the code. The circle moves. There is no abstraction layer between you and the math.
             </p>
 
-            <ul className="space-y-3 pt-2">
+            <ul className="space-y-4 pt-2">
               {BENEFITS.map((b) => (
                 <li key={b.title} className="flex gap-3">
-                  <span className="flex-shrink-0 text-xl text-zinc-400">{b.icon}</span>
+                  <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2" style={{ background: b.color }} />
                   <div>
                     <p className="font-semibold text-white">{b.title}</p>
                     <p className="text-sm text-zinc-400">{b.description}</p>
@@ -133,88 +131,95 @@ export function AppShell() {
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 to="/view"
-                className="rounded-full bg-white px-5 py-2 font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                className="rounded-full bg-white px-6 py-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-100"
               >
-                Open the editor
+                Try it now
               </Link>
               <a
-                href="#how"
-                className="rounded-full border border-zinc-700 px-5 py-2 font-semibold text-white transition hover:border-zinc-400"
+                href="#templates"
+                className="rounded-full border border-zinc-700 px-6 py-2.5 font-semibold text-white transition hover:border-zinc-400 hover:bg-zinc-900/40"
               >
-                See how it works
+                Browse templates
               </a>
             </div>
           </div>
 
           {/* Live shader preview */}
-          <div className="relative">
+          <div className="relative lg:row-span-2">
             <div
               className="absolute -inset-4 rounded-3xl blur-3xl"
               style={{
                 background: `linear-gradient(135deg, ${COLORS.accent1}20, ${COLORS.accent2}20, ${COLORS.accent3}20)`,
               }}
             />
-            <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-2xl">
-              {heroError ? (
-                <div className="flex h-80 items-center justify-center px-6 text-center text-sm text-zinc-400">
-                  {heroError}
-                </div>
-              ) : (
-                <>
-                  <div ref={hostRef} className={`h-80 w-full transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
-                  {!loaded && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="animate-pulse text-xs text-zinc-400">Loading shader...</div>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-500">
-                Live WebGL2 preview / Move your cursor
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-2xl h-96 flex flex-col">
+              <div className="flex-1 relative">
+                {heroError ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-400">
+                    {heroError}
+                  </div>
+                ) : (
+                  <>
+                    <div ref={hostRef} className={`w-full h-full transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-50'}`} />
+                    {!loaded && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm">
+                        <div className="text-center">
+                          <div className="inline-block w-8 h-8 border-2 border-zinc-600 border-t-white rounded-full animate-spin mb-2" />
+                          <div className="text-xs text-zinc-400">Loading shader...</div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-500 bg-zinc-950/40">
+                Live WebGL2 / Move your cursor to interact
               </div>
             </div>
           </div>
         </section>
 
         {/* How it works */}
-        <section id="how" className="mt-20 space-y-10">
+        <section id="how" className="mt-24 space-y-10">
           <div className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">How it works</p>
-            <h2 className="text-3xl font-bold tracking-tight">Three actions. That's it.</h2>
+            <h2 className="text-4xl font-bold tracking-tight">Three actions. That's it.</h2>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-8 sm:grid-cols-3">
             {STEPS.map((step) => (
-              <div key={step.number} className="space-y-3">
+              <div key={step.number} className="space-y-4">
                 <div
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full font-bold"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full font-bold text-lg text-white"
                   style={{
                     background: COLORS.accent1,
-                    color: 'white',
                   }}
                 >
                   {step.number}
                 </div>
-                <h3 className="font-semibold">{step.title}</h3>
-                <p className="max-w-prose text-sm leading-relaxed text-zinc-400">{step.description}</p>
+                <div>
+                  <h3 className="font-semibold text-white text-lg">{step.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-400">{step.description}</p>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
         {/* Templates */}
-        <section id="templates" className="mt-20 space-y-8">
+        <section id="templates" className="mt-24 space-y-8">
           <div className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Template library</p>
-            <h2 className="text-3xl font-bold tracking-tight">Start from a shader that already looks good.</h2>
+            <h2 className="text-4xl font-bold tracking-tight">Pick one of 12 templates.</h2>
+            <p className="text-zinc-400 text-sm">Plasma. Checkerboard. Voronoi. Gradient noise. All ready to modify.</p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {templateNames.map((name) => (
               <Link
                 key={name}
                 to="/view"
-                className="group rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/60"
+                className="group rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-white/20 hover:bg-zinc-900/80 hover:text-white"
               >
                 {name}
               </Link>
@@ -222,36 +227,33 @@ export function AppShell() {
           </div>
         </section>
 
-        {/* Tech credibility */}
-        <section className="mt-20 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8">
-          <div className="grid gap-8 sm:grid-cols-3">
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Stack</p>
-              <p className="text-sm text-zinc-300">React + Vite + TypeScript. WebGL2 (works everywhere).</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Performance</p>
-              <p className="text-sm text-zinc-300">60 fps target on mid-range phones. Adaptive resolution on slow hardware.</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Scope</p>
-              <p className="text-sm text-zinc-300">Frontend only. Share via URL hash. No backend, no server needed.</p>
-            </div>
+        {/* Final CTA */}
+        <section className="mt-24 py-12 rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900/60 to-zinc-950 text-center space-y-4">
+          <h2 className="text-3xl font-bold tracking-tight">Ready to make some shaders?</h2>
+          <p className="text-zinc-400 max-w-2xl mx-auto">Pick a template, drag the math. Share via URL. That's all there is.</p>
+          <div className="flex justify-center gap-3">
+            <Link
+              to="/view"
+              className="inline-block rounded-full bg-white px-6 py-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-100"
+            >
+              Launch the editor
+            </Link>
+            <a
+              href="#templates"
+              className="inline-block rounded-full border border-zinc-700 px-6 py-2.5 font-semibold text-white transition hover:border-zinc-400 hover:bg-zinc-900/40"
+            >
+              Browse templates
+            </a>
           </div>
         </section>
-
-        {/* Final CTA */}
-        <section className="mt-20 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">Ready to drag some math?</h2>
-          <p className="mt-3 text-zinc-400">Open the editor and pick a template. 30 seconds to your first live shader.</p>
-          <Link
-            to="/view"
-            className="mt-6 inline-block rounded-full bg-white px-6 py-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-100"
-          >
-            Let's go
-          </Link>
-        </section>
       </div>
+
+      {/* Simple footer */}
+      <footer className="mt-16 border-t border-zinc-800 bg-zinc-950/50 py-8">
+        <div className="mx-auto max-w-5xl px-6 text-center text-xs text-zinc-500">
+          <p>Frontend-only. No backend. Built for a hackathon. Open source.</p>
+        </div>
+      </footer>
     </main>
   );
 }
