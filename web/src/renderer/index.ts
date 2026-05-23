@@ -50,6 +50,8 @@ export interface LensStackAPI {
 }
 
 export { createRenderer } from './runtime';
+export { TEMPLATES, generateThumbnails } from './templates/manifest';
+export type { Template } from './templates/manifest';
 
 export function createLensStack(): LensStackAPI {
   return {
