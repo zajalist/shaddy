@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Pattern matchers — recognize specific GLSL idioms and surface them as
 // PatternHandles so the UX can render canvas-side direct-manipulation widgets
 // (draggable circle center, smoothstep range slider, color swatch).
@@ -134,7 +135,7 @@ function _tryCircle(
   const inner = args[0];
 
   // length(uv - vec2(X, Y))
-  let vec2Match = _matchUvMinusVec2(inner);
+  const vec2Match = _matchUvMinusVec2(inner);
 
   // Also accept: length(uv - vec2(X, Y)) - R    (handled at outer scope, but
   // we accept the raw form here; r-detection is at the caller level if needed).

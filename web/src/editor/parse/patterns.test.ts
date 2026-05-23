@@ -35,9 +35,10 @@ describe('findPatternsFromAst', () => {
     const patterns = findPatternsFromAst(ast);
     const circles = patterns.filter((p) => p.kind === 'circle');
     expect(circles).toHaveLength(1);
-    if (circles[0].kind === 'circle') {
-      expect(circles[0].cx.value).toBe(0.5);
-      expect(circles[0].cy.value).toBe(0.5);
+    const c = circles[0];
+    if (c && c.kind === 'circle') {
+      expect(c.cx.value).toBe(0.5);
+      expect(c.cy.value).toBe(0.5);
     }
   });
 
@@ -46,8 +47,9 @@ describe('findPatternsFromAst', () => {
     const patterns = findPatternsFromAst(ast);
     const colors = patterns.filter((p) => p.kind === 'color');
     expect(colors).toHaveLength(1);
-    if (colors[0].kind === 'color') {
-      expect(colors[0].rgb.value).toEqual([0.8, 0.2, 0.4]);
+    const c1 = colors[0];
+    if (c1 && c1.kind === 'color') {
+      expect(c1.rgb.value).toEqual([0.8, 0.2, 0.4]);
     }
   });
 
@@ -56,8 +58,9 @@ describe('findPatternsFromAst', () => {
     const patterns = findPatternsFromAst(ast);
     const colors = patterns.filter((p) => p.kind === 'color');
     expect(colors).toHaveLength(1);
-    if (colors[0].kind === 'color') {
-      expect(colors[0].rgb.value).toEqual([0.1, 0.9, 0.5]);
+    const c2 = colors[0];
+    if (c2 && c2.kind === 'color') {
+      expect(c2.rgb.value).toEqual([0.1, 0.9, 0.5]);
     }
   });
 
@@ -66,9 +69,10 @@ describe('findPatternsFromAst', () => {
     const patterns = findPatternsFromAst(ast);
     const ss = patterns.filter((p) => p.kind === 'smoothstep');
     expect(ss).toHaveLength(1);
-    if (ss[0].kind === 'smoothstep') {
-      expect(ss[0].a.value).toBe(0.2);
-      expect(ss[0].b.value).toBe(0.8);
+    const s = ss[0];
+    if (s && s.kind === 'smoothstep') {
+      expect(s.a.value).toBe(0.2);
+      expect(s.b.value).toBe(0.8);
     }
   });
 
