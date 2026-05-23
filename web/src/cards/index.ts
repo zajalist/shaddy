@@ -39,6 +39,11 @@ export type { CardsState } from './state';
 export { STARTER_RECIPES } from './starter-recipes';
 export type { StarterRecipe } from './starter-recipes';
 
+export { CardStack, TypedCardItem, WildcardCardItem, ParamSlider, ColorSwatchInput } from './ui';
+
+export { CodeView } from './code-view/CodeView';
+export type { CodeViewHandle, CodeViewProps } from './code-view/CodeView';
+
 export {
   CARD_LIBRARY,
   CARD_LIBRARY_LIST,
