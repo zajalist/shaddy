@@ -1,11 +1,12 @@
 import { EditorPane } from '@/editor';
 import type { GLSLError, RendererAPI } from '@/renderer';
-import { createRenderer } from '@/renderer';
-import { PLASMA_BODY } from '@/renderer/templates/plasma.glsl';
+import { createRenderer, TEMPLATES } from '@/renderer';
 import { useEffect, useRef, useState } from 'react';
 
+const DEFAULT_SOURCE = (TEMPLATES.find((t) => t.id === 'plasma') ?? TEMPLATES[0])?.source?.trim() ?? '';
+
 export function ShaderView() {
-  const [source, setSource] = useState(PLASMA_BODY.trim());
+  const [source, setSource] = useState(DEFAULT_SOURCE);
   const [errors, setErrors] = useState<GLSLError[]>([]);
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);

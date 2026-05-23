@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createRenderer, type RendererAPI, TEMPLATES } from '@/renderer';
-import { PLASMA_BODY } from '@/renderer/templates/plasma.glsl';
 
 const HIGHLIGHTS = [
   {
@@ -33,6 +32,8 @@ const STEPS = [
   },
 ];
 
+const HERO_SOURCE = (TEMPLATES.find((t) => t.id === 'plasma') ?? TEMPLATES[0])?.source?.trim() ?? '';
+
 export function AppShell() {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);
@@ -49,7 +50,7 @@ export function AppShell() {
 
     const renderer = createRenderer();
     renderer.mount(host);
-    renderer.compile(PLASMA_BODY.trim());
+    renderer.compile(HERO_SOURCE);
     rendererRef.current = renderer;
 
     const resize = () => {
