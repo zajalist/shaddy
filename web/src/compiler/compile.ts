@@ -20,7 +20,11 @@ const GLOBAL_UNIFORM_DECLS: readonly string[] = [
   'uniform float u_tempo_bps;',
 ];
 
-const GLOBAL_UNIFORM_BINDINGS: UniformBinding[] = [
+// `readonly` so that nothing mutates the module-scope template — Task 6 will
+// build the per-call uniforms list by cloning this via `[...GLOBAL_UNIFORM_BINDINGS]`
+// and `push`ing into the clone. Marking the source readonly catches the
+// "forgot to clone" bug at compile time.
+const GLOBAL_UNIFORM_BINDINGS: readonly UniformBinding[] = [
   { name: 'u_resolution', type: 'vec2', source: { kind: 'global_resolution' } },
   { name: 'u_time', type: 'float', source: { kind: 'global_time' } },
   { name: 'u_mouse', type: 'vec2', source: { kind: 'global_mouse' } },
