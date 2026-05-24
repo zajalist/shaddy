@@ -3,8 +3,19 @@
 
 import type { Recipe } from './types';
 
-// Permissive whitespace so hand edits to the source (extra spaces, tabs)
-// don't break round-trip.
+/**
+ * Matches one block-open marker line. Permissive whitespace so hand edits
+ * (extra spaces, tabs) don't break round-trip.
+ *
+ * **Foot-gun:** this regex has the `/g` flag, which means `.exec()` /
+ * `.test()` mutate its `lastIndex` as a side effect. `parseAllBlockMarkers`
+ * defensively builds a fresh clone before scanning. If you call this regex
+ * directly (e.g. from a test), be aware that subsequent calls from elsewhere
+ * may skip matches until `lastIndex` is reset to 0.
+ *
+ * Capture groups: 1 = id, 2 = type, 3 = params JSON (single-line; never
+ * contains a literal LF because `JSON.stringify` escapes newlines to `\\n`).
+ */
 export const BLOCK_OPEN_REGEX =
   /\/\/\s*@shade:block\s+id="([^"]+)"\s+type="([^"]+)"\s+params=(\{[^\n]*\})/g;
 
@@ -40,11 +51,13 @@ export function emitRecipeHeader(opts: {
 }
 
 export function parseAllBlockMarkers(source: string): BlockMarker[] {
+  // Fresh clone — never touch the exported regex's `lastIndex`. Cheap, and
+  // protects against any external caller (incl. our own test file) having
+  // run `.test()` / `.exec()` on it without resetting.
+  const re = new RegExp(BLOCK_OPEN_REGEX.source, 'g');
   const out: BlockMarker[] = [];
-  // Reset lastIndex since the regex is /g.
-  BLOCK_OPEN_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = BLOCK_OPEN_REGEX.exec(source)) !== null) {
+  while ((match = re.exec(source)) !== null) {
     const [, id, type, paramsJson] = match;
     let params: Record<string, unknown>;
     try {

@@ -58,4 +58,27 @@ describe('parse', () => {
     const line = '//   @shade:block  id="x"  type="y"  params={}';
     expect(BLOCK_OPEN_REGEX.test(line)).toBe(true);
   });
+
+  it('silently skips markers whose params JSON is malformed', () => {
+    // The contract says malformed JSON is dropped so the caller can detect
+    // via count mismatch and surface the failure on its own terms.
+    const src = '// @shade:block id="b1" type="ripple" params={not valid json}';
+    expect(parseAllBlockMarkers(src)).toEqual([]);
+  });
+
+  it('round-trips an empty params object', () => {
+    const emitted = emitBlockOpen('b1', 'ripple', {});
+    const parsed = parseAllBlockMarkers(emitted);
+    expect(parsed.length).toBe(1);
+    expect(parsed[0]!.params).toEqual({});
+  });
+
+  it('parseAllBlockMarkers is robust to prior /g state on the exported regex', () => {
+    // Trip the foot-gun: run `.test()` on the exported regex first so
+    // lastIndex moves to a non-zero offset. parseAllBlockMarkers must
+    // STILL return the marker because it clones internally.
+    const src = '// @shade:block id="b1" type="ripple" params={"freq":{"value":10}}';
+    BLOCK_OPEN_REGEX.test(src);
+    expect(parseAllBlockMarkers(src).length).toBe(1);
+  });
 });
