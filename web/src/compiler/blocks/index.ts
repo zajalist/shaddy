@@ -1,7 +1,18 @@
 // BLOCK_LIBRARY — the canonical registry of every block type the compiler
-// recognises. Task 7+ populate this with concrete BlockDef entries; for now
-// it's an empty map so compile() / tests link cleanly with no blocks.
+// recognises. The AI-import path (separate module) also reads this to know
+// what types Claude is allowed to emit.
 
-import type { BlockDef, BlockType } from '../types';
+import type { BlockDef } from '../types';
+import { PALETTE } from './palette';
+import { RADIAL_GRADIENT } from './radial-gradient';
+import { RIPPLE } from './ripple';
 
-export const BLOCK_LIBRARY: Record<BlockType, BlockDef> = {};
+export { PALETTE, RADIAL_GRADIENT, RIPPLE };
+
+const ALL: BlockDef[] = [RADIAL_GRADIENT, RIPPLE, PALETTE];
+
+export const BLOCK_LIBRARY: Record<string, BlockDef> = Object.fromEntries(
+  ALL.map((b) => [b.type, b]),
+);
+
+export const BLOCK_LIBRARY_LIST: readonly BlockDef[] = ALL;
