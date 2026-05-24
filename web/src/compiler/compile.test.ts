@@ -92,9 +92,11 @@ describe('compile — block walker', () => {
       ]),
     );
     if (!out.ok) throw new Error('expected ok');
-    expect(out.glsl).toMatch(
-      /@shade:block id="b1" type="radial_gradient" params=\{.*"softness".*"center".*\}/,
-    );
+    // Order-agnostic — JSON key order in the marker doesn't matter for the
+    // round-trip parser (it just JSON.parses the blob). [^\n] (not [^}])
+    // because the params JSON contains nested {…} for each param.
+    expect(out.glsl).toMatch(/@shade:block id="b1" type="radial_gradient" params=\{[^\n]*"softness"[^\n]*\}/);
+    expect(out.glsl).toMatch(/@shade:block id="b1" type="radial_gradient" params=\{[^\n]*"center"[^\n]*\}/);
     expect(out.glsl).toContain('@shade:end b1');
   });
 
