@@ -43,11 +43,11 @@ Whoever picks up photo-match in the future will need:
 3. **A perceptual loss.** LPIPS in browser is ~10 MB of weights; MobileNet features via TensorFlow.js is lighter. Pure MSE produces blur.
 4. **A UX surface for "upload photo / show progress / accept result"** — the contract was on `AppShell`'s `onPhotoMatch(file, templateId)` field; reinstate something analogous.
 
-If you decide to restore the server route instead of going pure-frontend, the deleted spec lives in git history at commit `<this-commit-sha>~1` under `docs/superpowers/specs/2026-05-23-backend-{skeleton,optimizer,stretch-templates}-design.md`.
+If you decide to restore the server route instead of going pure-frontend, the deleted spec lives in git history at commit `e948c47~1` under `docs/superpowers/specs/2026-05-23-backend-{skeleton,optimizer,stretch-templates}-design.md`.
 
 ## Coordination notes
 
-`zajalist`'s in-flight `backend/skeleton` branch will conflict heavily with this change. They can either close the branch or rebase onto post-deletion main and decide whether to bring any of the work back as a frontend-side reimplementation.
+Any in-flight backend branches (e.g. `backend/skeleton`) will conflict heavily with the frontend-only direction. Keep them archived unless you explicitly choose to reintroduce a server.
 
 ## Reversal cost
 

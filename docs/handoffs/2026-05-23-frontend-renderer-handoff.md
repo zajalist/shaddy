@@ -8,7 +8,7 @@ The **WebGL2 renderer module + the frontend toolchain it lives in** for *Shaddy*
 
 You will ship 11 GitHub issues, all on the `track:renderer` + the foundational setup issue. By the time you're done, the renderer module is importable, the canvas paints a hardcoded shader at 60fps, all 12 starter templates render, and the editor track has a mock harness to build against.
 
-You are NOT touching: backend (Python — owned by zajalist, in progress in branch `backend/skeleton`), editor module, UX module, or integration glue. The boundary rules are enforced — see "Module isolation" below.
+You are NOT touching: editor module, UX module, or integration glue. (Frontend-only build: no backend is shipped.) The boundary rules are enforced — see "Module isolation" below.
 
 ## Identity for commits
 
@@ -22,7 +22,7 @@ If you don't know Andy's email, use `andyhandev@users.noreply.github.com` (GitHu
 ## Repo + branch
 
 - Clone: `https://github.com/zajalist/shaddy`
-- Base branch: **`main`** (NOT `backend/skeleton` — that's zajalist's parallel work).
+- Base branch: **`main`**.
 - Your branch: **`frontend/renderer-skeleton`**.
 - When done: push, open a PR back to `main`. **Do not merge yourself** — the human reviews and merges.
 
@@ -41,22 +41,18 @@ git checkout -b frontend/renderer-skeleton
 
 Skim, don't memorize — refer back as you work.
 
-## What zajalist is doing right now (so you don't collide)
+## Backend note (frontend-only)
 
-zajalist is on branch `backend/skeleton`, implementing sub-project A: FastAPI skeleton + POST `/optimize` + WS `/optimize/stream/{id}` (stub DoneFrame). When that branch merges, you'll see:
+As of 2026-05-23, the project is **frontend-only**. There is no `backend/` shipped in this build, no `/optimize` endpoint, and no `web/src/shared/backend-types.ts` to coordinate with.
 
-- New files under `backend/`
-- `backend/openapi.yaml`
-- **`web/src/shared/backend-types.ts`** ← created by zajalist's branch.
-
-**Do not create `web/src/shared/backend-types.ts` yourself.** If you need it before the backend branch lands, leave a placeholder reference. After both branches merge, it will exist.
+If you see historical branches/docs mentioning `backend/skeleton`, treat them as archived context only.
 
 You will not touch:
-- `backend/**`
-- `web/src/shared/backend-types.ts`
-- `CONTRACTS.md` §3 (backend contract)
+- `web/src/editor/**`
+- `web/src/ux/**`
+- `web/src/integration/**`
 
-You can touch CONTRACTS.md §1 (renderer) if the contract evolves while you implement, but coordinate via the PR — same rule applies to anyone editing CONTRACTS.md.
+You can touch `CONTRACTS.md` §1 (renderer) if the contract evolves while you implement, but coordinate via the PR — same rule applies to anyone editing `CONTRACTS.md`.
 
 ## Your scope (11 issues)
 
@@ -97,7 +93,7 @@ From a prior grilling session — these are baked into the issue bodies but flag
 
 - `web/src/renderer/**` may NOT import from `@/editor*`, `@/ux*`, `@/integration*`.
 - Renderer exports ONLY through `web/src/renderer/index.ts`. No deep imports allowed from outside.
-- Renderer must NOT import from the backend types (`@/shared/backend-types`). It speaks only in its own types.
+- Renderer must NOT import from any backend-only code/types (there is no backend in this build). It speaks only in its own types.
 
 ESLint issue #3 will enforce this — set it up early.
 
@@ -155,7 +151,7 @@ Mock harness (issue #11):
 3. **Issue #4** — publish stubbed `renderer/index.ts` matching CONTRACTS.md §1. All methods throw "not implemented" but typecheck. Commit.
 4. **Issue #11 (mock harness)** — out of order, but the editor + UX teams need it. Half an hour. Commit.
 5. Issues #5, #6, #7, #8, #9, #13 — the real renderer, in any order that makes sense.
-6. **Issue #10** — 12 starter templates. Coordinate `plasma`, `voronoi-cells`, `gradient-noise` shapes with whatever's currently in `backend/templates/*.glsl` once the backend branch lands (these need matching params for sub-project B).
+6. **Issue #10** — 12 starter templates. Keep them consistent with the frontend template sources under `web/src/renderer/templates/`.
 7. **Issue #12 (lens stack)** — tier 2; only if time permits.
 
 ## Workflow
@@ -190,25 +186,19 @@ Final step:
 
 If you hit any of these, stop and ask:
 - A contract change you want to make (touching CONTRACTS.md §1).
-- A template parameter shape that doesn't match what `backend/templates/defaults.json` will expect.
 - Browser support issue (e.g., WebGL2 not available on a target).
-- Anything that requires editing `backend/**` or `web/src/shared/backend-types.ts` (those are zajalist's).
 
 Do NOT:
 - Merge your PR yourself.
 - Force-push to `main`.
-- Touch `backend/**`.
 - Run `npm create vite` (clobbers scaffolded folders).
 
 ## Quick reference
 
-- **Spec:** `SPEC.md` and `docs/superpowers/specs/2026-05-23-backend-skeleton-design.md` (mostly backend, but the data-flow diagram shows where renderer sits).
+- **Spec:** `SPEC.md`.
 - **Contracts:** `CONTRACTS.md`.
 - **Plans/specs convention:** if you write any, put them in `docs/superpowers/{specs,plans}/YYYY-MM-DD-<topic>.md`.
 - **CI:** `.github/workflows/ci.yml` already runs typecheck + lint.
 - **Issue tracker:** https://github.com/zajalist/shaddy/issues — filter by `label:track:renderer` to see only what's yours.
-- **The other side's work (for context only — DON'T MODIFY):**
-  - `backend/` — zajalist, branch `backend/skeleton`.
-  - `docs/superpowers/specs/2026-05-23-backend-skeleton-design.md` — the spec for what's currently shipping in parallel.
 
 Good luck. The renderer is the foundation everyone else is going to stand on — ship the public surface and the mock harness early so the rest of the team can build against them.
