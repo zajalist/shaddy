@@ -1,9 +1,9 @@
 // Module-boundary enforcement for CONTRACTS.md "Dependency direction".
 //
-// Allowed direction:    integration → { ux, cards, editor, renderer, shared }
-//                       ux → { renderer (entry), editor (entry), cards (entry), shared }
+// Allowed direction:    integration → { ux, cards, compiler, editor, renderer, shared }
+//                       ux → { renderer (entry), editor (entry), cards (entry), compiler (entry), shared }
 //                       cards → { editor (entry), shared }
-//                       renderer, editor, shared → ∅  (leaves)
+//                       renderer, editor, compiler, shared → ∅  (leaves)
 //
 // Anything pointing the wrong way is a bug. We enforce with core ESLint's
 // `no-restricted-imports` against the `@/*` path aliases — no plugin install.
