@@ -1,9 +1,9 @@
 // Module-boundary enforcement for CONTRACTS.md "Dependency direction".
 //
-// Allowed direction:    integration → { ux, cards, editor, renderer, shared }
-//                       ux → { renderer (entry), editor (entry), cards (entry), shared }
+// Allowed direction:    integration → { ux, cards, compiler, editor, renderer, shared }
+//                       ux → { renderer (entry), editor (entry), cards (entry), compiler (entry), shared }
 //                       cards → { editor (entry), shared }
-//                       renderer, editor, shared → ∅  (leaves)
+//                       renderer, editor, compiler, shared → ∅  (leaves)
 //
 // Anything pointing the wrong way is a bug. We enforce with core ESLint's
 // `no-restricted-imports` against the `@/*` path aliases — no plugin install.
@@ -95,6 +95,7 @@ export default tseslint.config(
       deepSibling('renderer'),
       deepSibling('editor'),
       deepSibling('cards'),
+      deepSibling('compiler'),
     ]),
   },
 
@@ -109,6 +110,20 @@ export default tseslint.config(
       xModule('ux', 'cards is a leaf-side module to ux/'),
       xModule('integration', 'cards is a leaf-side module to integration/'),
       deepSibling('editor'),
+    ]),
+  },
+
+  // compiler/ — leaf, owns its own contract. Must not import any other
+  // application module. Consumers (cards/, ux/, integration/) may import
+  // from @/compiler entry only.
+  {
+    files: ['src/compiler/**/*.{ts,tsx}'],
+    rules: restrict([
+      xModule('renderer', 'compiler is a pure-logic module; renderer consumes its output'),
+      xModule('editor', 'compiler is a leaf'),
+      xModule('cards', 'compiler is the replacement for cards/; no back-references'),
+      xModule('ux', 'compiler is a leaf'),
+      xModule('integration', 'compiler is a leaf'),
     ]),
   },
 
