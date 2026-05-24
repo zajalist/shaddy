@@ -13,7 +13,7 @@ export const HUE_CYCLE: BlockDef = {
       min: 0,
       max: 5,
       step: 0.05,
-      label: 'cycles',
+      label: 'speed',
       animatable: true,
     },
     saturation: {

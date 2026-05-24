@@ -24,14 +24,17 @@ export const GLSL_HELPERS: Record<string, string> = {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }`,
 
-  voronoi: `float voronoi(vec2 p) {
+  voronoi: `float voronoi(vec2 p, float jitter) {
   vec2 ip = floor(p);
   vec2 fp = fract(p);
   float md = 1.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
       vec2 g = vec2(float(x), float(y));
-      vec2 site = g + vec2(hash(ip + g), hash(ip + g + 0.5));
+      // jitter=0 → seed pinned at cell centre (regular grid);
+      // jitter=1 → seed free across the full cell.
+      vec2 seed = vec2(hash(ip + g), hash(ip + g + 0.5));
+      vec2 site = g + 0.5 + (seed - 0.5) * jitter;
       md = min(md, length(site - fp));
     }
   }

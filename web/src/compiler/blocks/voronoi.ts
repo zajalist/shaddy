@@ -26,6 +26,6 @@ export const VORONOI: BlockDef = {
       animatable: true,
     },
   },
-  glsl: 'd = voronoi(uv * {{scale}}) * mix(1.0, 1.0, {{jitter}});',
+  glsl: 'd = voronoi(uv * {{scale}}, {{jitter}});',
   helpers: ['voronoi'],
 };
