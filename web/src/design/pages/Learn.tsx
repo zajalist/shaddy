@@ -336,11 +336,12 @@ const Hero = ({ onStart, startedAlready, doneCount, totalCount, allDone }: HeroP
         <span style={eyebrowStyle}>Learn GPU shaders</span>
         <h1 style={{ ...heroTitleStyle, font: isMobile ? `700 34px/1.04 ${TYPE.display}` : heroTitleStyle.font }}>
           Hi, I&rsquo;m <span style={{ color: SHADE.goldDeep }}>Shaddy</span>.<br />
-          Let&rsquo;s write your first shader together.
+          Let&rsquo;s write a shader together.
         </h1>
         <p style={{ ...heroLeadStyle, font: isMobile ? `400 15px/1.5 ${TYPE.body}` : heroLeadStyle.font }}>
-          Eight short lessons. You fix the code on the right; I&rsquo;ll cheer when
-          it works. No setup, no install — just GLSL and a live picture.
+          Eight tiny lessons. You change one line, I cheer when the picture
+          changes. No install, no signup. The first lesson takes about a
+          minute &mdash; quicker than reading this paragraph.
         </p>
         <div style={heroCtaRowStyle}>
           <button type="button" onClick={onStart} className="learn-cta" style={primaryCtaStyle}>
@@ -359,7 +360,7 @@ const Hero = ({ onStart, startedAlready, doneCount, totalCount, allDone }: HeroP
           <Mascot mood="cheering" size={300} />
           <div style={heroBubbleStyle}>
             <SpeechBubble tone="neutral" tail="left">
-              Ready? It&rsquo;s easier than it looks.
+              Ready? Honestly easier than I made it sound.
             </SpeechBubble>
           </div>
         </div>
@@ -472,11 +473,13 @@ const Confetti = () => {
 
 function cheerLine(): string {
   const pool = [
-    "Nailed it! That's exactly right.",
-    "Boom! Look at that.",
-    "There it is — beautiful.",
-    "Yes! You've got the hang of this.",
-    "Perfect — onto the next one!",
+    "Yes! That's it.",
+    "Boom. Look at the canvas.",
+    "There you go.",
+    "Nailed it.",
+    "Onto the next one.",
+    "Told you it was easier than it looked.",
+    "Knew you had it.",
   ];
   return pool[Math.floor(Math.random() * pool.length)] ?? pool[0]!;
 }

@@ -645,7 +645,7 @@ const Hero = ({
           lineHeight: 1.02,
           maxWidth: 880,
         }}>
-          The Library — everything shaders,<br />in plain language.
+          The Library &mdash; everything I wish<br />someone had told me about shaders.
         </h1>
         <p style={{
           margin: '0 0 22px',
@@ -655,9 +655,10 @@ const Hero = ({
           color: SHADE.textDim,
           lineHeight: 1.55,
         }}>
-          {articleCount} short articles, {groupCount} themed sections — from
-          "what IS a shader?" to Mandelbulb distance estimators. Read it
-          beginning to end, or jump in via the table of contents on the left.
+          {articleCount} short articles across {groupCount} sections. Starts at
+          &ldquo;what IS a shader?&rdquo;, ends at Mandelbulb distance
+          estimators. Read it straight through, or use the search on the left
+          to find the one trick you came for.
         </p>
         <label style={{
           display: 'flex', alignItems: 'center', gap: 10,
@@ -749,23 +750,23 @@ export const Library = () => {
             <Article id="what-is-a-shader" group="Fundamentals" title="What IS a shader?">
               <P>
                 A shader is a tiny program that runs <Strong>once per pixel</Strong>,
-                on the GPU, in parallel. It takes an input position
-                (and any uniforms the host passes in) and returns a colour.
-                That's it — no DOM, no event loop, no allocation. Just maths
-                in, colour out.
+                on the GPU, in parallel. Input: a position. Output: a colour.
+                No DOM, no event loop, no allocation. Maths in, colour out.
               </P>
               <P>
-                The mental shift: you don't write a loop over pixels. You
-                write the body of the loop. The GPU runs that body for
-                every pixel simultaneously, on hundreds of cores, in the
-                time a CPU would take to colour a handful.
+                The mental flip everyone has to do: you&apos;re not writing a
+                loop over pixels. You&apos;re writing the body of the loop.
+                The GPU runs that body for every pixel at once, on hundreds
+                of cores, in the time a CPU would take to colour a handful.
+                Once that clicks, the rest of shader programming is just
+                vocabulary.
               </P>
               <CodeSnippet lang="ts" source={CODE_CPU_VS_GPU} />
               <P>
-                A real fragment shader is a string of GLSL the browser
-                compiles for the GPU. Here's a complete "hello, gradient"
-                — it ships rgb based on the pixel's normalised position
-                plus a time-driven blue channel.
+                Below is a complete &ldquo;hello, gradient&rdquo; in real GLSL
+                &mdash; the same string the browser hands to the GPU.
+                It paints rgb from the pixel&apos;s position, and the blue
+                channel breathes with time.
               </P>
               <CodeSnippet lang="glsl" source={CODE_HELLO_FRAG} />
             </Article>
@@ -795,27 +796,28 @@ export const Library = () => {
           {wrapArt('why-gpus-fast', (
             <Article id="why-gpus-fast" group="Fundamentals" title="Why GPUs are fast">
               <P>
-                A CPU has a few (4–16) very smart cores that each handle
-                completely different work. A GPU has <Strong>hundreds to
-                thousands</Strong> of much simpler cores, all running the
-                SAME program but on different data. This is called SIMT —
-                Single Instruction, Multiple Thread.
+                A CPU has a handful of very smart cores &mdash; 4 to 16 on a
+                typical laptop &mdash; that each handle completely different
+                work. A GPU has <Strong>hundreds to thousands</Strong> of
+                much simpler cores, all running the SAME program on different
+                data. The acronym is SIMT: Single Instruction, Multiple
+                Thread.
               </P>
               <Diagram kind="gpuGrid" />
               <P>
-                For shaders this is a perfect fit: every pixel runs the
-                same code, just at a different coordinate. A 1920×1080
-                canvas is 2 million pixels — the GPU dispatches them in
-                groups (called warps or wavefronts, ~32 threads each) and
-                burns through the whole frame in milliseconds.
+                Shaders are a perfect fit. A 1920&times;1080 canvas is 2
+                million pixels. The GPU dispatches them in groups (warps or
+                wavefronts, ~32 threads each) and burns through the frame
+                in milliseconds. The same maths in a CPU loop takes seconds —
+                two or three orders of magnitude is normal.
               </P>
               <P>
                 The trade-off: <Strong>branches are expensive</Strong>.
                 When threads in a warp disagree about an <Inline>if</Inline>,
-                the GPU runs both branches and masks the unused result.
-                Keep branches uniform across threads where possible, and
-                prefer <Inline>mix</Inline>, <Inline>step</Inline>, and{' '}
-                <Inline>smoothstep</Inline> over branching.
+                the GPU runs both sides and masks the loser. Keep branches
+                uniform across threads where you can; reach for{' '}
+                <Inline>mix</Inline>, <Inline>step</Inline>, and{' '}
+                <Inline>smoothstep</Inline> before <Inline>if</Inline>.
               </P>
             </Article>
           ))}
@@ -835,10 +837,12 @@ export const Library = () => {
                 ]}
               />
               <P>
-                Shaddy is a web tool — everything you write here is GLSL
+                Shaddy is a web tool, so everything you write here is GLSL
                 ES 3.0 (the WebGL 2 dialect). The maths translates
-                line-for-line to the others; only the type names and a
-                handful of qualifiers change.
+                line-for-line to the others. Only the type names and a
+                handful of qualifiers change. Our exporter does this mapping
+                for Unity and Godot 4; for the rest, it&apos;s a search and
+                replace away.
               </P>
             </Article>
           ))}
@@ -870,20 +874,22 @@ export const Library = () => {
           {wrapArt('trig-in-shaders', (
             <Article id="trig-in-shaders" group="Math you need" groupColor={SHADE.catShape} title="Trig in shaders">
               <P>
-                <Inline>sin</Inline> and <Inline>cos</Inline> are the
-                building blocks of nearly every animated visual. They're
-                cheap on the GPU (a single instruction on most hardware),
-                they oscillate between -1 and +1 (perfect for blending),
-                and they tile seamlessly when multiplied by integer
+                <Inline>sin</Inline> and <Inline>cos</Inline> are the engine
+                of nearly every animated visual you&apos;ll see in this
+                library. Cheap on the GPU (one instruction on most hardware),
+                they oscillate between -1 and +1 which is exactly what you
+                want for blending, and they tile seamlessly at integer
                 frequencies.
               </P>
               <Diagram kind="trigWave" />
               <P>
-                <Strong>Phase</Strong> shifts let you offset waves;{' '}
-                <Strong>frequency</Strong> controls how often they repeat;{' '}
-                <Strong>amplitude</Strong> controls the height. Stack two
-                with different frequencies and you get something organic.
-                Add time and it moves.
+                <Strong>Phase</Strong> offsets the wave.{' '}
+                <Strong>Frequency</Strong> controls how often it repeats.{' '}
+                <Strong>Amplitude</Strong> controls the height. Stack two
+                waves at different frequencies and you get something organic.
+                Add a <Inline>u_time</Inline> term and it moves. That&apos;s
+                pretty much the recipe behind half the templates on the
+                landing page.
               </P>
               <CodeSnippet lang="glsl" source={CODE_TRIG} />
             </Article>
@@ -913,16 +919,20 @@ export const Library = () => {
           {wrapArt('smoothstep-mix', (
             <Article id="smoothstep-mix" group="Math you need" groupColor={SHADE.catShape} title="Smoothstep + mix">
               <P>
-                Two built-ins do most of the heavy lifting in any shader.
-                {' '}<Inline>mix(a, b, t)</Inline> is a linear blend:
-                returns <Inline>a</Inline> when t=0, <Inline>b</Inline>{' '}
-                when t=1, halfway between when t=0.5.
+                If you only learn two built-ins, learn these two.
+                {' '}<Inline>mix(a, b, t)</Inline> is a linear blend:{' '}
+                <Inline>a</Inline> at t=0, <Inline>b</Inline> at t=1,
+                halfway between at t=0.5. That&apos;s every gradient you
+                will ever paint.
               </P>
               <P>
                 <Inline>smoothstep(e0, e1, x)</Inline> is the soft step
-                function — 0 below e0, 1 above e1, with a cubic Hermite
-                ramp in between. It's what gives shaders their organic
-                feel; <Inline>step</Inline> looks pixelated by comparison.
+                function. Zero below e0, one above e1, a cubic Hermite
+                ramp between. This is where the &ldquo;organic&rdquo; feel
+                of good shaders comes from. Try replacing one{' '}
+                <Inline>smoothstep</Inline> with <Inline>step</Inline> on
+                any recipe in the Gallery and watch it turn back into a
+                Windows 95 dialog box.
               </P>
               <Diagram kind="smoothstepCurve" caption="step (dashed) vs smoothstep (solid)" />
               <CodeSnippet lang="glsl" source={CODE_SMOOTHSTEP} />
@@ -932,21 +942,24 @@ export const Library = () => {
           {wrapArt('hash-noise', (
             <Article id="hash-noise" group="Math you need" groupColor={SHADE.catShape} title="Hash + noise">
               <P>
-                Shaders have no random number generator — they're
-                deterministic. To get pseudo-random values, you{' '}
-                <Strong>hash</Strong> the input position. The classic
-                trick: <Inline>fract(sin(dot(p, magic)) * huge)</Inline>.
-                Cheap, ugly, but gets the job done.
+                Shaders are deterministic, so there&apos;s no built-in
+                random. The workaround: <Strong>hash</Strong> the input
+                position with something that&apos;s mathematically silly
+                but spreads values evenly &mdash;{' '}
+                <Inline>fract(sin(dot(p, magic)) * huge)</Inline> is the
+                classic. Cheap, ugly, works.
               </P>
               <P>
-                Raw hash is too noisy to be useful — neighbours have
-                wildly different values. <Strong>Value noise</Strong>{' '}
-                smooths it: hash on a grid, then bilerp between the four
-                corners. <Strong>Gradient noise</Strong> (Perlin) does the
-                same but stores random gradient vectors at each cell
-                corner, giving smoother derivatives. <Strong>Simplex
-                noise</Strong> is gradient noise on a triangular grid —
-                less directional bias, faster in higher dimensions.
+                Raw hash is too jagged for most uses; neighbouring pixels
+                get wildly different values. To smooth it, you sample on a
+                grid and blend.{' '}
+                <Strong>Value noise</Strong> bilerps between four corner
+                hashes. <Strong>Gradient noise</Strong> (Perlin) stores
+                random gradients per corner instead of scalars and gives
+                smoother derivatives. <Strong>Simplex noise</Strong> moves
+                the grid to triangles, which kills the axis bias and runs
+                faster in 3D and up. For 2D work, value noise is usually
+                fine.
               </P>
               <Diagram kind="noiseStack" caption="value · gradient · simplex" />
               <CodeSnippet lang="glsl" source={CODE_HASH} />
@@ -956,11 +969,13 @@ export const Library = () => {
           {wrapArt('fbm-ridged', (
             <Article id="fbm-ridged" group="Math you need" groupColor={SHADE.catShape} title="fBm + ridged + turbulence">
               <P>
-                One layer of noise is too smooth to look natural. The
-                trick is to <Strong>stack octaves</Strong>: sum copies of
-                the noise at doubling frequency and halving amplitude.
-                That's fractal Brownian motion — fBm — and it's the
-                secret behind realistic clouds, terrain, and marble.
+                One layer of noise is too smooth to look like anything in
+                nature. The trick is to <Strong>stack octaves</Strong>:
+                sum copies of the noise at doubling frequency and halving
+                amplitude. That&apos;s fractal Brownian motion &mdash; fBm
+                &mdash; and it&apos;s what makes clouds, terrain, and
+                marble look real. You can spot fBm in half the gallery
+                recipes once you know what you&apos;re looking at.
               </P>
               <Diagram kind="fbmOctaves" caption="4 octaves stacking at 2× freq, 0.5× amp" />
               <P>
@@ -982,20 +997,21 @@ export const Library = () => {
           {wrapArt('sdf-intro', (
             <Article id="sdf-intro" group="SDFs" groupColor={SHADE.catDistort} title="What's an SDF?">
               <P>
-                A <Strong>signed distance field</Strong> is a function
-                that, given a point, returns the distance to the nearest
-                surface. Positive outside, zero on the surface, negative
-                inside. That sign is the magic — it lets you do solid
-                geometry with arithmetic.
+                A <Strong>signed distance field</Strong> is a function that
+                takes a point and returns the distance to the nearest
+                surface. Positive outside the shape, zero on it, negative
+                inside. That sign is what lets you do solid geometry with
+                pure arithmetic &mdash; no triangles, no meshes, no
+                vertices.
               </P>
               <Diagram kind="sdfRings" caption="iso-lines at d = -30, -20, -10, 0, +10, +20, +30" />
               <P>
-                Because the function tells you HOW FAR to the surface, an
-                SDF is also a built-in tool for <Strong>ray marching</Strong>:
-                you can step exactly that far along a ray without worrying
-                about overshooting. The same field also gives you anti-
-                aliased rendering via <Inline>smoothstep</Inline> against
-                the distance.
+                Because the function tells you HOW FAR you are from the
+                surface, you also get <Strong>ray marching</Strong> for
+                free: step exactly that distance along a ray, knowing you
+                can&apos;t overshoot. And you get anti-aliased rendering by
+                running <Inline>smoothstep</Inline> against the distance.
+                The same field, three ways to use it.
               </P>
             </Article>
           ))}
@@ -1005,9 +1021,10 @@ export const Library = () => {
               <P>
                 The 2D zoo. Circles and boxes are trivial; triangles and
                 hexagons take a few extra lines because they need
-                rotational symmetry. iq's website is the canonical
-                reference — these formulas are copied near-verbatim and
-                used everywhere.
+                rotational symmetry. iq&apos;s website is where every
+                graphics programmer eventually ends up &mdash; these
+                formulas are copied near-verbatim from there because
+                nobody has improved on them.
               </P>
               <Diagram kind="sdfPrimitives2D" />
               <CodeSnippet lang="glsl" source={CODE_SDF_CIRCLE}
@@ -1075,9 +1092,11 @@ export const Library = () => {
             <Article id="raymarching" group="SDFs" groupColor={SHADE.catDistort} title="Raymarching">
               <P>
                 Sphere tracing is the technique that makes SDFs visible.
-                For each pixel, shoot a ray from the camera, step forward
-                by exactly the SDF distance, repeat until you're close
-                enough to count as a hit (or you've gone too far).
+                For each pixel, shoot a ray from the camera. Step forward
+                by exactly the SDF distance. Repeat until you&apos;re close
+                enough to count as a hit, or you&apos;ve gone too far and
+                missed. The maths feels too good to be true the first
+                time you write it.
               </P>
               <Diagram kind="raymarch" caption="each circle shows the safe step size" />
               <P>
@@ -1116,19 +1135,19 @@ export const Library = () => {
           {wrapArt('lambert', (
             <Article id="lambert" group="Lighting" groupColor={SHADE.catColor} title="Lambert (diffuse)">
               <P>
-                The simplest light model: brightness equals{' '}
-                <Inline>max(dot(N, L), 0)</Inline>. When the surface
-                faces the light directly, N·L = 1 (full brightness).
-                Perpendicular = 0 (dark). Pointing AWAY would go
-                negative, so we clamp at zero.
+                The simplest light model in graphics. Brightness equals{' '}
+                <Inline>max(dot(N, L), 0)</Inline>. Surface faces the light:
+                N&middot;L = 1 (full brightness). Perpendicular to it:
+                zero (dark). Pointing away would go negative, so we clamp
+                it.
               </P>
               <Diagram kind="lambert" />
               <CodeSnippet lang="glsl" source={CODE_LAMBERT} />
               <P>
-                Lambert alone looks flat and chalky. Add a touch of{' '}
-                <Strong>ambient</Strong> (a constant low-level light) to
-                avoid pitch-black shadows, then layer specular and
-                Fresnel for shine.
+                Lambert alone looks flat and chalky &mdash; like a stage
+                prop. Add a constant low-level <Strong>ambient</Strong>{' '}
+                term so the shadows aren&apos;t pitch black, then layer
+                specular and Fresnel on top for shine.
               </P>
             </Article>
           ))}
@@ -1155,10 +1174,12 @@ export const Library = () => {
           {wrapArt('fresnel', (
             <Article id="fresnel" group="Lighting" groupColor={SHADE.catColor} title="Fresnel">
               <P>
-                Surfaces reflect more light at grazing angles than head-
-                on. That's why a lake far away looks like a mirror but
-                looking straight down you can see fish. Fresnel is the
-                term that captures this.
+                Surfaces reflect more light at grazing angles than head-on.
+                It&apos;s why a lake far away looks like a mirror, but
+                looking straight down you can see fish. Fresnel is the term
+                that captures this. Once you start noticing it in the real
+                world you can&apos;t stop &mdash; car paint, wet roads,
+                phone screens, every shiny thing.
               </P>
               <Diagram kind="fresnelCurve" caption="Schlick's approximation — F0=0.04 (water/glass)" />
               <P>
@@ -1207,19 +1228,21 @@ export const Library = () => {
           {wrapArt('linear-srgb', (
             <Article id="linear-srgb" group="Color" groupColor={SHADE.catEffect} title="Linear vs sRGB">
               <P>
-                Human eyes don't see brightness linearly — we're more
-                sensitive to changes in dark tones. Monitors and PNG
-                files encode colours in <Strong>sRGB</Strong>, which
-                applies a ~x^(1/2.2) gamma curve to compensate.
+                Human eyes don&apos;t see brightness linearly. We&apos;re
+                much more sensitive to changes in dark tones. Monitors and
+                PNG files encode colours in <Strong>sRGB</Strong>, which
+                applies a ~x^(1/2.2) gamma curve to match.
               </P>
               <Diagram kind="gammaCurve" caption="sRGB curve vs linear identity" />
               <P>
-                Every shader maths operation needs <Strong>linear</Strong>{' '}
-                values to be physically meaningful — adding two sRGB
-                values blends them perceptually wrong. Standard workflow:
-                convert sRGB inputs to linear at the start, do all blends
-                / lighting / tonemapping in linear, convert back to sRGB
-                at the end.
+                Shader maths only behaves correctly on{' '}
+                <Strong>linear</Strong> values. Adding two sRGB colours
+                produces something that looks wrong to anyone with eyes.
+                The standard workflow: convert sRGB inputs to linear at
+                the start, do every blend, lighting calc, and tonemap in
+                linear, convert back to sRGB at the very end. Skip the
+                conversion and your skin tones turn weird grey before you
+                notice why.
               </P>
               <CodeSnippet lang="glsl" source={CODE_GAMMA} />
             </Article>
@@ -1228,12 +1251,14 @@ export const Library = () => {
           {wrapArt('tonemapping', (
             <Article id="tonemapping" group="Color" groupColor={SHADE.catEffect} title="Tonemapping">
               <P>
-                Shaders can produce HDR values — colours above 1.0. The
-                monitor can't display them, so you have to compress them
-                into 0–1. <Strong>Reinhard</Strong>{' '}
-                (<Inline>c / (1 + c)</Inline>) is the simple one. ACES is
-                what film/games use — preserves contrast and saturation.
-                Uncharted2 / filmic is the loved-and-warm middle ground.
+                Shaders happily produce HDR values &mdash; colours above
+                1.0. Monitors can&apos;t display them, so you have to
+                squash the range into 0&ndash;1. <Strong>Reinhard</Strong>{' '}
+                (<Inline>c / (1 + c)</Inline>) is the dead-simple option.
+                ACES is what film and modern games use; it keeps contrast
+                and saturation looking right. Uncharted2 / filmic sits in
+                the warm middle and is the one I reach for first when
+                nothing else looks quite right.
               </P>
               <Diagram kind="tonemapCurves" caption="how each maps HDR input 0..4 → display 0..1" />
               <CodeSnippet lang="glsl" source={CODE_TONEMAP} />
@@ -1243,19 +1268,20 @@ export const Library = () => {
           {wrapArt('palettes', (
             <Article id="palettes" group="Color" groupColor={SHADE.catEffect} title="Palettes">
               <P>
-                iq's cosine palette is the most useful colour gadget in
-                shader programming. Four <Inline>vec3</Inline> control
-                parameters define an infinitely-resampleable smooth
-                gradient with no lookup tables.
+                iq&apos;s cosine palette is the single most useful colour
+                trick in shader programming. Four <Inline>vec3</Inline>{' '}
+                knobs give you an infinitely-resampleable smooth gradient
+                with no lookup tables.
               </P>
               <CodeSnippet lang="glsl" source={CODE_COSINE_PAL} />
               <Diagram kind="cosinePalette" caption="a + b·cos(2π(c·t + d))" />
               <P>
-                Tweak <Inline>d</Inline> to rotate the hue; lower{' '}
-                <Inline>b</Inline> to desaturate; raise{' '}
-                <Inline>c</Inline> to repeat the palette inside one
-                gradient. A handful of {`{a, b, c, d}`} sets cover almost
-                every "vibe" you might want.
+                Tweak <Inline>d</Inline> to rotate the hue. Lower{' '}
+                <Inline>b</Inline> to desaturate. Raise <Inline>c</Inline>{' '}
+                to repeat the palette inside one gradient. A handful of{' '}
+                {`{a, b, c, d}`} sets covers almost every look you might
+                want, which is why the same eight numbers appear in
+                practically every Shadertoy front page.
               </P>
             </Article>
           ))}
@@ -1372,20 +1398,21 @@ export const Library = () => {
           {wrapArt('three-card-starter', (
             <Article id="three-card-starter" group="Recipes" groupColor={SHADE.goldDeep} title="The 3-card starter">
               <P>
-                The shortest path to a finished-looking shader is three
-                ingredients: a <Strong>shape</Strong> (a radial gradient
-                does it), a <Strong>palette</Strong> (iq's cosine
-                palette), and a <Strong>vignette</Strong> (smoothstep on
-                the radius). Stack them in that order and you'll never
-                look like a beginner.
+                The shortest path to a shader that looks finished is three
+                ingredients in order: a <Strong>shape</Strong> (a radial
+                gradient is fine), a <Strong>palette</Strong> (iq&apos;s
+                cosine), and a <Strong>vignette</Strong> (smoothstep on
+                the radius). Snap those three together and nobody guesses
+                you started this morning.
               </P>
               <CodeSnippet lang="glsl" source={CODE_3_CARD_STARTER} />
               <P>
-                Every recipe in the Gallery is a variation on this idea.
-                The art is in CHOOSING the shape (worley? fbm? polar
-                stripes?), TUNING the palette d-vector, and applying the
-                vignette at just enough strength to focus the eye without
-                making the corners look broken.
+                Every recipe in the Gallery is a riff on this. The taste
+                is in CHOOSING the shape (worley? fbm? polar stripes?),
+                TUNING the palette&apos;s d-vector, and dialling the
+                vignette so it focuses the eye without making the corners
+                look broken. Spend an hour on those three knobs and your
+                output jumps a tier.
               </P>
             </Article>
           ))}
@@ -1394,9 +1421,11 @@ export const Library = () => {
             <Article id="reaction-diffusion" group="Recipes" groupColor={SHADE.goldDeep} title="Reaction-diffusion">
               <P>
                 The <Strong>Gray-Scott</Strong> model simulates two
-                chemicals that diffuse and react. With the right
-                parameters it produces zebra stripes, leopard spots,
-                coral, fingerprints — patterns ubiquitous in nature.
+                chemicals that diffuse and react. Tune the parameters
+                and the same equations produce zebra stripes, leopard
+                spots, coral colonies, or fingerprints. Alan Turing
+                wrote the original paper in 1952; the patterns turn up
+                everywhere in nature because the maths is just right.
               </P>
               <Diagram kind="reactionDiffusion" caption="Gray-Scott spots (F=0.054, K=0.062)" />
               <P>
@@ -1414,11 +1443,12 @@ export const Library = () => {
           {wrapArt('plasma', (
             <Article id="plasma" group="Recipes" groupColor={SHADE.goldDeep} title="Plasma demoscene effect">
               <P>
-                The 80s/90s demoscene staple. Sum a handful of sine waves
-                of different frequencies and angles, then map the result
-                through a cyclic palette. The interference between waves
-                produces flowing rainbow patterns — endlessly different
-                even though the maths is four lines.
+                The 80s and 90s demoscene staple. Sum a handful of sine
+                waves at different frequencies and angles, then map the
+                result through a cyclic palette. The interference between
+                waves produces flowing rainbow patterns that never quite
+                repeat &mdash; from four lines of maths. People had a
+                whole subculture built on this.
               </P>
               <Diagram kind="plasma" />
               <CodeSnippet lang="glsl" source={CODE_PLASMA} />
@@ -1449,11 +1479,12 @@ export const Library = () => {
           {wrapArt('domain-warping', (
             <Article id="domain-warping" group="Recipes" groupColor={SHADE.goldDeep} title="Domain warping">
               <P>
-                Sample fBm at the coordinates of another fBm — and that
+                Sample fBm at the coordinates of another fBm, and that
                 second fBm is itself the warped coordinates of a third.
-                Two iterations gives you that famous iq-cloud look — a
+                Two iterations gets you the famous iq-cloud look: a
                 turbulent organic field with crisp ridges in some places
-                and smooth puddles in others.
+                and smooth puddles in others. The first time you write
+                it you&apos;ll wonder how it&apos;s only a few lines.
               </P>
               <Diagram kind="domainWarp" caption="lines warped by a noise field" />
               <CodeSnippet lang="glsl" source={CODE_DOMAIN_WARP}

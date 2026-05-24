@@ -563,7 +563,7 @@ const Hero = () => (
           color: SHADE.gold, marginBottom: 28,
         }}
       >
-        A shader instrument for the browser
+        Scratch for GPU shaders
       </div>
       <h1
         style={{
@@ -588,10 +588,12 @@ const Hero = () => (
           lineHeight: 1.55,
         }}
       >
-        Shade is a learning environment for shader art. The canvas and the code are the same
-        surface — drag the canvas to edit the GLSL, edit the GLSL to move the canvas. Twelve
-        starter templates, twelve ways to play with the math live. One responsive app for phone
-        and desktop.
+        Shaddy snaps shader art together like puzzle blocks. Drag a card, see
+        the canvas move, peek at the GLSL underneath. The code is the canvas
+        and the canvas is the code. Drop a photo in, an AI turns it into
+        editable cards. The GLSL it spits out is real — paste it into
+        Shadertoy, drop it into your own WebGL page, send the share URL to
+        a friend. Browser tab, no install, no account.
       </p>
       <div style={{ marginTop: 36, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
         <a
@@ -1093,11 +1095,13 @@ const StatsStrip = () => (
 // ─── FAQ ────────────────────────────────────────────────────────────────
 const FAQ = () => {
   const items = [
-    { q: 'Is the output real GLSL?', a: 'Yes. It is GLSL 1.0 fragment shader source. Paste it into Shadertoy, Bonzomatic, or your own WebGL pipeline — it just runs.' },
-    { q: 'Do I need to know shader math?', a: 'No. Snap blocks to make something you like, then read the code if you want to learn how it works. The blocks teach the math by reading both surfaces side-by-side.' },
-    { q: 'Does it run on mobile?', a: 'Yes. The composer is fully responsive: palette and properties become bottom sheets, the canvas stays the hero.' },
-    { q: 'Can I import existing shaders?', a: 'The AI import path runs paste-in GLSL through Claude to extract recognizable blocks. It won’t roundtrip arbitrary shaders perfectly — but you get a starting chain.' },
-    { q: 'Is the code open source?', a: 'Yes. MIT-licensed on GitHub. The renderer, block library, and the AI-import bridge are all in one repo.' },
+    { q: 'Is the output real GLSL?', a: "Yes. Real GLSL ES fragment source, no Shaddy wrapper around it. Paste it into Shadertoy, Bonzomatic, or your own WebGL pipeline and it runs." },
+    { q: 'Do I need to know shader math?', a: "Not at all. Most people start by snapping blocks until something pretty happens, then read the code drawer to figure out which line did what. The blocks teach the maths by sitting next to it." },
+    { q: 'Does it run on mobile?', a: "Yep. Palette and properties slide up as bottom sheets so the canvas stays the hero. I tested on a four-year-old phone — still 60 fps for most recipes." },
+    { q: 'Will I get a fast GPU on my laptop?', a: "Almost certainly. Any laptop made since 2018 has a usable GPU and Shaddy renders through WebGL 2. The mobile path downscales the drawing buffer when the framerate drops; the desktop path renders at full devicePixelRatio." },
+    { q: 'Can I import existing shaders?', a: "Paste GLSL into the Ask Claude panel and the AI pulls out the blocks it recognises. It won't always be a clean round-trip — but you get a starting chain to edit, which is the hard part." },
+    { q: 'How do I get the GLSL out?', a: "Copy from the code drawer. The output is real GLSL ES 3.0 fragment source — paste it into Shadertoy or your own WebGL pipeline and it runs. The drawer is read-write: edit the code, the Ask Claude panel translates the edits back into cards." },
+    { q: 'Is the code open source?', a: "MIT-licensed on GitHub. Renderer, card library, AI import — same repo, no proprietary bits hiding anywhere." },
   ];
   return (
     <div style={{ maxWidth: 720, margin: '3rem auto 0', display: 'flex', flexDirection: 'column' }}>
@@ -1189,7 +1193,7 @@ const Footer = () => (
         Shaddy
       </span>
       <span style={{ font: `400 12px ${TYPE.body}`, color: 'rgba(232,226,212,0.45)' }}>
-        © 2026 · MIT licensed · A learning environment for shader art.
+        © 2026 · MIT licensed · Built so a 12-year-old can learn GPU programming.
       </span>
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
         <FooterLink>Privacy</FooterLink>
@@ -1250,20 +1254,22 @@ export const Landing = () => {
             title={<>Snap blocks<br />into a chain.</>}
             body={
               <>
-                Drag a shape, then snap on distortions, colors, and effects. Connectors auto-resolve —
-                you can&apos;t make an invalid chain. The block face shows the one parameter you&apos;ll
-                touch most. Double-click to expand the rest.
+                Drag a shape onto the canvas. Snap a distortion on top. Add a
+                colour, then an effect. You can&apos;t make an invalid chain.
+                Each block shows the one knob you&apos;ll actually grab for.
+                Double-click for the rest.
               </>
             }
             visual={<FeatureChain />}
           />
           <FeatureRow
             eyebrow="02 · Tune"
-            title={<>Move a slider.<br />Hear the canvas change.</>}
+            title={<>Move a slider.<br />Watch the canvas breathe.</>}
             body={
               <>
-                Every parameter is a slider with an Animate toggle. Animated params loop in real time
-                synced to the global tempo, so the canvas breathes even when nothing is selected.
+                Every parameter is a slider with an Animate toggle. Animated
+                ones loop in real time, locked to a global tempo. Leave the
+                editor alone for a minute and the canvas keeps moving.
               </>
             }
             visual={<FeatureSliders />}
@@ -1271,12 +1277,14 @@ export const Landing = () => {
           />
           <FeatureRow
             eyebrow="03 · Export"
-            title={<>Real WebGL.<br />Plain GLSL out.</>}
+            title={<>Real GLSL.<br />Drops into anything.</>}
             body={
               <>
-                Open the code drawer to see the generated GLSL or paste your own to extract blocks
-                back. It&apos;s GLSL 1.0 fragment source — paste it into Shadertoy or your own pipeline
-                and it just runs.
+                The code drawer is the actual GLSL the GPU runs. Copy it,
+                paste it into Shadertoy or your own WebGL page — it just
+                works. Edit the code in place and Ask Claude reparses your
+                edits back into cards. Hit S to copy a share URL with the
+                whole recipe in the hash. Plain text in, plain text out.
               </>
             }
             visual={<FeatureCanvas />}
@@ -1298,7 +1306,7 @@ export const Landing = () => {
               color: SHADE.cream, letterSpacing: TYPE.trackTighter, lineHeight: 1.12,
             }}
           >
-            Twelve doors.<br />Each one a different math.
+            Twelve doors. Each one<br />a different bit of maths.
           </h2>
           <p
             style={{
@@ -1307,8 +1315,9 @@ export const Landing = () => {
               color: 'rgba(232,226,212,0.62)', lineHeight: 1.6,
             }}
           >
-            Pick a template, peek at the GLSL, drag a slider, watch the math wake up.
-            Every template is annotated so you learn the trick as you go.
+            Pick a template. Drag a slider. The annotations point at the
+            specific trick — &ldquo;this is the bit where sin meets length&rdquo; — so
+            you actually learn the move, not just admire the pixels.
           </p>
         </div>
         <TemplatesGrid />
@@ -1320,7 +1329,7 @@ export const Landing = () => {
         id="compose"
         eyebrow="The composer"
         title={<>Like Ableton<br />for fragment shaders.</>}
-        subtitle="Live preview top-right, chunky puzzle blocks center, properties panel on the right. Double-click any block to expand all its parameters."
+        subtitle="Chunky puzzle blocks in the middle. Live preview top-right. Properties on the right. Double-click any block to see the rest of its knobs."
       >
         <ComposerShowcase />
       </SectionShell>
@@ -1330,8 +1339,8 @@ export const Landing = () => {
       <SectionShell
         id="code"
         eyebrow="GLSL underneath"
-        title={<>The code and<br />the canvas are<br />the same surface.</>}
-        subtitle="Drag the canvas to edit the GLSL. Edit the GLSL to move the canvas. No black boxes between you and the shader."
+        title={<>The code and<br />the canvas are<br />the same thing.</>}
+        subtitle="Drag a block — the corresponding line in the code drawer scrolls into view and flashes lime. Edit a number in the code — the slider in the panel jumps to match. No black boxes between you and the GPU."
       >
         <CodePanel />
       </SectionShell>
@@ -1366,7 +1375,7 @@ export const Landing = () => {
                 lineHeight: 1.1,
               }}
             >
-              Tiny. Fast.<br />Open from the start.
+              Tiny. Fast.<br />Open from day one.
             </h2>
             <p
               style={{
@@ -1375,9 +1384,10 @@ export const Landing = () => {
                 color: 'rgba(232,226,212,0.62)', lineHeight: 1.6,
               }}
             >
-              No backend, no install, no account. Everything runs in the browser tab you
-              already have open. A live ray-marched fractal pulses on the right — that's
-              real GLSL too, breathing on your GPU at 60 fps.
+              No backend. No install. No account, unless you want to save your
+              work. Whatever browser tab you have open is the whole app. That
+              raymarched fractal on the right? It&apos;s the same GLSL pipeline,
+              looping live on your GPU at 60 fps.
             </p>
             <div style={{ marginTop: 36 }}>
               <StatsStrip />

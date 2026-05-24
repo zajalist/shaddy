@@ -324,36 +324,36 @@ export const LESSONS: Lesson[] = [
     id: 'circle',
     number: 1,
     title: 'Make a circle',
-    prompt: "We're drawing nothing because the radius is zero. Change `length(uv) < 0.0` to `length(uv) < 0.5` and a big red disc shows up.",
-    hint: "Find the `0.0` inside `step(length(uv), 0.0)` and bump it up to `0.5`.",
+    prompt: "Right now the canvas is black because the circle has radius zero. Find the `0.0` in `step(length(uv), 0.0)` and change it to `0.5`. A red disc shows up.",
+    hint: "Look for `step(length(uv), 0.0)` and turn the `0.0` into `0.5`.",
     starterCode: L1_STARTER,
     solutionCode: L1_SOLUTION,
     check: async ({ canvas }) => {
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas — try again." };
+      if (!buf) return { pass: false, reason: "Canvas isn't reading back. Hit Check again." };
       const centre = samplePixel(buf, 0.5, 0.5);
       const corner = samplePixel(buf, 0.05, 0.05);
       // Red disc means centre is bright red, corner is dark.
       if (centre[0] > 0.7 && corner[0] < 0.2) return { pass: true };
-      return { pass: false, reason: 'Almost — the centre should be bright red.' };
+      return { pass: false, reason: 'Close. The middle should be bright red.' };
     },
   },
   {
     id: 'smoothstep',
     number: 2,
     title: 'Soften the edge',
-    prompt: 'The disc is sharp and pixelated. Replace `step(...)` with `smoothstep(0.5, 0.48, length(uv))` so the edge fades.',
-    hint: 'Use `smoothstep(0.5, 0.48, length(uv))` — note the edges are reversed so we fade FROM inside TO outside.',
+    prompt: "Look at that hard pixelated edge. Replace `step(...)` with `smoothstep(0.5, 0.48, length(uv))` and the rim goes soft.",
+    hint: "Use `smoothstep(0.5, 0.48, length(uv))`. The edges look swapped on purpose &mdash; that's what makes the fade go from inside to outside.",
     starterCode: L2_STARTER,
     solutionCode: L2_SOLUTION,
     check: async ({ source, canvas }) => {
       if (!hasCode(source, /\bsmoothstep\s*\(/)) {
-        return { pass: false, reason: 'I want to see `smoothstep(` in your code.' };
+        return { pass: false, reason: "I don't see `smoothstep(` yet." };
       }
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       const centre = samplePixel(buf, 0.5, 0.5);
       if (centre[0] < 0.7) return { pass: false, reason: 'The middle should still be bright red.' };
       return { pass: true };
@@ -363,33 +363,33 @@ export const LESSONS: Lesson[] = [
     id: 'translate',
     number: 3,
     title: 'Move the circle',
-    prompt: 'Slide the circle to the right. Change `length(uv)` to `length(uv - vec2(0.3, 0.0))`.',
-    hint: 'Subtract a `vec2(0.3, 0.0)` from `uv` before measuring its length.',
+    prompt: "Push the circle to the right. Change `length(uv)` to `length(uv - vec2(0.3, 0.0))`. Subtracting before measuring shifts the origin.",
+    hint: 'Subtract `vec2(0.3, 0.0)` from `uv` inside `length(...)`.',
     starterCode: L3_STARTER,
     solutionCode: L3_SOLUTION,
     check: async ({ canvas }) => {
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       // Disc shifted right → sample at u=0.75, v=0.5 should be red,
       // sample at u=0.25, v=0.5 should be dark.
       const right = samplePixel(buf, 0.72, 0.5);
       const left  = samplePixel(buf, 0.28, 0.5);
       if (right[0] > 0.6 && left[0] < 0.2) return { pass: true };
-      return { pass: false, reason: "The disc isn't on the right yet." };
+      return { pass: false, reason: "The disc isn't on the right side yet." };
     },
   },
   {
     id: 'animate',
     number: 4,
     title: 'Animate with u_time',
-    prompt: 'Make it breathe. Multiply the radius by `(0.5 + 0.5 * sin(u_time))` so it pulses from 0 to its full size.',
-    hint: 'Replace `float radius = 0.5;` with `float radius = 0.5 * (0.5 + 0.5 * sin(u_time));`.',
+    prompt: "Make it breathe. Multiply the radius by `(0.5 + 0.5 * sin(u_time))` so it pulses from nothing to full size.",
+    hint: "Replace `float radius = 0.5;` with `float radius = 0.5 * (0.5 + 0.5 * sin(u_time));`. That `0.5 + 0.5 * sin(...)` shape is the standard way to get a 0&ndash;1 oscillator.",
     starterCode: L4_STARTER,
     solutionCode: L4_SOLUTION,
     check: async ({ source }) => {
       if (!hasCode(source, /\bsin\s*\(\s*u_time/)) {
-        return { pass: false, reason: 'I want to see `sin(u_time` somewhere.' };
+        return { pass: false, reason: "Need `sin(u_time` in there somewhere." };
       }
       return { pass: true };
     },
@@ -398,85 +398,85 @@ export const LESSONS: Lesson[] = [
     id: 'mix',
     number: 5,
     title: 'Mix two colours',
-    prompt: 'Make the colour a blend of `c1` and `c2`. Use `mix(c1, c2, length(uv))` so the middle is gold and the edges are navy.',
-    hint: 'Use `mix(c1, c2, t)` — `t` should be `length(uv)`.',
+    prompt: "Blend `c1` and `c2` across the circle. Replace `vec3 color = c1;` with `vec3 color = mix(c1, c2, length(uv));`. Gold in the middle, navy at the edges.",
+    hint: "Use `mix(c1, c2, length(uv))`. `mix` is just a fancy lerp.",
     starterCode: L5_STARTER,
     solutionCode: L5_SOLUTION,
     check: async ({ source, canvas }) => {
       if (!hasCode(source, /\bmix\s*\(\s*c1\s*,\s*c2/)) {
-        return { pass: false, reason: 'I want to see `mix(c1, c2, ...)` in your code.' };
+        return { pass: false, reason: "I need to see `mix(c1, c2, ...)` in your code." };
       }
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       const centre = samplePixel(buf, 0.5, 0.5);
       const corner = samplePixel(buf, 0.05, 0.05);
       // Centre warm (R > B), corner cool (B > R).
       if (centre[0] > centre[2] && corner[2] > corner[0]) return { pass: true };
-      return { pass: false, reason: "Centre should be warm gold, edges cool navy." };
+      return { pass: false, reason: "Middle should read warm gold, corners cool navy." };
     },
   },
   {
     id: 'noise',
     number: 6,
     title: 'Add noise',
-    prompt: 'Call the `noise2()` helper. Replace `float n = 0.5;` with `n = noise2(uv * 5.0);` to get a lumpy texture.',
-    hint: 'Use the provided `noise2(p)` — feed it `uv * 5.0` for a nice scale.',
+    prompt: "I already wrote a tiny `noise2()` helper for you. Replace `float n = 0.5;` with `float n = noise2(uv * 5.0);` and watch the flat grey turn lumpy.",
+    hint: "Use `noise2(uv * 5.0)`. The `* 5.0` is the zoom level &mdash; smaller numbers give bigger lumps.",
     starterCode: L6_STARTER,
     solutionCode: L6_SOLUTION,
     check: async ({ source, canvas }) => {
       if (!hasCode(source, /\bnoise2\s*\(/)) {
-        return { pass: false, reason: 'I want to see a `noise2(` call.' };
+        return { pass: false, reason: "I don't see a `noise2(` call yet." };
       }
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       // Noise → samples at different points should differ.
       const a = luma(samplePixel(buf, 0.25, 0.25));
       const b = luma(samplePixel(buf, 0.75, 0.75));
       const c = luma(samplePixel(buf, 0.5,  0.5));
       const spread = Math.max(a, b, c) - Math.min(a, b, c);
       if (spread > 0.1) return { pass: true };
-      return { pass: false, reason: "Doesn't look bumpy enough — did you scale uv?" };
+      return { pass: false, reason: "Looks too flat. Did you remember to scale `uv`?" };
     },
   },
   {
     id: 'smin',
     number: 7,
     title: 'Smooth-min two shapes',
-    prompt: 'Merge the two circles smoothly. Replace `min(d1, d2)` with `smin(d1, d2, 0.2)` and watch them melt together.',
-    hint: 'Use `smin(d1, d2, 0.2)` — `smin` is already defined for you above `main`.',
+    prompt: "Two circles, joined with a hard `min` that leaves a notch. Swap it for `smin(d1, d2, 0.2)` and watch them melt into one shape.",
+    hint: "Replace `min(d1, d2)` with `smin(d1, d2, 0.2)`. `smin` is defined for you above `main`.",
     starterCode: L7_STARTER,
     solutionCode: L7_SOLUTION,
     check: async ({ source, canvas }) => {
       if (!hasCode(source, /\bsmin\s*\(/)) {
-        return { pass: false, reason: 'I want to see a call to `smin(`.' };
+        return { pass: false, reason: "I need to see a `smin(` call." };
       }
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       // After smin, the BRIDGE between the two circles (centre, v=0.5) should
       // be filled (orange). With plain min there's a notch there.
       const bridge = samplePixel(buf, 0.5, 0.5);
       if (bridge[0] > 0.4) return { pass: true };
-      return { pass: false, reason: "The middle should be filled — try a larger k like 0.2." };
+      return { pass: false, reason: "The notch is still there. Bump the third arg of `smin` to about 0.2." };
     },
   },
   {
     id: 'palette',
     number: 8,
     title: 'Your first palette',
-    prompt: 'Trade the grey ramp for a real palette. Call `cospal(t, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67))` — that\'s the classic iq rainbow.',
-    hint: 'Use `cospal(t, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67))`.',
+    prompt: "Last one. Trade the grey ramp for a real rainbow. Replace `vec3 color = vec3(t);` with `cospal(t, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67))`. Those four `vec3`s are the classic iq palette.",
+    hint: "Try `cospal(t, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67))`. The last `vec3` is the one to play with later &mdash; it shifts the hue.",
     starterCode: L8_STARTER,
     solutionCode: L8_SOLUTION,
     check: async ({ source, canvas }) => {
       if (!hasCode(source, /\bcospal\s*\(/)) {
-        return { pass: false, reason: 'I want to see a `cospal(` call.' };
+        return { pass: false, reason: "I need to see a `cospal(` call." };
       }
       await nextFrame();
       const buf = canvas.readPixels();
-      if (!buf) return { pass: false, reason: "Couldn't read the canvas." };
+      if (!buf) return { pass: false, reason: "Canvas didn't read back." };
       // Different rings should have different hues. Compare centre, mid, edge.
       const centre = samplePixel(buf, 0.5, 0.5);
       const mid    = samplePixel(buf, 0.7, 0.5);
@@ -489,7 +489,7 @@ export const LESSONS: Lesson[] = [
         Math.abs(mid[1] - edge[1]) +
         Math.abs(mid[2] - edge[2]);
       if (dHue > 0.5) return { pass: true };
-      return { pass: false, reason: "It still looks grey — did you swap in cospal(...)?" };
+      return { pass: false, reason: "Still looks grey to me. Did `cospal(...)` actually replace `vec3(t)`?" };
     },
   },
 ];

@@ -546,8 +546,8 @@ const Gallery = () => {
             maxWidth: 620,
           }}
         >
-          Hand-curated recipes — every one of them a live, running shader you
-          can crack open in the composer with a single click.
+          Hand-curated recipes. Every tile is a live shader running right
+          here in your browser — click it open and start tweaking.
         </p>
 
         {/* filter chips */}
