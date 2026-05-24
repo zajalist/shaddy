@@ -344,15 +344,41 @@ export const RDHero = ({ style }: { style?: CSSProperties }) => {
     let raf = 0;
     let stopped = false;
 
-    const resize = () => {
+    // Resize is layout-aware: read the parent's box (authoritative on first
+    // paint, unlike `canvas.clientWidth` which can be 0 when the parent uses
+    // `aspect-ratio` / `inset:0`). The previous bug: cw=0 on first frame
+    // locked canvas.width to 1 and the hero rendered into a 1x1 buffer until
+    // the user resized the window.
+    const applySize = (cw: number, ch: number) => {
+      if (cw <= 0 || ch <= 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
-      const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+      const w = Math.max(1, Math.floor(cw * dpr));
+      const h = Math.max(1, Math.floor(ch * dpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
       }
     };
+    const resize = () => {
+      const parent = canvas.parentElement;
+      const cw = parent ? parent.clientWidth : canvas.clientWidth;
+      const ch = parent ? parent.clientHeight : canvas.clientHeight;
+      applySize(cw, ch);
+    };
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const boxes = entry.borderBoxSize ?? entry.contentBoxSize;
+            const box = Array.isArray(boxes) ? boxes[0] : (boxes as unknown as ResizeObserverSize | undefined);
+            if (box) applySize(box.inlineSize, box.blockSize);
+            else {
+              const r = entry.target.getBoundingClientRect();
+              applySize(r.width, r.height);
+            }
+          }
+        })
+      : null;
+    if (ro && canvas.parentElement) ro.observe(canvas.parentElement);
 
     const drawTri = () => gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -435,6 +461,7 @@ export const RDHero = ({ style }: { style?: CSSProperties }) => {
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      ro?.disconnect();
     };
   }, []);
 

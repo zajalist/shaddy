@@ -23,6 +23,8 @@ import {
 import { END_MARKER, formatCardMarker } from './markers';
 import { formatParameterForDisplay, substitutePlaceholders } from './format';
 import type {
+  BlendMode,
+  Card,
   CardDef,
   CompiledShader,
   Recipe,
@@ -41,6 +43,35 @@ const MAIN_PRELUDE = [
 ];
 
 const MAIN_EPILOGUE = ['  fragColor = vec4(col, 1.0);'];
+
+// Tiny blend-mode helper, emitted once at the top of the helpers block only
+// when at least one card uses a non-'normal' blend mode. Each card with a
+// non-default composition wraps its body in:
+//   { vec3 _pc=col; float _pd=d; <body>; col=mix(_pc, _shadeBlend(_pc, col, MODE), ALPHA); d=mix(_pd,d,ALPHA); }
+// where MODE is a small int constant per BlendMode (see BLEND_MODE_CODE).
+const BLEND_HELPER_NAME = '_shadeBlend';
+const BLEND_HELPER_GLSL = `vec3 ${BLEND_HELPER_NAME}(vec3 base, vec3 over, int mode) {
+  if (mode == 1) return base + over;                         // add
+  if (mode == 2) return base * over;                         // multiply
+  if (mode == 3) return vec3(1.0) - (vec3(1.0) - base) * (vec3(1.0) - over); // screen
+  if (mode == 4) return max(base, over);                     // lighten
+  if (mode == 5) return min(base, over);                     // darken
+  return over;                                               // normal (0)
+}`;
+
+const BLEND_MODE_CODE: Record<BlendMode, number> = {
+  normal: 0, add: 1, multiply: 2, screen: 3, lighten: 4, darken: 5,
+};
+
+function cardAlpha(card: Card): number {
+  return card.alpha ?? 1;
+}
+function cardBlend(card: Card): BlendMode {
+  return card.blendMode ?? 'normal';
+}
+function hasNonDefaultComposition(card: Card): boolean {
+  return cardAlpha(card) < 1 || cardBlend(card) !== 'normal';
+}
 
 // Re-export for callers that need the marker prefix to set up code-view
 // decorations without depending on ./markers directly.
@@ -73,6 +104,7 @@ export function compile(recipe: Recipe): CompiledShader {
     for (const h of def.helpers) requestedHelpers.add(h);
   }
   const helperClosure = resolveHelperClosure(requestedHelpers);
+  const anyComposition = recipe.cards.some(hasNonDefaultComposition);
 
   // ── Pass 3: emit the GLSL body, tracking spans line by line ──
   const lines: string[] = [];
@@ -92,10 +124,14 @@ export function compile(recipe: Recipe): CompiledShader {
     if (!body) continue;
     emittedHelpers.push(body);
   }
-  if (emittedHelpers.length > 0) {
+  if (emittedHelpers.length > 0 || anyComposition) {
     lines.push('// === helpers ===');
     for (const body of emittedHelpers) {
       for (const helperLine of body.split('\n')) lines.push(helperLine);
+      lines.push('');
+    }
+    if (anyComposition) {
+      for (const helperLine of BLEND_HELPER_GLSL.split('\n')) lines.push(helperLine);
       lines.push('');
     }
   }
@@ -114,6 +150,13 @@ export function compile(recipe: Recipe): CompiledShader {
       emitTypedCard(card, cardIndex, lines, cardBodyLines);
     } else {
       emitWildcardCard(card, lines, cardBodyLines);
+    }
+
+    // If this card composes (alpha < 1 or blend != normal), wrap its body
+    // lines in a snapshot/mix block. We do this AFTER emit so the per-card
+    // emitter doesn't have to know about composition.
+    if (hasNonDefaultComposition(card)) {
+      wrapWithComposition(card, lines, cardBodyLines);
     }
 
     const endLine = lines.length; // 1-based, INCLUSIVE
@@ -145,11 +188,34 @@ function emitTypedCard(
   out: string[],
   bodyOut: string[],
 ): void {
+  // Portal — purely a visual chain-wrap marker. Emits the card marker line
+  // (so reparse can still see it as a known card) plus a single comment so
+  // the span has a non-empty body. Zero params → no uniforms, no helpers.
+  if (card.type === 'portal') {
+    out.push(
+      formatCardMarker({
+        cardId: card.id,
+        friendlyName: 'Portal',
+        alpha: card.alpha,
+        blend: card.blendMode,
+      }),
+    );
+    const body = '  // portal — visual chain wrap (no shader effect)';
+    out.push(body);
+    bodyOut.push(body);
+    return;
+  }
+
   const def = lookupCardDef(card.type);
   if (!def) {
     // Defensive — recipe references a card type we no longer have. Render
     // as a wildcard-style marker so the user at least sees the cardId.
-    out.push(formatCardMarker({ cardId: card.id, friendlyName: `Unknown (${card.type})` }));
+    out.push(formatCardMarker({
+      cardId: card.id,
+      friendlyName: `Unknown (${card.type})`,
+      alpha: card.alpha,
+      blend: card.blendMode,
+    }));
     const note = `  // unknown card type: ${card.type}`;
     out.push(note);
     bodyOut.push(note);
@@ -161,6 +227,8 @@ function emitTypedCard(
       cardId: card.id,
       friendlyName: def.friendlyName,
       paramDisplays: buildParamDisplays(def, card),
+      alpha: card.alpha,
+      blend: card.blendMode,
     }),
   );
 
@@ -184,7 +252,12 @@ function emitTypedCard(
 
 function emitWildcardCard(card: WildcardCard, out: string[], bodyOut: string[]): void {
   const friendlyName = card.displayName ?? WILDCARD_DISPLAY_NAME_FALLBACK;
-  out.push(formatCardMarker({ cardId: card.id, friendlyName }));
+  out.push(formatCardMarker({
+    cardId: card.id,
+    friendlyName,
+    alpha: card.alpha,
+    blend: card.blendMode,
+  }));
   // Wildcard rawSource is emitted verbatim (no indentation injection — the
   // user is responsible for their own formatting inside a wildcard span).
   if (card.rawSource.length > 0) {
@@ -193,6 +266,45 @@ function emitWildcardCard(card: WildcardCard, out: string[], bodyOut: string[]):
       bodyOut.push(rawLine);
     }
   }
+}
+
+/** Mutate `out` (and `bodyOut`) in place: take the already-emitted card body
+ *  lines off the tail and re-emit them inside an alpha/blend composition
+ *  block. Both `out` (full source buffer) and `bodyOut` (this card's body
+ *  for span.expectedBody) get the same wrapped lines. */
+function wrapWithComposition(card: Card, out: string[], bodyOut: string[]): void {
+  // Snapshot the body lines we just wrote (still in both buffers), then pop
+  // them off so we can re-emit wrapped.
+  const popCount = bodyOut.length;
+  const innerLines = bodyOut.slice();
+  out.splice(out.length - popCount, popCount);
+  bodyOut.length = 0;
+
+  const alpha = cardAlpha(card);
+  const blend = cardBlend(card);
+  const alphaLit = glslLit(alpha);
+  const modeLit = String(BLEND_MODE_CODE[blend]);
+
+  const push = (s: string): void => {
+    out.push(s);
+    bodyOut.push(s);
+  };
+  push('  {');
+  push('    vec3 _prev_col = col;');
+  push('    float _prev_d = d;');
+  for (const line of innerLines) {
+    // Already 2-space indented from the emitter; add another indent step so
+    // the body reads as a clear scoped block.
+    push(`  ${line}`);
+  }
+  push(`    col = mix(_prev_col, ${BLEND_HELPER_NAME}(_prev_col, col, ${modeLit}), ${alphaLit});`);
+  push(`    d = mix(_prev_d, d, ${alphaLit});`);
+  push('  }');
+}
+
+function glslLit(n: number): string {
+  const s = Number(n.toFixed(6)).toString();
+  return s.includes('.') ? s : `${s}.0`;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────

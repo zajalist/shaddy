@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { SHADE } from './tokens';
+import { CARD_ICON_PATHS } from './card-icons';
 
 // Flat-multicolor icon set (iconshock-style).
 // Design rules:
@@ -321,6 +322,208 @@ const ICON_PATHS: Record<string, IconRenderer> = {
       <path d="M9.6 12.4 L5.2 16 L9.6 19.6 Z" fill={cream} opacity="0.35" />
     </>
   ),
+
+  // GitHub Octocat-style mark — flat duotone, chunky body + tentacles +
+  // two visible eyes. Same shadow-and-highlight idiom as the rest of the set.
+  'github-octocat': ({ c, cream }) => (
+    <>
+      {/* shadow drop */}
+      <path
+        d="M12.3 3.4 C7.2 3.4 3.1 7.5 3.1 12.6 c0 4.05 2.62 7.48 6.26 8.7 0.46 0.08 0.62 -0.2 0.62 -0.44 v-1.55 c-2.55 0.55 -3.08 -1.22 -3.08 -1.22 -0.42 -1.06 -1.02 -1.34 -1.02 -1.34 -0.84 -0.57 0.06 -0.56 0.06 -0.56 0.92 0.07 1.4 0.95 1.4 0.95 0.82 1.4 2.15 1 2.68 0.76 0.08 -0.6 0.32 -1 0.58 -1.23 -2.04 -0.23 -4.18 -1.02 -4.18 -4.55 0 -1 0.36 -1.82 0.94 -2.46 -0.1 -0.23 -0.41 -1.17 0.09 -2.44 0 0 0.77 -0.25 2.52 0.94 0.73 -0.2 1.51 -0.3 2.3 -0.3 0.78 0 1.57 0.1 2.3 0.3 1.74 -1.19 2.5 -0.94 2.5 -0.94 0.5 1.27 0.19 2.21 0.1 2.44 0.58 0.64 0.94 1.46 0.94 2.46 0 3.54 -2.14 4.31 -4.19 4.54 0.33 0.29 0.62 0.85 0.62 1.72 v2.55 c0 0.25 0.16 0.54 0.62 0.44 3.64 -1.22 6.25 -4.66 6.25 -8.7 0 -5.1 -4.13 -9.2 -9.2 -9.2 Z"
+        fill={SHADOW}
+      />
+      {/* main body */}
+      <path
+        d="M12 3 C6.9 3 2.8 7.1 2.8 12.2 c0 4.05 2.62 7.48 6.26 8.7 0.46 0.08 0.62 -0.2 0.62 -0.44 v-1.55 c-2.55 0.55 -3.08 -1.22 -3.08 -1.22 -0.42 -1.06 -1.02 -1.34 -1.02 -1.34 -0.84 -0.57 0.06 -0.56 0.06 -0.56 0.92 0.07 1.4 0.95 1.4 0.95 0.82 1.4 2.15 1 2.68 0.76 0.08 -0.6 0.32 -1 0.58 -1.23 -2.04 -0.23 -4.18 -1.02 -4.18 -4.55 0 -1 0.36 -1.82 0.94 -2.46 -0.1 -0.23 -0.41 -1.17 0.09 -2.44 0 0 0.77 -0.25 2.52 0.94 0.73 -0.2 1.51 -0.3 2.3 -0.3 0.78 0 1.57 0.1 2.3 0.3 1.74 -1.19 2.5 -0.94 2.5 -0.94 0.5 1.27 0.19 2.21 0.1 2.44 0.58 0.64 0.94 1.46 0.94 2.46 0 3.54 -2.14 4.31 -4.19 4.54 0.33 0.29 0.62 0.85 0.62 1.72 v2.55 c0 0.25 0.16 0.54 0.62 0.44 3.64 -1.22 6.25 -4.66 6.25 -8.7 0 -5.1 -4.13 -9.2 -9.2 -9.2 Z"
+        fill={c}
+      />
+      {/* eyes — these animate via the `oct-eye` class hooked by Landing */}
+      <g className="oct-eyes">
+        <ellipse className="oct-eye oct-eye-l" cx="9.1"  cy="11.6" rx="1.05" ry="1.25" fill={cream} />
+        <ellipse className="oct-eye oct-eye-r" cx="14.9" cy="11.6" rx="1.05" ry="1.25" fill={cream} />
+        <circle  cx="9.1"  cy="11.9" r="0.5" fill={c} />
+        <circle  cx="14.9" cy="11.9" r="0.5" fill={c} />
+      </g>
+      {/* cheeky little smirk */}
+      <path d="M10.4 14.4 Q12 15.4 13.6 14.4" fill="none" stroke={cream} strokeWidth="0.7" strokeLinecap="round" opacity="0.55" />
+    </>
+  ),
+
+  // ─── TOPBAR — minimal cartoony icon-only buttons ───────────────────────
+  // "Photo → blocks" — chunky camera with a big round lens and a tilted
+  // top-strip flash. Same flat-multicolor idiom as the b-* block icons.
+  'tb-photo': ({ c, cream }) => (
+    <>
+      {/* tilted flash strip on top — gives it a snapshot-y feel */}
+      <g transform="rotate(-6 12 5.4)">
+        <rect x="6.6" y="3.6" width="10.8" height="2.6" rx="1" fill={c} />
+        <rect x="7.8" y="4.2" width="3.2"  height="1"   rx="0.5" fill={cream} opacity="0.7" />
+      </g>
+      {/* drop shadow */}
+      <rect x="2.8" y="6.6" width="18.6" height="13.4" rx="2.6" fill={SHADOW} />
+      {/* body */}
+      <rect x="2.4" y="6.2" width="18.6" height="13.4" rx="2.6" fill={c} />
+      {/* highlight strip across the top of the body */}
+      <rect x="2.4" y="6.2" width="18.6" height="3" rx="2.6" fill={cream} opacity="0.18" />
+      {/* lens outer ring */}
+      <circle cx="11.7" cy="13.2" r="4.6" fill={cream} />
+      {/* lens inner */}
+      <circle cx="11.7" cy="13.2" r="2.8" fill={c} />
+      {/* lens glint */}
+      <circle cx="10.4" cy="11.9" r="0.9" fill={cream} opacity="0.85" />
+      {/* tiny viewfinder dot top-right */}
+      <circle cx="18.4" cy="9.4" r="0.9" fill={cream} />
+    </>
+  ),
+
+  // "Paste GLSL" — clipboard with a strip of code lines coming out the
+  // bottom, with a </> motif as the most-prominent line.
+  'tb-paste': ({ c, cream }) => (
+    <>
+      {/* clipboard body shadow */}
+      <rect x="4.6" y="4.6" width="14.6" height="14.8" rx="2.4" fill={SHADOW} />
+      {/* clipboard body */}
+      <rect x="4.2" y="4.2" width="14.6" height="14.8" rx="2.4" fill={c} />
+      {/* clipboard clip at top */}
+      <rect x="8.4" y="2.6" width="6.4" height="3.2" rx="1.1" fill={c} />
+      <rect x="9.4" y="3.4" width="4.4" height="1.4" rx="0.6" fill={cream} opacity="0.55" />
+      {/* "code lines" peeking out — staggered to the right */}
+      <rect x="6.4" y="8.6"  width="7.6"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
+      <rect x="6.4" y="11.4" width="5.4"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
+      <rect x="6.4" y="14.2" width="9.0"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
+      {/* </> chevrons spelled out near the bottom for the code motif */}
+      <path d="M9 17.6 L7.4 19.0 L9 20.4" fill="none" stroke={cream} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15.4 17.6 L17 19.0 L15.4 20.4" fill="none" stroke={cream} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.4 16.8 L10.6 21.2" stroke={cream} strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+    </>
+  ),
+
+  // "Share recipe" — stylized share-arrow punching out of a square's side.
+  // Reads as "send out" — chunky filled square + arrow with a tiny tilt.
+  'tb-share': ({ c, cream }) => (
+    <>
+      {/* square shadow */}
+      <rect x="3.6" y="6.6" width="11.4" height="13" rx="2.2" fill={SHADOW} />
+      {/* square body */}
+      <rect x="3.2" y="6.2" width="11.4" height="13" rx="2.2" fill={c} />
+      {/* highlight slab */}
+      <rect x="3.2" y="6.2" width="11.4" height="3" rx="2.2" fill={cream} opacity="0.22" />
+      {/* arrow shaft punching out the right side, with slight tilt */}
+      <g transform="rotate(-6 16 11)">
+        <rect x="8.6" y="10.2" width="10.6" height="3" rx="1.2" fill={c} />
+        <rect x="8.6" y="10.2" width="10.6" height="1.1" rx="0.6" fill={cream} opacity="0.5" />
+      </g>
+      {/* arrowhead — chunky triangle */}
+      <path d="M17.4 7.4 L22.4 11.7 L17.4 16.0 Z" fill={c} />
+      <path d="M18.4 9.2 L21 11.7 L18.4 14.2 Z" fill={cream} opacity="0.4" />
+    </>
+  ),
+
+  // "Sign in" — outlined cartoony silhouette: chunky round head + shoulders.
+  // Duotone (c body + cream highlight) so it reads on the dark topbar.
+  'tb-signin': ({ c, cream }) => (
+    <>
+      {/* head shadow */}
+      <circle cx="12.3" cy="8.6" r="3.7" fill={SHADOW} />
+      {/* head */}
+      <circle cx="12" cy="8.4" r="3.7" fill={c} />
+      {/* cheek highlight */}
+      <circle cx="13.2" cy="7.5" r="1.3" fill={cream} opacity="0.55" />
+      {/* shoulders / torso — rounded "U" silhouette */}
+      <path
+        d="M4.2 20.4 C4.2 15.8 7.6 13.4 12 13.4 C16.4 13.4 19.8 15.8 19.8 20.4 Z"
+        fill={SHADOW}
+        transform="translate(0.3 0.4)"
+      />
+      <path
+        d="M4 20 C4 15.4 7.4 13 12 13 C16.6 13 20 15.4 20 20 Z"
+        fill={c}
+      />
+      {/* collar highlight slab across the top of the shoulders */}
+      <path
+        d="M6.6 16 C8.4 14.6 10 14.2 12 14.2 C14 14.2 15.6 14.6 17.4 16 L17 17.4 C15.4 16.2 13.8 15.8 12 15.8 C10.2 15.8 8.6 16.2 7 17.4 Z"
+        fill={cream}
+        opacity="0.35"
+      />
+    </>
+  ),
+
+  // "Ask Claude" — minimal AI glyph. A chunky cartoony chat bubble with a
+  // sparkle inside, suggesting "AI thought". Duotone, reads at 14-18px.
+  'ai-spark': ({ c, cream }) => (
+    <>
+      {/* bubble shadow */}
+      <path
+        d="M4.5 5.4 H19.5 A2.6 2.6 0 0 1 22.1 8 V15 A2.6 2.6 0 0 1 19.5 17.6 H11.2 L7.3 21.0 V17.6 H4.5 A2.6 2.6 0 0 1 1.9 15 V8 A2.6 2.6 0 0 1 4.5 5.4 Z"
+        fill={SHADOW}
+      />
+      {/* bubble body */}
+      <path
+        d="M4 5 H19 A2.6 2.6 0 0 1 21.6 7.6 V14.6 A2.6 2.6 0 0 1 19 17.2 H10.7 L6.8 20.6 V17.2 H4 A2.6 2.6 0 0 1 1.4 14.6 V7.6 A2.6 2.6 0 0 1 4 5 Z"
+        fill={c}
+      />
+      {/* highlight slab at the top */}
+      <path d="M4 5 H19 A2.6 2.6 0 0 1 21.6 7.6 V8.6 H1.4 V7.6 A2.6 2.6 0 0 1 4 5 Z" fill={cream} opacity="0.22" />
+      {/* big sparkle — 4-pointed star */}
+      <path
+        d="M11.5 7.4 L12.4 10.4 L15.4 11.1 L12.4 11.8 L11.5 14.8 L10.6 11.8 L7.6 11.1 L10.6 10.4 Z"
+        fill={cream}
+      />
+      {/* tiny sparkle to the upper right for cluster-of-thought */}
+      <path
+        d="M16.6 9 L17 10.4 L18.4 10.8 L17 11.2 L16.6 12.6 L16.2 11.2 L14.8 10.8 L16.2 10.4 Z"
+        fill={cream}
+        opacity="0.7"
+      />
+    </>
+  ),
+
+  // Composer "blocks snapping together" — three chunky puzzle-ish tiles
+  // with a tab/notch that visibly interlock. Slight rotation for hand-drawn
+  // playfulness. Single-color (gold via `c`), cream highlight + soft shadow.
+  'composer-blocks': ({ c, cream }) => (
+    <>
+      {/* soft drop shadow for depth */}
+      <g transform="translate(0.6 0.8)" opacity="0.35">
+        <path
+          d="M3.6 5.4 H10 a1.4 1.4 0 0 1 1.4 1.4 v1 a1 1 0 0 0 2 0 v-1 a1.4 1.4 0 0 1 1.4 -1.4 H20 a1.4 1.4 0 0 1 1.4 1.4 V12 a1.4 1.4 0 0 1 -1.4 1.4 h-1 a1 1 0 0 0 0 2 h1 a1.4 1.4 0 0 1 1.4 1.4 v0.4 a1.4 1.4 0 0 1 -1.4 1.4 H4 a1.4 1.4 0 0 1 -1.4 -1.4 V6.8 a1.4 1.4 0 0 1 1 -1.4 Z"
+          fill={SHADOW}
+        />
+      </g>
+
+      {/* top-left tile — has a TAB poking right */}
+      <g transform="rotate(-3 6.5 7.8)">
+        <path
+          d="M3.4 4.4 H9.4 a1.2 1.2 0 0 1 1.2 1.2 v0.9 a0.95 0.95 0 0 0 1.9 0 v-0.9 a0 0 0 0 1 0 0 V10.2 a1.2 1.2 0 0 1 -1.2 1.2 H3.4 a1.2 1.2 0 0 1 -1.2 -1.2 V5.6 a1.2 1.2 0 0 1 1.2 -1.2 Z"
+          fill={c}
+        />
+        {/* highlight slab */}
+        <rect x="3.4" y="4.4" width="7.2" height="1.6" rx="0.8" fill={cream} opacity="0.32" />
+      </g>
+
+      {/* top-right tile — has a NOTCH cut into its left edge */}
+      <g transform="rotate(2.4 17 7.6)">
+        <path
+          d="M14.6 4.2 a1.2 1.2 0 0 0 -1.2 1.2 v0.6 a0.9 0.9 0 0 1 -1.8 0 v-0.6 a1.2 1.2 0 0 0 -1.2 -1.2 H10.4 V10.2 a1.2 1.2 0 0 0 1.2 1.2 h8.6 a1.2 1.2 0 0 0 1.2 -1.2 V5.4 a1.2 1.2 0 0 0 -1.2 -1.2 Z"
+          fill={c}
+          opacity="0.92"
+        />
+        <rect x="11.6" y="4.2" width="9.8" height="1.6" rx="0.8" fill={cream} opacity="0.28" />
+      </g>
+
+      {/* bottom tile — wider, with a tab poking UP that fits into the seam above */}
+      <g transform="rotate(-1.4 12 17)">
+        <path
+          d="M3.8 14.4 H10.6 a0.9 0.9 0 0 1 0.9 -0.9 h0.9 a0.9 0.9 0 0 1 0.9 0.9 H20.2 a1.3 1.3 0 0 1 1.3 1.3 V19.6 a1.3 1.3 0 0 1 -1.3 1.3 H3.8 a1.3 1.3 0 0 1 -1.3 -1.3 V15.7 a1.3 1.3 0 0 1 1.3 -1.3 Z"
+          fill={c}
+        />
+        <rect x="3.8" y="14.4" width="17.7" height="1.6" rx="0.8" fill={cream} opacity="0.32" />
+        {/* two stitch dots for cartoony hand-drawn feel */}
+        <circle cx="8.2"  cy="18.4" r="0.7" fill={cream} opacity="0.6" />
+        <circle cx="15.8" cy="18.4" r="0.7" fill={cream} opacity="0.6" />
+      </g>
+    </>
+  ),
 };
 
 export type IconProps = {
@@ -333,16 +536,50 @@ export type IconProps = {
   rotate?: number;
 };
 
+// Icons whose `name` doesn't match a known ICON_PATHS entry render as either
+// an emoji glyph (when the name is a non-letter unicode codepoint, e.g. the
+// emoji icons used by the real CardDef library) or a square placeholder.
+function isLikelyEmoji(name: string): boolean {
+  if (!name) return false;
+  // Quick check: any character outside ASCII letters/digits/dashes that isn't
+  // a known design-system slug (which all start with letters).
+  const first = name.codePointAt(0) ?? 0;
+  if (first <= 0x7f) return false; // ASCII
+  return true;
+}
+
+// Combined registry: built-in design icons + per-card SVGs from card-icons.tsx.
+// Card icons are looked up under the `card-<kebab-type>` namespace.
+const ALL_ICONS: Record<string, IconRenderer> = { ...ICON_PATHS, ...CARD_ICON_PATHS };
+
 export const Icon = ({ name, size = 20, color, cream, style, className, rotate }: IconProps) => {
   const c = color ?? 'currentColor';
   const k = cream ?? SHADE.cream;
-  const renderer = ICON_PATHS[name];
+  const renderer = ALL_ICONS[name];
   const baseStyle: CSSProperties = {
     display: 'block',
     transform: rotate ? `rotate(${rotate}deg)` : undefined,
     ...style,
   };
   if (!renderer) {
+    if (isLikelyEmoji(name)) {
+      const emojiStyle: CSSProperties = {
+        ...baseStyle,
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.95),
+        lineHeight: `${size}px`,
+        textAlign: 'center',
+        // Emoji rendering ignores `color`, but the box hue benefits from being
+        // tied to the surrounding cat color via filter — too aggressive for
+        // colour faithfulness, so leave the glyph alone.
+      };
+      return (
+        <span style={emojiStyle} className={className} aria-hidden>
+          {name}
+        </span>
+      );
+    }
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" style={baseStyle} className={className}>
         <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="3.6" fill={c} />

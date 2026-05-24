@@ -139,6 +139,100 @@ export const GLSL_HELPERS: Record<string, string> = {
                   dot(p - 0.5 * max(p.x + p.y, 0.0), p - 0.5 * max(p.x + p.y, 0.0))))
          * sign(p.x - p.y);
 }`,
+
+  // Line-segment SDF — distance from point p to segment a..b (no thickness).
+  sdfSegment: `float sdfSegment(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h);
+}`,
+
+  // Capsule SDF — line segment a..b inflated by radius r.
+  sdfCapsule: `float sdfCapsule(vec2 p, vec2 a, vec2 b, float r) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}`,
+
+  // Rounded box — separate radii per corner (x = right, y = left, w = bottom).
+  sdfRoundedBox: `float sdfRoundedBox(vec2 p, vec2 b, vec4 r) {
+  r.xy = (p.x > 0.0) ? r.xy : r.zw;
+  r.x  = (p.y > 0.0) ? r.x  : r.y;
+  vec2 q = abs(p) - b + r.x;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
+}`,
+
+  // Ellipse SDF — iq's closed-form approximate version (cleaner than the
+  // exact iterative one). ab = half-axes. Returns signed distance.
+  sdfEllipse: `float sdfEllipse(vec2 p, vec2 ab) {
+  float k0 = length(p / ab);
+  float k1 = length(p / (ab * ab));
+  return k0 * (k0 - 1.0) / max(k1, 1e-8);
+}`,
+
+  // Regular n-gon SDF (iq), radius r, integer side count n.
+  sdfPolyN: `float sdfPolyN(vec2 p, float r, int n) {
+  float an = 3.14159265 / float(n);
+  float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
+  return length(p) * cos(bn) - r * cos(an);
+}`,
+
+  // Vesica — two-circle intersection lens (iq). r = circle radius,
+  // d = half-distance between centres along x. Negative inside.
+  sdfVesica: `float sdfVesica(vec2 p, float r, float d) {
+  p = abs(p);
+  float b = sqrt(max(r * r - d * d, 0.0));
+  return ((p.y - b) * d > p.x * b)
+    ? length(p - vec2(0.0, b))
+    : length(p - vec2(-d, 0.0)) - r;
+}`,
+
+  // Pie wedge (iq). c = vec2(sin(theta), cos(theta)) of half-angle, r = radius.
+  sdfPie: `float sdfPie(vec2 p, vec2 c, float r) {
+  p.x = abs(p.x);
+  float l = length(p) - r;
+  float m = length(p - c * clamp(dot(p, c), 0.0, r));
+  return max(l, m * sign(c.y * p.x - c.x * p.y));
+}`,
+
+  // Trapezoid (iq). r1 = bottom half-width, r2 = top half-width, h = half-height.
+  sdfTrapezoid: `float sdfTrapezoid(vec2 p, float r1, float r2, float h) {
+  vec2 k1 = vec2(r2, h);
+  vec2 k2 = vec2(r2 - r1, 2.0 * h);
+  p.x = abs(p.x);
+  vec2 ca = vec2(p.x - min(p.x, (p.y < 0.0) ? r1 : r2), abs(p.y) - h);
+  vec2 cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot(k2, k2), 0.0, 1.0);
+  float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+  return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
+}`,
+
+  // Parallelogram (iq). wi = half-width, he = half-height, sk = skew along x.
+  sdfParallelogram: `float sdfParallelogram(vec2 p, float wi, float he, float sk) {
+  vec2 e = vec2(sk, he);
+  p = (p.y < 0.0) ? -p : p;
+  vec2 w = p - e;
+  w.x -= clamp(w.x, -wi, wi);
+  vec2 d = vec2(dot(w, w), -w.y);
+  float s = p.x * e.y - p.y * e.x;
+  p = (s < 0.0) ? -p : p;
+  vec2 v = p - vec2(wi, 0.0);
+  v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
+  d = min(d, vec2(dot(v, v), wi * he - abs(s)));
+  return sqrt(d.x) * sign(-d.y);
+}`,
+
+  // Horseshoe (iq). c = vec2(cos(angle), sin(angle)), r = radius, w = vec2(thickness, length).
+  sdfHorseshoe: `float sdfHorseshoe(vec2 p, vec2 c, float r, vec2 w) {
+  p.x = abs(p.x);
+  float l = length(p);
+  p = mat2(-c.x, c.y, c.y, c.x) * p;
+  p = vec2((p.y > 0.0 || p.x > 0.0) ? p.x : l * sign(-c.x),
+           (p.x > 0.0) ? p.y : l);
+  p = vec2(p.x, abs(p.y - r)) - w;
+  return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
+}`,
 };
 
 /** Helper → list of other helpers it depends on. Resolved transitively at compile. */
@@ -168,6 +262,16 @@ export const HELPER_EMISSION_ORDER: readonly string[] = [
   'sdfTri',
   'sdfStar',
   'sdfHeart',
+  'sdfSegment',
+  'sdfCapsule',
+  'sdfRoundedBox',
+  'sdfEllipse',
+  'sdfPolyN',
+  'sdfVesica',
+  'sdfPie',
+  'sdfTrapezoid',
+  'sdfParallelogram',
+  'sdfHorseshoe',
 ];
 
 /** Expand a set of helper names to include all transitive dependencies. */

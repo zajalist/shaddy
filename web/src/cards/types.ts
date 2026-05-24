@@ -15,12 +15,26 @@ export type Recipe = {
  *  carries arbitrary GLSL the system cannot represent as a known card. */
 export type Card = TypedCard | WildcardCard;
 
+/** How a card's final `col` is composed against whatever the previous card
+ *  produced. 'normal' = standard alpha blend; the rest are classic Porter-Duff
+ *  / Photoshop-style RGB ops applied per-channel then alpha-mixed. */
+export type BlendMode = 'normal' | 'add' | 'multiply' | 'screen' | 'lighten' | 'darken';
+
+export const BLEND_MODES: readonly BlendMode[] = [
+  'normal', 'add', 'multiply', 'screen', 'lighten', 'darken',
+] as const;
+
 export type TypedCard = {
   kind: 'typed';
   id: string;
   type: string;
   enabled: boolean;
   params: Record<string, Parameter>;
+  /** 0..1, default 1. Stored optional so old Recipe JSON (pre-blend) loads
+   *  cleanly; state.ts defaults this at insert time. */
+  alpha?: number;
+  /** Default 'normal'. Same optional-for-back-compat rule as `alpha`. */
+  blendMode?: BlendMode;
 };
 
 export type WildcardCard = {
@@ -32,6 +46,8 @@ export type WildcardCard = {
   /** First non-empty comment in the rawSource, or null. Becomes the display
    *  name; falls back to "Custom code" in the UI. */
   displayName: string | null;
+  alpha?: number;
+  blendMode?: BlendMode;
 };
 
 export type Parameter = {
@@ -49,7 +65,15 @@ export type CardCategory = 'shape' | 'distortion' | 'color' | 'effect';
 
 export type ParamDef =
   | { kind: 'float'; label: string; default: number; min: number; max: number; step?: number }
-  | { kind: 'color'; label: string; default: ColorRgb };
+  | { kind: 'color'; label: string; default: ColorRgb }
+  | {
+      kind: 'select';
+      label: string;
+      /** Default option value (an integer). Stored as a number under the hood;
+       *  emitted as a `float` uniform that the shader casts via `int(u_*)`. */
+      default: number;
+      options: ReadonlyArray<{ value: number; label: string }>;
+    };
 
 /** A typed-card definition. Wildcards have no CardDef — they're a hard-coded
  *  shape in the compiler/UI. */
@@ -109,7 +133,9 @@ export type ReparseEvent =
   | { kind: 'card-became-wildcard'; cardId: string; capturedSource: string }
   | { kind: 'wildcard-updated'; cardId: string; capturedSource: string }
   | { kind: 'wildcard-inserted'; afterCardId: string | null; capturedSource: string }
-  | { kind: 'card-deleted'; cardId: string };
+  | { kind: 'card-deleted'; cardId: string }
+  | { kind: 'alpha-updated'; cardId: string; alpha: number }
+  | { kind: 'blend-updated'; cardId: string; blend: BlendMode };
 
 export type ReparseResult = {
   /** The new recipe to commit. May be identical to the previous recipe if

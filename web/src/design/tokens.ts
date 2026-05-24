@@ -63,27 +63,14 @@ export type BlockDef = {
   mini: BlockMini;
 };
 
-export const BLOCK_LIB: BlockDef[] = [
-  { id: 'circle',   cat: 'shape',   name: 'CIRCLE',   icon: 'b-circle',   mini: { kind:'slider', label:'size',   value: 0.62 } },
-  { id: 'stripes',  cat: 'shape',   name: 'STRIPES',  icon: 'b-stripes',  mini: { kind:'slider', label:'freq',   value: 0.40 } },
-  { id: 'voronoi',  cat: 'shape',   name: 'VORONOI',  icon: 'b-voronoi',  mini: { kind:'slider', label:'cells',  value: 0.55 } },
-  { id: 'grid',     cat: 'shape',   name: 'GRID',     icon: 'b-grid',     mini: { kind:'slider', label:'scale',  value: 0.30 } },
-  { id: 'noise',    cat: 'shape',   name: 'NOISE',    icon: 'b-noise',    mini: { kind:'slider', label:'detail', value: 0.72 } },
-  { id: 'ripple',   cat: 'distort', name: 'RIPPLE',   icon: 'b-ripple',   mini: { kind:'slider', label:'freq',   value: 0.48, animated: true } },
-  { id: 'swirl',    cat: 'distort', name: 'SWIRL',    icon: 'b-swirl',    mini: { kind:'slider', label:'amount', value: 0.66 } },
-  { id: 'kaleido',  cat: 'distort', name: 'KALEIDO',  icon: 'b-kaleido',  mini: { kind:'slider', label:'sides',  value: 0.50 } },
-  { id: 'warp',     cat: 'distort', name: 'WARP',     icon: 'b-warp',     mini: { kind:'slider', label:'amt',    value: 0.35 } },
-  { id: 'palette',  cat: 'color',   name: 'PALETTE',  icon: 'b-palette',  mini: { kind:'swatches', values: ['#1F7FB8','#B5365E','#6F7F1A','#5C3FA8'] } },
-  { id: 'hueshift', cat: 'color',   name: 'HUE',      icon: 'b-hue',      mini: { kind:'slider', label:'shift',  value: 0.20, animated: true } },
-  { id: 'invert',   cat: 'color',   name: 'INVERT',   icon: 'b-invert',   mini: { kind:'slider', label:'mix',    value: 0.10 } },
-  { id: 'contrast', cat: 'color',   name: 'CONTRAST', icon: 'b-contrast', mini: { kind:'slider', label:'lvl',    value: 0.55 } },
-  { id: 'glow',     cat: 'effect',  name: 'GLOW',     icon: 'b-glow',     mini: { kind:'slider', label:'amt',    value: 0.42 } },
-  { id: 'bloom',    cat: 'effect',  name: 'BLOOM',    icon: 'b-bloom',    mini: { kind:'slider', label:'thresh', value: 0.65 } },
-  { id: 'feedback', cat: 'effect',  name: 'FEEDBACK', icon: 'b-feedback', mini: { kind:'slider', label:'decay',  value: 0.78 } },
-  { id: 'grain',    cat: 'effect',  name: 'GRAIN',    icon: 'b-grain',    mini: { kind:'slider', label:'amt',    value: 0.18 } },
-];
+// BLOCK_LIB is sourced from the real cards library — see card-adapter.ts.
+// Kept exported under the same name so the visual components don't need to
+// know about the adapter.
+import { ALL_BLOCKS, BLOCK_BY_ID } from './card-adapter';
 
-export const blockById = (id: string): BlockDef | undefined => BLOCK_LIB.find((b) => b.id === id);
+export const BLOCK_LIB: BlockDef[] = ALL_BLOCKS;
+
+export const blockById = (id: string): BlockDef | undefined => BLOCK_BY_ID[id];
 
 // Typography — Bricolage Grotesque carries the personality; Geist Mono is the
 // numerals workhorse. Both have warmth and slight idiosyncrasies that pull the

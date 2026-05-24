@@ -1,373 +1,658 @@
-import { useMemo } from 'react';
+// BlockEditor — modal opened by double-clicking a chain block.
+//
+// Edits the REAL TypedCard (or WildcardCard) params via the cards store.
+// Float params use the existing SliderRail (0..1 normalized) wrapped with a
+// real-range mapping; color params get a click-to-pick swatch (react-colorful);
+// wildcard cards get a textarea for their raw GLSL.
+
+import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { RgbColorPicker } from 'react-colorful';
+
+import {
+  BLEND_MODES,
+  lookupCardDef,
+  useCardsStore,
+  type BlendMode,
+  type Card,
+  type CardDef,
+  type ColorRgb,
+  type ParamDef,
+  type TypedCard,
+  type WildcardCard,
+} from '@/cards';
+
 import { CATEGORIES, SHADE, TYPE } from './tokens';
-import type { BlockDef } from './tokens';
+import type { CategoryKey } from './tokens';
 import { Icon } from './icons';
 import { SliderRail } from './components';
-import {
-  PARAM_GROUP_LABEL,
-  initialActiveParams,
-  paramPoolFor,
-} from './params';
-import type { ParamDef, ParamInstance } from './params';
+import { categoryToBlock, normalizedToParam, paramToNormalized } from './card-adapter';
 
 export type BlockEditorProps = {
-  block: BlockDef;
-  active: ParamInstance[];
-  onChange: (next: ParamInstance[]) => void;
+  card: Card;
   onClose: () => void;
 };
 
-export const BlockEditor = ({ block, active, onChange, onClose }: BlockEditorProps) => {
-  const pool = paramPoolFor(block.id, block.cat);
-  const cat = CATEGORIES[block.cat];
+export const BlockEditor = ({ card, onClose }: BlockEditorProps) => {
+  if (card.kind === 'wildcard') {
+    return <WildcardEditor card={card} onClose={onClose} />;
+  }
+  const def = lookupCardDef(card.type);
+  if (!def) {
+    return (
+      <Modal onClose={onClose}>
+        <div style={{ padding: 24, color: SHADE.text }}>
+          Unknown card type: <code>{card.type}</code>
+        </div>
+      </Modal>
+    );
+  }
+  return <TypedEditor card={card} def={def} onClose={onClose} />;
+};
 
-  const activeIds = useMemo(() => new Set(active.map((p) => p.id)), [active]);
-  const available = useMemo(
-    () =>
-      Object.values(pool.defs).filter((d) => !activeIds.has(d.id)),
-    [pool, activeIds],
-  );
+const Modal = ({ onClose, children }: { onClose: () => void; children: ReactNode }) => (
+  <div
+    role="dialog"
+    style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(15, 18, 26, 0.45)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 32, zIndex: 30,
+    }}
+    onClick={onClose}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 'min(920px, 96%)', maxHeight: '92%',
+        background: SHADE.bg,
+        border: `1px solid ${SHADE.inkLine}`,
+        borderRadius: 4,
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      {children}
+    </div>
+  </div>
+);
 
-  // Group available params for the palette
-  const availableByGroup = useMemo(() => {
-    const m = new Map<NonNullable<ParamDef['group']>, ParamDef[]>();
-    for (const d of available) {
-      const g = d.group ?? 'core';
-      if (!m.has(g)) m.set(g, []);
-      m.get(g)!.push(d);
-    }
-    return Array.from(m.entries());
-  }, [available]);
-
-  const setVal = (id: string, value: number) =>
-    onChange(active.map((p) => (p.id === id ? { ...p, value } : p)));
-  const toggleAnim = (id: string) =>
-    onChange(active.map((p) => (p.id === id ? { ...p, animated: !p.animated } : p)));
-  const removeParam = (id: string) =>
-    onChange(active.filter((p) => p.id !== id));
-  const addParam = (def: ParamDef) =>
-    onChange([...active, { id: def.id, value: def.defaultValue, animated: false }]);
-  const resetAll = () => onChange(initialActiveParams(block.id, block.cat));
-
+const Header = ({
+  cat, title, paramCount, onReset, onClose, cardId,
+}: {
+  cat: CategoryKey;
+  title: string;
+  paramCount: number;
+  onReset?: () => void;
+  onClose: () => void;
+  /** When provided, renders Duplicate + Delete buttons that mutate the
+   *  store. Delete uses a tiny double-click "delete? · yes · no" pattern. */
+  cardId?: string;
+}) => {
+  const catInfo = CATEGORIES[cat];
   return (
     <div
-      role="dialog"
-      aria-label={`Edit ${block.name}`}
       style={{
-        position: 'absolute', inset: 0,
-        background: 'rgba(15, 18, 26, 0.45)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 32, zIndex: 30,
+        padding: '16px 20px',
+        borderBottom: `1px solid ${SHADE.border}`,
+        background: SHADE.surface2,
+        display: 'flex', alignItems: 'center', gap: 14,
+        position: 'relative',
       }}
-      onClick={onClose}
     >
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: catInfo.color }} />
       <div
-        onClick={(e) => e.stopPropagation()}
         style={{
-          width: 'min(920px, 96%)', maxHeight: '92%',
-          background: SHADE.bg,
-          border: `1px solid ${SHADE.inkLine}`,
-          borderRadius: 4,
-          display: 'flex', flexDirection: 'column',
-          overflow: 'hidden',
+          width: 42, height: 42, borderRadius: 4,
+          background: `${catInfo.color}1c`, border: `1px solid ${catInfo.color}55`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: `1px solid ${SHADE.border}`,
-            background: SHADE.surface2,
-            display: 'flex', alignItems: 'center', gap: 14,
-            position: 'relative',
-          }}
-        >
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: cat.color }} />
-          <div
-            style={{
-              width: 42, height: 42, borderRadius: 4,
-              background: `${cat.color}1c`, border: `1px solid ${cat.color}55`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Icon name={block.icon} size={22} color={cat.color} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ font: `700 20px ${TYPE.display}`, color: SHADE.text, letterSpacing: TYPE.trackTight }}>
-              {block.name.charAt(0)}{block.name.slice(1).toLowerCase()}
-            </div>
-            <div
-              style={{
-                font: `600 10px ${TYPE.bodyMono}`, color: SHADE.textDim,
-                letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 4,
-              }}
-            >
-              {cat.label} · {active.length} active · {available.length} more available
-            </div>
-          </div>
-          <button
-            onClick={resetAll}
-            style={{
-              padding: '7px 12px', borderRadius: 3,
-              background: 'transparent', border: `1px solid ${SHADE.border}`,
-              color: SHADE.textDim, cursor: 'pointer',
-              font: `500 11px ${TYPE.bodyMono}`,
-              letterSpacing: '0.10em', textTransform: 'uppercase',
-            }}
-          >
-            Reset
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              width: 34, height: 34, borderRadius: 3,
-              background: 'transparent', border: `1px solid ${SHADE.border}`,
-              color: SHADE.textDim, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Icon name="close" size={14} color={SHADE.textDim} />
-          </button>
+        <Icon name={catInfo.icon} size={22} color={catInfo.color} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ font: `700 20px ${TYPE.display}`, color: SHADE.text, letterSpacing: TYPE.trackTight }}>
+          {title}
         </div>
-
-        {/* Body — two columns */}
         <div
           style={{
-            display: 'grid', gridTemplateColumns: '1.4fr 1fr',
-            flex: 1, minHeight: 0,
+            font: `600 10px ${TYPE.bodyMono}`, color: SHADE.textDim,
+            letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 4,
           }}
         >
-          {/* Active params */}
-          <div
-            style={{
-              borderRight: `1px solid ${SHADE.border}`,
-              padding: '16px 20px 20px',
-              display: 'flex', flexDirection: 'column', gap: 16,
-              overflow: 'auto', minHeight: 0,
-            }}
-          >
-            <SectionEyebrow>Active params</SectionEyebrow>
-            {active.length === 0 ? (
-              <Empty>
-                No params yet. Add some from the palette →
-              </Empty>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                {active.map((p) => {
-                  const def = pool.defs[p.id];
-                  if (!def) return null;
-                  return (
-                    <ActiveParamRow
-                      key={p.id}
-                      def={def}
-                      value={p.value}
-                      animated={p.animated}
-                      onChange={(v) => setVal(p.id, v)}
-                      onToggleAnim={def.animatable ? () => toggleAnim(p.id) : undefined}
-                      onRemove={() => removeParam(p.id)}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Available palette */}
-          <div
-            style={{
-              padding: '16px 20px 20px', background: SHADE.surface2,
-              display: 'flex', flexDirection: 'column', gap: 14,
-              overflow: 'auto', minHeight: 0,
-            }}
-          >
-            <SectionEyebrow>Add parameter</SectionEyebrow>
-            {availableByGroup.length === 0 ? (
-              <Empty>All parameters added.</Empty>
-            ) : (
-              availableByGroup.map(([group, defs]) => (
-                <div key={group}>
-                  <div
-                    style={{
-                      font: `600 9.5px ${TYPE.bodyMono}`, color: SHADE.textFaint,
-                      letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8,
-                    }}
-                  >
-                    {PARAM_GROUP_LABEL[group]}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {defs.map((d) => (
-                      <button
-                        key={d.id}
-                        onClick={() => addParam(d)}
-                        style={{
-                          padding: '6px 10px 6px 8px',
-                          borderRadius: 3,
-                          background: SHADE.surface1,
-                          border: `1px solid ${SHADE.border}`,
-                          color: SHADE.text,
-                          font: `500 11.5px ${TYPE.body}`,
-                          letterSpacing: '0.02em',
-                          cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 14, height: 14, borderRadius: 2,
-                            border: `1px solid ${SHADE.inkLine}`,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
-                          <Icon name="plus" size={9} color={SHADE.inkLine} />
-                        </span>
-                        {d.label}
-                        {d.animatable && (
-                          <span style={{ font: `500 8.5px ${TYPE.bodyMono}`, color: SHADE.textDim, letterSpacing: '0.18em' }}>
-                            ✦
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          {catInfo.label} · {paramCount} param{paramCount === 1 ? '' : 's'}
         </div>
-
-        {/* Footer */}
-        <div
+      </div>
+      {cardId && <EditorCardActions cardId={cardId} onClose={onClose} />}
+      {onReset && (
+        <button
+          onClick={onReset}
           style={{
-            padding: '12px 20px',
-            borderTop: `1px solid ${SHADE.border}`,
-            background: SHADE.surface2,
-            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '7px 12px', borderRadius: 3,
+            background: 'transparent', border: `1px solid ${SHADE.border}`,
+            color: SHADE.textDim, cursor: 'pointer',
+            font: `500 11px ${TYPE.bodyMono}`,
+            letterSpacing: '0.10em', textTransform: 'uppercase',
           }}
         >
-          <span style={{ font: `500 10.5px ${TYPE.bodyMono}`, color: SHADE.textFaint, letterSpacing: '0.18em' }}>
-            DOUBLE-CLICK ANY BLOCK TO EDIT
+          Reset
+        </button>
+      )}
+      <button
+        onClick={onClose}
+        style={{
+          width: 34, height: 34, borderRadius: 3,
+          background: 'transparent', border: `1px solid ${SHADE.border}`,
+          color: SHADE.textDim, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <Icon name="close" size={14} color={SHADE.textDim} />
+      </button>
+    </div>
+  );
+};
+
+// ─── Editor card-actions (duplicate + delete) ─────────────────────────
+
+const EditorCardActions = ({
+  cardId, onClose,
+}: { cardId: string; onClose: () => void }) => {
+  const duplicateCard = useCardsStore((s) => s.duplicateCard);
+  const removeCard = useCardsStore((s) => s.removeCard);
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const onDuplicate = () => {
+    duplicateCard(cardId);
+    // Keep the modal open on the original card — duplicating is a "make me
+    // another one to tweak later" gesture, not a "switch focus" gesture.
+  };
+  const onDeleteClick = () => {
+    if (confirmDel) {
+      removeCard(cardId);
+      setConfirmDel(false);
+      onClose();
+    } else {
+      setConfirmDel(true);
+      window.setTimeout(() => setConfirmDel(false), 2600);
+    }
+  };
+
+  const baseBtn = {
+    padding: '7px 10px', borderRadius: 3,
+    background: 'transparent',
+    cursor: 'pointer',
+    font: `600 10.5px ${TYPE.bodyMono}`,
+    letterSpacing: '0.10em', textTransform: 'uppercase' as const,
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+  };
+
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <button
+        onClick={onDuplicate}
+        title="Duplicate card"
+        style={{
+          ...baseBtn,
+          border: `1px solid ${SHADE.border}`,
+          color: SHADE.textDim,
+        }}
+      >
+        <Icon name="b-feedback" size={13} color={SHADE.textDim} />
+        Duplicate
+      </button>
+      {confirmDel ? (
+        <>
+          <span style={{
+            font: `600 10px ${TYPE.bodyMono}`, color: '#8a2222',
+            letterSpacing: '0.10em', textTransform: 'uppercase', margin: '0 4px',
+          }}>
+            delete?
           </span>
           <button
-            onClick={onClose}
+            onClick={onDeleteClick}
+            title="Confirm delete"
+            style={{ ...baseBtn, border: '1px solid #8a222255', color: '#8a2222' }}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setConfirmDel(false)}
+            title="Cancel"
+            style={{ ...baseBtn, border: `1px solid ${SHADE.border}`, color: SHADE.textDim }}
+          >
+            No
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={onDeleteClick}
+          title="Delete card"
+          style={{ ...baseBtn, border: '1px solid #8a222255', color: '#8a2222' }}
+        >
+          <Icon name="trash" size={13} color="#8a2222" />
+          Delete
+        </button>
+      )}
+    </div>
+  );
+};
+
+const Footer = ({ onClose }: { onClose: () => void }) => (
+  <div
+    style={{
+      padding: '12px 20px',
+      borderTop: `1px solid ${SHADE.border}`,
+      background: SHADE.surface2,
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}
+  >
+    <span style={{ font: `500 10.5px ${TYPE.bodyMono}`, color: SHADE.textFaint, letterSpacing: '0.18em' }}>
+      CHANGES SAVE LIVE
+    </span>
+    <button
+      onClick={onClose}
+      style={{
+        marginLeft: 'auto',
+        padding: '8px 18px', borderRadius: 3,
+        background: SHADE.inkLine, color: SHADE.surface1,
+        border: 'none', cursor: 'pointer',
+        font: `600 11.5px ${TYPE.body}`,
+        letterSpacing: '0.10em', textTransform: 'uppercase',
+      }}
+    >
+      Done
+    </button>
+  </div>
+);
+
+// ─── Composition controls (blend + opacity) ────────────────────────────
+
+const BLEND_LABELS: Record<BlendMode, string> = {
+  normal: 'Normal', add: 'Add', multiply: 'Multiply',
+  screen: 'Screen', lighten: 'Lighten', darken: 'Darken',
+};
+
+const EditorCompositionControls = ({ card }: { card: Card }) => {
+  const setAlpha = useCardsStore((s) => s.setAlpha);
+  const setBlendMode = useCardsStore((s) => s.setBlendMode);
+  const alpha = card.alpha ?? 1;
+  const blend: BlendMode = card.blendMode ?? 'normal';
+  return (
+    <div
+      style={{
+        display: 'flex', flexDirection: 'column', gap: 12,
+        padding: 14, borderRadius: 4,
+        background: SHADE.surface1, border: `1px solid ${SHADE.border}`,
+      }}
+    >
+      <div>
+        <div
+          style={{
+            font: `700 10.5px ${TYPE.body}`,
+            color: SHADE.textDim, letterSpacing: '0.16em',
+            textTransform: 'uppercase', marginBottom: 8,
+          }}
+        >
+          Blend
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
+          {BLEND_MODES.map((mode) => {
+            const active = mode === blend;
+            return (
+              <button
+                key={mode}
+                onClick={() => setBlendMode(card.id, mode)}
+                style={{
+                  padding: '7px 4px',
+                  borderRadius: 3,
+                  background: active ? SHADE.gold : 'transparent',
+                  color: active ? '#1a1208' : SHADE.textDim,
+                  border: `1px solid ${active ? SHADE.goldDeep : SHADE.border}`,
+                  font: `600 10px ${TYPE.bodyMono}`,
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                {BLEND_LABELS[mode]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+          <span
             style={{
-              marginLeft: 'auto',
-              padding: '8px 18px', borderRadius: 3,
-              background: SHADE.inkLine, color: SHADE.surface1,
-              border: 'none', cursor: 'pointer',
-              font: `600 11.5px ${TYPE.body}`,
-              letterSpacing: '0.10em', textTransform: 'uppercase',
+              font: `700 11px ${TYPE.body}`,
+              color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
             }}
           >
-            Done
-          </button>
+            Opacity
+          </span>
+          <span style={{ marginLeft: 'auto', font: `500 13px ${TYPE.bodyMono}`, color: SHADE.text }}>
+            {alpha.toFixed(2)}
+          </span>
         </div>
+        <SliderRail value={alpha} onChange={(n) => setAlpha(card.id, n)} height={6} />
       </div>
     </div>
   );
 };
 
-const SectionEyebrow = ({ children }: { children: ReactNode }) => (
-  <div
-    style={{
-      font: `700 10px ${TYPE.bodyMono}`,
-      color: SHADE.textDim, letterSpacing: '0.22em', textTransform: 'uppercase',
-    }}
-  >
-    {children}
-  </div>
-);
+// ─── Typed card editor ─────────────────────────────────────────────────
 
-const Empty = ({ children }: { children: ReactNode }) => (
-  <div
-    style={{
-      padding: '24px 16px',
-      border: `1px dashed ${SHADE.border}`,
-      borderRadius: 4,
-      color: SHADE.textDim,
-      font: `500 12px ${TYPE.body}`,
-      letterSpacing: '0.01em',
-      textAlign: 'center',
-    }}
-  >
-    {children}
-  </div>
-);
+const TypedEditor = ({
+  card, def, onClose,
+}: { card: TypedCard; def: CardDef; onClose: () => void }) => {
+  const updateParamValue = useCardsStore((s) => s.updateParamValue);
+  const recipe = useCardsStore((s) => s.recipe);
+  const setRecipe = useCardsStore((s) => s.setRecipe);
+  const cat = categoryToBlock(def.category);
+  const entries = useMemo(() => Object.entries(def.params), [def]);
 
-const ActiveParamRow = ({
-  def, value, animated, onChange, onToggleAnim, onRemove,
+  const resetAll = () => {
+    setRecipe({
+      ...recipe,
+      cards: recipe.cards.map((c) => {
+        if (c.id !== card.id || c.kind !== 'typed') return c;
+        const freshParams: TypedCard['params'] = {};
+        for (const [k, p] of Object.entries(def.params)) {
+          freshParams[k] = { value: p.default, animation: null };
+        }
+        return { ...c, params: freshParams };
+      }),
+    });
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <Header
+        cat={cat}
+        title={def.friendlyName}
+        paramCount={entries.length}
+        onReset={resetAll}
+        onClose={onClose}
+        cardId={card.id}
+      />
+      <div
+        style={{
+          flex: 1, minHeight: 0,
+          padding: '16px 20px 20px',
+          display: 'flex', flexDirection: 'column', gap: 18,
+          overflow: 'auto',
+        }}
+      >
+        <EditorCompositionControls card={card} />
+        {def.description && (
+          <div
+            style={{
+              font: `400 12.5px ${TYPE.body}`, color: SHADE.textDim,
+              lineHeight: 1.5,
+            }}
+          >
+            {def.description}
+          </div>
+        )}
+        {entries.length === 0 ? (
+          <div
+            style={{
+              padding: '24px 16px',
+              border: `1px dashed ${SHADE.border}`,
+              borderRadius: 4,
+              color: SHADE.textDim,
+              font: `500 12px ${TYPE.body}`,
+              textAlign: 'center',
+            }}
+          >
+            No parameters for this card.
+          </div>
+        ) : (
+          entries.map(([key, p]) => (
+            <ParamRow
+              key={key}
+              paramKey={key}
+              def={p}
+              card={card}
+              onChange={(v) => updateParamValue(card.id, key, v)}
+            />
+          ))
+        )}
+      </div>
+      <Footer onClose={onClose} />
+    </Modal>
+  );
+};
+
+const ParamRow = ({
+  paramKey, def, card, onChange,
 }: {
+  paramKey: string;
   def: ParamDef;
-  value: number;
-  animated: boolean;
-  onChange: (v: number) => void;
-  onToggleAnim?: () => void;
-  onRemove: () => void;
-}) => (
-  <div>
-    <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-      <span
-        style={{
-          font: `700 11px ${TYPE.body}`,
-          color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
-        }}
-      >
-        {def.label}
-      </span>
-      <span
-        style={{
-          marginLeft: 'auto',
-          font: `500 13px ${TYPE.bodyMono}`,
-          color: animated ? SHADE.ember : SHADE.text,
-        }}
-      >
-        {value.toFixed(3)}{def.unit ?? ''}
-      </span>
-    </div>
-    <SliderRail value={value} animated={animated} onChange={onChange} height={6} />
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-      {onToggleAnim ? (
-        <button
-          onClick={onToggleAnim}
+  card: TypedCard;
+  onChange: (v: number | ColorRgb) => void;
+}) => {
+  const live = card.params[paramKey]?.value ?? def.default;
+  if (def.kind === 'float') {
+    const value = live as number;
+    const norm = paramToNormalized(value, def);
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+          <span
+            style={{
+              font: `700 11px ${TYPE.body}`,
+              color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
+            }}
+          >
+            {def.label}
+          </span>
+          <span style={{ marginLeft: 8, font: `400 10px ${TYPE.bodyMono}`, color: SHADE.textFaint }}>
+            {def.min} – {def.max}
+          </span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              font: `500 13px ${TYPE.bodyMono}`,
+              color: SHADE.text,
+            }}
+          >
+            {value.toFixed(stepDigits(def.step))}
+          </span>
+        </div>
+        <SliderRail
+          value={norm}
+          onChange={(n) => onChange(normalizedToParam(n, def))}
+          height={6}
+        />
+      </div>
+    );
+  }
+  if (def.kind === 'select') {
+    const value = live as number;
+    const current = def.options.find((o) => o.value === value);
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+          <span
+            style={{
+              font: `700 11px ${TYPE.body}`,
+              color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
+            }}
+          >
+            {def.label}
+          </span>
+          <span style={{ marginLeft: 8, font: `400 10px ${TYPE.bodyMono}`, color: SHADE.textFaint }}>
+            {def.options.length} option{def.options.length === 1 ? '' : 's'}
+          </span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              font: `500 13px ${TYPE.bodyMono}`,
+              color: SHADE.text,
+            }}
+          >
+            {current?.label ?? String(value)}
+          </span>
+        </div>
+        <div
           style={{
-            padding: '4px 10px', borderRadius: 3,
-            background: animated ? SHADE.ember : 'transparent',
-            color: animated ? '#fff' : SHADE.textDim,
-            border: `1px solid ${animated ? SHADE.ember : SHADE.border}`,
-            font: `600 10px ${TYPE.bodyMono}`,
-            letterSpacing: '0.18em', textTransform: 'uppercase',
-            cursor: 'pointer',
+            position: 'relative',
+            background: SHADE.surface1,
+            border: `1.5px solid ${SHADE.inkLine}`,
+            borderRadius: 3,
           }}
         >
-          {animated ? 'Animating' : 'Animate'}
-        </button>
-      ) : (
+          <select
+            value={String(value)}
+            onChange={(e) => onChange(Number(e.target.value))}
+            style={{
+              width: '100%',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              background: 'transparent',
+              border: 'none',
+              color: SHADE.text,
+              font: `500 13px ${TYPE.bodyMono}`,
+              padding: '9px 28px 9px 12px',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            {def.options.map((o) => (
+              <option key={o.value} value={String(o.value)}>{o.label}</option>
+            ))}
+          </select>
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute', right: 10, top: '50%',
+              transform: 'translateY(-65%) rotate(45deg)',
+              width: 7, height: 7,
+              borderRight: `1.5px solid ${SHADE.textDim}`,
+              borderBottom: `1.5px solid ${SHADE.textDim}`,
+              pointerEvents: 'none',
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+  // color
+  const v = live as ColorRgb;
+  return <ColorRow label={def.label} value={v} onChange={onChange} />;
+};
+
+const ColorRow = ({
+  label, value, onChange,
+}: { label: string; value: ColorRgb; onChange: (c: ColorRgb) => void }) => {
+  const [open, setOpen] = useState(false);
+  const r = Math.round(value[0] * 255);
+  const g = Math.round(value[1] * 255);
+  const b = Math.round(value[2] * 255);
+  const hex = `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
         <span
           style={{
-            font: `500 9px ${TYPE.bodyMono}`, color: SHADE.textFaint,
-            letterSpacing: '0.18em', textTransform: 'uppercase',
+            font: `700 11px ${TYPE.body}`,
+            color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
           }}
         >
-          static
+          {label}
         </span>
-      )}
-      <span style={{ flex: 1 }} />
+        <span style={{ marginLeft: 'auto', font: `500 12px ${TYPE.bodyMono}`, color: SHADE.text }}>{hex}</span>
+      </div>
       <button
-        onClick={onRemove}
-        title="Remove parameter"
+        onClick={() => setOpen((o) => !o)}
         style={{
-          padding: '4px 9px', borderRadius: 3,
-          background: 'transparent', color: SHADE.textDim,
-          border: `1px solid ${SHADE.border}`, cursor: 'pointer',
-          font: `500 10px ${TYPE.bodyMono}`,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
-          display: 'inline-flex', alignItems: 'center', gap: 5,
+          width: '100%', height: 36, borderRadius: 3,
+          background: hex,
+          border: `1.5px solid ${SHADE.inkLine}`,
+          cursor: 'pointer', display: 'block',
+        }}
+        aria-label={`${label} colour`}
+      />
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <RgbColorPicker
+            color={{ r, g, b }}
+            onChange={(c) => onChange([c.r / 255, c.g / 255, c.b / 255] as unknown as ColorRgb)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+function stepDigits(step?: number): number {
+  if (!step) return 3;
+  if (step >= 1) return 0;
+  if (step >= 0.1) return 1;
+  if (step >= 0.01) return 2;
+  return 3;
+}
+
+// ─── Wildcard editor ───────────────────────────────────────────────────
+
+const WildcardEditor = ({
+  card, onClose,
+}: { card: WildcardCard; onClose: () => void }) => {
+  const recipe = useCardsStore((s) => s.recipe);
+  const setRecipe = useCardsStore((s) => s.setRecipe);
+
+  const onSourceChange = (next: string) => {
+    setRecipe({
+      ...recipe,
+      cards: recipe.cards.map((c) => (c.id === card.id && c.kind === 'wildcard'
+        ? { ...c, rawSource: next }
+        : c)),
+    });
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <Header
+        cat="effect"
+        title={card.displayName ?? 'Custom code'}
+        paramCount={0}
+        onClose={onClose}
+        cardId={card.id}
+      />
+      <div
+        style={{
+          flex: 1, minHeight: 0,
+          padding: '16px 20px 20px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          overflow: 'hidden',
         }}
       >
-        <Icon name="close" size={10} color={SHADE.textDim} />
-        Remove
-      </button>
-    </div>
-  </div>
-);
+        <EditorCompositionControls card={card} />
+        <div
+          style={{
+            font: `700 10px ${TYPE.bodyMono}`,
+            color: SHADE.textDim, letterSpacing: '0.18em', textTransform: 'uppercase',
+          }}
+        >
+          Custom GLSL
+        </div>
+        <textarea
+          value={card.rawSource}
+          onChange={(e) => onSourceChange(e.target.value)}
+          spellCheck={false}
+          style={{
+            flex: 1, resize: 'none',
+            font: `500 13px ${TYPE.bodyMono}`,
+            color: SHADE.cream, background: SHADE.surface4,
+            border: `1px solid ${SHADE.border}`, borderRadius: 3,
+            padding: '12px 14px', lineHeight: 1.55,
+          }}
+        />
+      </div>
+      <Footer onClose={onClose} />
+    </Modal>
+  );
+};

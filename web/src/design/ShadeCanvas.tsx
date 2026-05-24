@@ -121,25 +121,68 @@ export const ShadeCanvas = ({
 
     const start = performance.now();
     let raf = 0;
-    const resize = () => {
+    let canvasReady = false;
+    // Resize is gated on a non-zero element box. The classic bug: on first
+    // mount `canvas.clientWidth` is 0 because the parent uses `aspect-ratio`
+    // and layout hasn't resolved; resize() then locks canvas.width to 1 and
+    // R uniform to (1,1), and the next ticks don't notice because the
+    // canvas.clientWidth/height comparison stays satisfied. Drive sizing
+    // from a ResizeObserver against the parent (whose box-size is authoritative
+    // even on first paint) and from a per-frame fallback inside tick().
+    const applySize = (cw: number, ch: number) => {
+      if (cw <= 0 || ch <= 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(1, canvas.clientWidth * dpr);
-      const h = Math.max(1, canvas.clientHeight * dpr);
+      const w = Math.max(1, Math.floor(cw * dpr));
+      const h = Math.max(1, Math.floor(ch * dpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
         gl.viewport(0, 0, w, h);
         gl.uniform2f(Rloc, w, h);
       }
+      canvasReady = true;
     };
+    const resize = () => {
+      const parent = canvas.parentElement;
+      const cw = parent ? parent.clientWidth : canvas.clientWidth;
+      const ch = parent ? parent.clientHeight : canvas.clientHeight;
+      applySize(cw, ch);
+    };
+
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const boxes = entry.borderBoxSize ?? entry.contentBoxSize;
+            const box = Array.isArray(boxes) ? boxes[0] : (boxes as unknown as ResizeObserverSize | undefined);
+            if (box) applySize(box.inlineSize, box.blockSize);
+            else {
+              const r = entry.target.getBoundingClientRect();
+              applySize(r.width, r.height);
+            }
+          }
+        })
+      : null;
+    if (ro && canvas.parentElement) ro.observe(canvas.parentElement);
+
+    // Belt-and-suspenders initial size attempts across the first few frames
+    // in case ResizeObserver doesn't fire with non-zero dims immediately.
+    resize();
+    requestAnimationFrame(() => { resize(); });
+    requestAnimationFrame(() => requestAnimationFrame(() => { resize(); }));
+
     const tick = () => {
-      resize();
-      gl.uniform1f(Tloc, (performance.now() - start) / 1000);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      resize(); // per-frame fallback
+      if (canvasReady) {
+        gl.uniform1f(Tloc, (performance.now() - start) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
       raf = requestAnimationFrame(tick);
     };
     tick();
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
   }, [variant]);
 
   return (

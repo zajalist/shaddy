@@ -132,6 +132,31 @@ describe('reparse', () => {
     expect(res.syntaxPending).toBe(true);
   });
 
+  it("emits alpha-updated when the user edits the marker's alpha value", () => {
+    const compiled = compile(RECIPE_RP);
+    // Inject an @{"alpha":0.5} tail onto c0's marker line.
+    const edited = compiled.glsl.replace(
+      /(\/\/#card c0[^\n]*)/,
+      '$1 @{"alpha":0.5}',
+    );
+    const res = reparse(RECIPE_RP, compiled, edited);
+    expect(res.syntaxPending).toBe(false);
+    expect(res.events).toContainEqual({ kind: 'alpha-updated', cardId: 'c0', alpha: 0.5 });
+    expect(res.recipe.cards[0]?.alpha).toBe(0.5);
+  });
+
+  it("emits blend-updated when the user edits the marker's blend value", () => {
+    const compiled = compile(RECIPE_RP);
+    const edited = compiled.glsl.replace(
+      /(\/\/#card c1[^\n]*)/,
+      '$1 @{"blend":"multiply"}',
+    );
+    const res = reparse(RECIPE_RP, compiled, edited);
+    expect(res.syntaxPending).toBe(false);
+    expect(res.events).toContainEqual({ kind: 'blend-updated', cardId: 'c1', blend: 'multiply' });
+    expect(res.recipe.cards[1]?.blendMode).toBe('multiply');
+  });
+
   it('updates rawSource (and displayName) on a wildcard body edit', () => {
     const wildcardRecipe: Recipe = {
       canvasAspect: 'square',

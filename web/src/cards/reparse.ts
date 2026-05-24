@@ -17,6 +17,7 @@
 
 import { findAllMarkers, findEndLine, sliceSpanBody } from './markers';
 import type {
+  BlendMode,
   Card,
   CompiledShader,
   Recipe,
@@ -47,7 +48,7 @@ export function reparse(
     return { recipe: prevRecipe, events: [], syntaxPending: true };
   }
 
-  // ── Per-card body comparison ────────────────────────────────────────
+  // ── Per-card body + composition comparison ─────────────────────────
   const events: ReparseEvent[] = [];
   const newCards: Card[] = [];
 
@@ -59,25 +60,44 @@ export function reparse(
     const currentBody = sliceSpanBody(nextSource, marker.lineNumber, bodyEndLine);
     const expectedBody = prevCompiled.spans[i]?.expectedBody ?? '';
 
+    // Detect marker-level composition edits FIRST. We diff against the
+    // resolved (defaults-applied) values on the previous card so a user
+    // typing `"alpha":1` on a no-comp marker doesn't emit a spurious event.
+    const prevAlpha = card.alpha ?? 1;
+    const prevBlend: BlendMode = card.blendMode ?? 'normal';
+    const nextAlpha = marker.alpha ?? 1;
+    const nextBlend: BlendMode = marker.blend ?? 'normal';
+    let updatedCard: Card = card;
+    if (nextAlpha !== prevAlpha) {
+      updatedCard = { ...updatedCard, alpha: nextAlpha };
+      events.push({ kind: 'alpha-updated', cardId: card.id, alpha: nextAlpha });
+    }
+    if (nextBlend !== prevBlend) {
+      updatedCard = { ...updatedCard, blendMode: nextBlend };
+      events.push({ kind: 'blend-updated', cardId: card.id, blend: nextBlend });
+    }
+
     const bodyMatches = normalizeGlsl(currentBody) === normalizeGlsl(expectedBody);
 
     if (bodyMatches) {
-      newCards.push(card);
+      newCards.push(updatedCard);
       continue;
     }
 
-    if (card.kind === 'typed') {
+    if (updatedCard.kind === 'typed') {
       const wildcard: WildcardCard = {
         kind: 'wildcard',
-        id: card.id,
-        enabled: card.enabled,
+        id: updatedCard.id,
+        enabled: updatedCard.enabled,
         rawSource: currentBody,
         displayName: extractDisplayName(currentBody),
+        alpha: updatedCard.alpha,
+        blendMode: updatedCard.blendMode,
       };
       newCards.push(wildcard);
       events.push({
         kind: 'card-became-wildcard',
-        cardId: card.id,
+        cardId: updatedCard.id,
         capturedSource: currentBody,
       });
       continue;
@@ -85,14 +105,14 @@ export function reparse(
 
     // Wildcard whose body changed — just update rawSource (+ displayName).
     const updated: WildcardCard = {
-      ...card,
+      ...updatedCard,
       rawSource: currentBody,
       displayName: extractDisplayName(currentBody),
     };
     newCards.push(updated);
     events.push({
       kind: 'wildcard-updated',
-      cardId: card.id,
+      cardId: updatedCard.id,
       capturedSource: currentBody,
     });
   }

@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import type { CSSProperties, MouseEventHandler } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, DragEventHandler, MouseEventHandler } from 'react';
+import type { Card } from '@/cards';
+import { lookupCardDef } from '@/cards';
 import { CATEGORIES, SHADE, TYPE } from './tokens';
 import type { BlockDef, BlockMini } from './tokens';
 import { Icon } from './icons';
+import { miniForCard } from './card-adapter';
 
 export const BLOCK_W = 168;
 export const BLOCK_H = 96;
@@ -115,6 +118,22 @@ const MiniSlider = ({
   );
 };
 
+const WildcardMini = () => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span
+      style={{
+        font: `700 9px ${TYPE.bodyMono}`, color: SHADE.textDim,
+        textTransform: 'uppercase', letterSpacing: '0.14em',
+      }}
+    >
+      Custom GLSL
+    </span>
+    <span style={{ marginLeft: 'auto', font: `700 9px ${TYPE.bodyMono}`, color: SHADE.ember }}>
+      {'</>'}
+    </span>
+  </div>
+);
+
 const MiniSwatches = ({ values }: { values: string[] }) => (
   <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
     {values.map((c, i) => (
@@ -159,11 +178,35 @@ export type BlockProps = {
   onDoubleClick?: MouseEventHandler<HTMLDivElement>;
   /** Active-params count shown as a "+N" chip when > 1 */
   paramCount?: number;
+  /** Live card from the recipe — when provided, the in-block mini reflects the
+   *  card's current first-param value rather than the BlockDef default. */
+  card?: Card;
+  // ─── drag-and-drop chain reordering ──────────────────────────────────
+  /** Makes the block draggable in the chain. */
+  draggable?: boolean;
+  onDragStart?: DragEventHandler<HTMLDivElement>;
+  onDragOver?: DragEventHandler<HTMLDivElement>;
+  onDragLeave?: DragEventHandler<HTMLDivElement>;
+  onDrop?: DragEventHandler<HTMLDivElement>;
+  onDragEnd?: DragEventHandler<HTMLDivElement>;
+  /** Visual states driven by the parent's drag tracking. */
+  isDragSource?: boolean;
+  dropIndicator?: 'left' | 'right' | null;
+  // ─── portal indicator (chain wrap) ───────────────────────────────────
+  /** When the chain wraps, the rightmost block of a row gets a colored
+   *  "exit" portal and the leftmost block of the next row gets a matching
+   *  "entry" portal — same color pairs the two sides of the connection
+   *  visually. */
+  portalSide?: 'exit' | 'enter' | null;
+  portalColor?: string | null;
 };
 
 export const Block = ({
   id, block, selected = false, snapTarget = false, dragging = false,
-  variant = {}, animated, onClick, onDoubleClick, paramCount = 1,
+  variant = {}, animated, onClick, onDoubleClick, paramCount = 1, card,
+  draggable, onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
+  isDragSource = false, dropIndicator = null,
+  portalSide = null, portalColor = null,
 }: BlockProps) => {
   const cat = CATEGORIES[block.cat];
   const path = blockPath(BLOCK_W, BLOCK_H, TAB, TAB_H, RADIUS, variant);
@@ -171,27 +214,134 @@ export const Block = ({
   const sliderAnimated = block.mini.kind === 'slider' ? block.mini.animated : undefined;
   const isAnimated = animated ?? sliderAnimated ?? false;
 
+  // Wildcard card → show a code badge as the mini, ignoring BlockDef.mini.
+  const isWildcard = card?.kind === 'wildcard';
+  const liveMini: BlockMini = (() => {
+    if (!card || card.kind !== 'typed') return block.mini;
+    const def = lookupCardDef(card.type);
+    if (!def) return block.mini;
+    return miniForCard(def, card);
+  })();
+
+  // ─── pulse on param updates ─────────────────────────────────────────
+  // Subscribing parents pass the live `card` — when its params object
+  // identity changes (any value tick), flash the border. Skip the very
+  // first mount via the ref guard so loading a recipe doesn't fire 12
+  // pulses at once.
+  const [pulseAt, setPulseAt] = useState(0);
+  const lastParamsRef = useRef<unknown>(card?.kind === 'typed' ? card.params : null);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    const next = card?.kind === 'typed' ? card.params : null;
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      lastParamsRef.current = next;
+      return;
+    }
+    if (next !== lastParamsRef.current) {
+      lastParamsRef.current = next;
+      setPulseAt(Date.now());
+    }
+  }, [card?.kind === 'typed' ? card.params : null]);
+  const pulseActive = pulseAt !== 0 && Date.now() - pulseAt < 220;
+  useEffect(() => {
+    if (!pulseActive) return;
+    const t = window.setTimeout(() => setPulseAt(0), 220);
+    return () => window.clearTimeout(t);
+  }, [pulseAt, pulseActive]);
+
   const fill = SHADE.surface1;
-  const stroke = selected ? SHADE.inkLine : SHADE.border;
-  const strokeWidth = selected ? 1.6 : 1;
+  const baseStroke = selected ? SHADE.inkLine : SHADE.border;
+  const stroke = pulseActive ? SHADE.ember : baseStroke;
+  const strokeWidth = selected || pulseActive ? 1.6 : 1;
 
   const containerStyle: CSSProperties = {
     position: 'relative',
     width: totalW, height: BLOCK_H,
     flex: '0 0 auto',
-    cursor: 'pointer',
+    cursor: draggable ? 'grab' : 'pointer',
     transform: dragging ? 'scale(1.04)' : 'none',
-    transition: 'transform 150ms cubic-bezier(.2,.7,.2,1.2)',
+    transition: 'transform 220ms cubic-bezier(.2,.7,.2,1.2)',
+    opacity: isDragSource ? 0.5 : 1,
   };
 
   return (
-    <div onClick={onClick} onDoubleClick={onDoubleClick} style={containerStyle}>
+    <div
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      style={containerStyle}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      {dropIndicator === 'left' && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: -2, top: 4, bottom: 4, width: 0,
+            borderLeft: `4px dashed ${SHADE.ember}`,
+            pointerEvents: 'none',
+            zIndex: 3,
+          }}
+        />
+      )}
+      {dropIndicator === 'right' && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            right: -2, top: 4, bottom: 4, width: 0,
+            borderRight: `4px dashed ${SHADE.ember}`,
+            pointerEvents: 'none',
+            zIndex: 3,
+          }}
+        />
+      )}
+      {portalSide === 'exit' && portalColor && (
+        // Outgoing portal — a horizontal colour streak that fades OUT past
+        // the right edge of this block. The matching block on the next row
+        // has a mirrored fade-IN streak in the same colour, so the eye
+        // reads them as one continuous trail that crossed the row break.
+        <div
+          aria-hidden
+          title="chain continues on the next row → same colour fades back in on the other side"
+          style={{
+            position: 'absolute',
+            right: -56, top: '50%', transform: 'translateY(-50%)',
+            width: 56, height: 3,
+            background: `linear-gradient(90deg, ${portalColor} 0%, ${portalColor}cc 35%, ${portalColor}55 70%, ${portalColor}00 100%)`,
+            pointerEvents: 'none', zIndex: 4,
+          }}
+        />
+      )}
+      {portalSide === 'enter' && portalColor && (
+        // Incoming portal — the trail emerges from the left of this block,
+        // matching the same colour that faded out of the previous row.
+        <div
+          aria-hidden
+          title="continued from the previous row's exit portal of the same colour"
+          style={{
+            position: 'absolute',
+            left: -56, top: '50%', transform: 'translateY(-50%)',
+            width: 56, height: 3,
+            background: `linear-gradient(90deg, ${portalColor}00 0%, ${portalColor}55 30%, ${portalColor}cc 65%, ${portalColor} 100%)`,
+            pointerEvents: 'none', zIndex: 4,
+          }}
+        />
+      )}
       <svg
         width={totalW + 2} height={BLOCK_H + 2}
         viewBox={`-1 -1 ${totalW + 2} ${BLOCK_H + 2}`}
         style={{ position: 'absolute', inset: '-1px 0 0 0', overflow: 'visible', pointerEvents: 'none' }}
       >
-        <path d={path} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+        <path
+          d={path} fill={fill} stroke={stroke} strokeWidth={strokeWidth}
+          style={{ transition: 'stroke 200ms ease-out, stroke-width 200ms ease-out' }}
+        />
         <clipPath id={`clip-${id}`}>
           <path d={path} />
         </clipPath>
@@ -246,7 +396,9 @@ export const Block = ({
         </div>
         {/* mini slider — full inner width; param count lives inline with the label */}
         <div style={{ marginTop: 'auto', marginBottom: 4 }}>
-          {renderMini(block.mini, isAnimated, paramCount)}
+          {isWildcard
+            ? <WildcardMini />
+            : renderMini(liveMini, isAnimated, paramCount)}
         </div>
       </div>
     </div>

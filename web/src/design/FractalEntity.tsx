@@ -56,17 +56,19 @@ float fractal(vec3 p){
   return l * pow(scale, -float(iterations)) - 0.25;
 }
 
+// Returns (distance, hit). hit=1.0 means we converged on the fractal surface,
+// hit=0.0 means we ran out of steps or exceeded MAXDIST.
 vec2 march(vec3 ro, vec3 rd){
-  const int steps = 30;
+  const int steps = 64;
   const float prec = 0.001;
-  vec2 res = vec2(0.0);
+  float t = 0.0;
   for (int i = 0; i < steps; i++) {
-    float d = fractal(ro + rd * res.x);
-    if (res.x > MAXDIST || d < prec) break;
-    res.x += d;
-    res.y = float(i);
+    if (t > MAXDIST) break;
+    float d = fractal(ro + rd * t);
+    if (d < prec) return vec2(t, 1.0);
+    t += d;
   }
-  return res;
+  return vec2(t, 0.0);
 }
 
 vec3 calcNormal(vec3 pos){
@@ -124,9 +126,14 @@ void main(){
   vec3 rayDir = cam * normalize(vec3(uv, 1.0 + sin(iTime * 0.8) * 0.05));
   vec2 res = march(camPos, rayDir);
 
-  if (res.x > MAXDIST) {
-    // missed — show fully transparent so the page bg shows
-    gl_FragColor = vec4(0.0);
+  // res.y == 1.0 means we hit; 0.0 means we ran out of steps / max-distance.
+  // Debug: on miss, render a faint warm gradient so we can see the canvas IS
+  // rendering even when no rays converge. Once we confirm hits work, this
+  // can be replaced with vec4(0) for true transparency.
+  if (res.y < 0.5) {
+    float fade = smoothstep(1.5, 0.2, length(uv));
+    vec3 dbg = mix(vec3(0.020, 0.018, 0.025), vec3(0.20, 0.12, 0.05), fade);
+    gl_FragColor = vec4(dbg, 1.0);
     return;
   }
 
@@ -137,13 +144,12 @@ void main(){
   float pulse = 0.85 + 0.25 * sin(iTime * 0.6);
   vec3 col = palettize(ao) * pulse;
 
-  // distance fade
+  // distance fade — darken color toward background but keep alpha at 1
   col = mix(col, vec3(0.020, 0.018, 0.030), clamp(res.x / MAXDIST, 0.0, 1.0));
   col = pow(col, vec3(0.6));
 
-  float alpha = clamp(1.0 - res.x / MAXDIST, 0.0, 1.0);
-  // premultiplied
-  gl_FragColor = vec4(col * alpha, alpha);
+  // Non-premultiplied output (matches premultipliedAlpha:false context flag)
+  gl_FragColor = vec4(col, 1.0);
 }
 `;
 
@@ -156,12 +162,19 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
     const gl = canvas.getContext('webgl', {
       antialias: false,
       alpha: true,
-      premultipliedAlpha: true,
+      premultipliedAlpha: false,
       preserveDrawingBuffer: false,
     });
-    if (!gl) return;
+    if (!gl) {
+      console.warn('FractalEntity: getContext returned null');
+      return;
+    }
+    if (gl.isContextLost()) {
+      console.warn('FractalEntity: context is already lost on init');
+    }
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    console.log('FractalEntity: gl context obtained, canvas size:', canvas.clientWidth, canvas.clientHeight);
 
     const compile = (type: number, src: string, name: string) => {
       const sh = gl.createShader(type);
@@ -188,6 +201,7 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
       return;
     }
     gl.useProgram(prog);
+    console.log('FractalEntity: program linked and in use');
 
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -199,7 +213,11 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
     const Rloc = gl.getUniformLocation(prog, 'iResolution');
     const Tloc = gl.getUniformLocation(prog, 'iTime');
 
-    // Pause rendering when offscreen, but never unmount the canvas / context.
+    // Pause rendering when offscreen — but always run resize() so the canvas
+    // is sized correctly the first time the section becomes visible. The
+    // previous bug was: visible=false initially → resize never ran → first
+    // visible frame had the default 300x150 canvas → shader ran with wrong
+    // R uniform → rays missed the fractal → only a window resize fixed it.
     let visible = true;
     const io = new IntersectionObserver(
       (entries) => { for (const e of entries) visible = e.isIntersecting; },
@@ -207,15 +225,25 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
     );
     io.observe(canvas);
 
+    // Force a synchronous layout pass so getBoundingClientRect returns the
+    // resolved padding-bottom-derived height on the very first frame.
+    if (canvas.parentElement) void canvas.parentElement.offsetHeight;
+
     let stopped = false;
     let raf = 0;
     const start = performance.now();
 
-    const resize = () => {
+    // The bug was: canvas.width/height were getting set ONCE to the wrong
+    // dimensions (parent rect 0×0 or stale) and then resize() never updated
+    // them again because the comparison `canvas.width !== w` was satisfied.
+    // Fix: ResizeObserver on the parent drives canvas sizing directly with
+    // entry.contentBoxSize (more reliable than getBoundingClientRect on first
+    // paint), AND we also poll from the rAF loop as a safety net.
+    let firstResizeLogged = false;
+    let canvasIsReady = false;
+    const applySize = (cw: number, ch: number) => {
+      if (cw <= 0 || ch <= 0) return false;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
-      const cw = canvas.clientWidth;
-      const ch = canvas.clientHeight;
-      if (cw === 0 || ch === 0) return false;
       const w = Math.max(1, Math.floor(cw * dpr));
       const h = Math.max(1, Math.floor(ch * dpr));
       if (canvas.width !== w || canvas.height !== h) {
@@ -223,20 +251,62 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
         canvas.height = h;
         gl.viewport(0, 0, w, h);
         gl.uniform2f(Rloc, w, h);
+        if (!firstResizeLogged) {
+          console.log('FractalEntity: first proper resize', { cw, ch, w, h });
+          firstResizeLogged = true;
+        }
       }
+      canvasIsReady = true;
       return true;
     };
 
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return canvasIsReady;
+      const rect = parent.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        if (!firstResizeLogged) {
+          console.warn('FractalEntity: parent rect 0×0, deferring', { w: rect.width, h: rect.height });
+        }
+        return canvasIsReady;
+      }
+      applySize(rect.width, rect.height);
+      return true;
+    };
+
+    // ResizeObserver fires on initial observe + on every layout-confirmed
+    // size change. Prefer entry.contentBoxSize when available; fall back to
+    // getBoundingClientRect for the (rare) browser that doesn't provide it.
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const boxes = entry.borderBoxSize ?? entry.contentBoxSize;
+        const box = Array.isArray(boxes) ? boxes[0] : (boxes as unknown as ResizeObserverSize | undefined);
+        if (box) {
+          applySize(box.inlineSize, box.blockSize);
+        } else {
+          const r = entry.target.getBoundingClientRect();
+          applySize(r.width, r.height);
+        }
+      }
+    });
+    if (canvas.parentElement) ro.observe(canvas.parentElement);
+
+    // Belt-and-suspenders initial size attempts across the first few frames,
+    // in case ResizeObserver doesn't fire with non-zero dims immediately.
+    resize();
+    requestAnimationFrame(() => { resize(); });
+    requestAnimationFrame(() => requestAnimationFrame(() => { resize(); }));
+
     const tick = () => {
       if (stopped) return;
-      if (visible) {
-        const ready = resize();
-        if (ready) {
-          gl.clearColor(0, 0, 0, 0);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          gl.uniform1f(Tloc, (performance.now() - start) / 1000);
-          gl.drawArrays(gl.TRIANGLES, 0, 3);
-        }
+      // Safety net: poll size each frame in case neither ResizeObserver nor
+      // the rAF-deferred resize() above caught the layout settle.
+      resize();
+      if (canvasIsReady && visible) {
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(Tloc, (performance.now() - start) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -246,6 +316,7 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
       stopped = true;
       cancelAnimationFrame(raf);
       io.disconnect();
+      ro.disconnect();
       // No loseContext — DOM removal handles cleanup; StrictMode re-run safe.
     };
   }, []);
@@ -254,7 +325,10 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
     <canvas
       ref={ref}
       aria-hidden="true"
-      style={{ display: 'block', width: '100%', height: '100%', ...style }}
+      // position: absolute + inset: 0 fills the parent's box reliably even
+      // when the parent's height comes from aspect-ratio (height: 100% on a
+      // canvas can resolve to 0 in some browsers until a relayout).
+      style={{ position: 'absolute', inset: 0, display: 'block', width: '100%', height: '100%', ...style }}
     />
   );
 };

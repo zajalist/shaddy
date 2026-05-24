@@ -21,7 +21,10 @@ export type {
   CompiledShader,
   ReparseEvent,
   ReparseResult,
+  BlendMode,
 } from './types';
+
+export { BLEND_MODES } from './types';
 
 export { MARKER_PREFIX, END_MARKER } from './markers';
 
@@ -38,11 +41,6 @@ export type { CardsState } from './state';
 
 export { STARTER_RECIPES } from './starter-recipes';
 export type { StarterRecipe } from './starter-recipes';
-
-export { CardStack, TypedCardItem, WildcardCardItem, ParamSlider, ColorSwatchInput } from './ui';
-
-export { CodeView } from './code-view/CodeView';
-export type { CodeViewHandle, CodeViewProps } from './code-view/CodeView';
 
 export {
   CARD_LIBRARY,

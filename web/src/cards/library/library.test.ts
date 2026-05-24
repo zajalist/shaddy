@@ -4,6 +4,7 @@ import {
   CARD_LIBRARY_LIST,
   GLSL_HELPERS,
   HELPER_EMISSION_ORDER,
+  PORTAL,
   lookupCardDef,
   resolveHelperClosure,
 } from './index';
@@ -28,10 +29,17 @@ describe('CARD_LIBRARY', () => {
     expect(new Set(types).size).toBe(types.length);
   });
 
-  it('every card has a non-empty snippet with at least one {{param}} placeholder', () => {
+  it('every card has a non-empty snippet; cards with params include at least one {{placeholder}}', () => {
+    // Zero-param marker cards (e.g. PORTAL) intentionally have no
+    // placeholders — they still need a non-empty snippet so the compiler's
+    // span machinery has a body line to attribute. Cards with params must
+    // reference at least one of them so authoring mistakes (a uniform that
+    // never gets wired up) surface here.
     for (const c of CARD_LIBRARY_LIST) {
       expect(c.snippetTemplate.trim().length).toBeGreaterThan(0);
-      expect(c.snippetTemplate).toMatch(/\{\{[a-z_][a-z0-9_]*\}\}/i);
+      if (Object.keys(c.params).length > 0) {
+        expect(c.snippetTemplate).toMatch(/\{\{[a-z_][a-z0-9_]*\}\}/i);
+      }
     }
   });
 
@@ -49,6 +57,13 @@ describe('CARD_LIBRARY', () => {
         expect(placeholders.includes(d)).toBe(true);
       }
     }
+  });
+
+  it('PORTAL is registered as a zero-param marker card with a non-empty snippet', () => {
+    expect(PORTAL.type).toBe('portal');
+    expect(Object.keys(PORTAL.params).length).toBe(0);
+    expect(PORTAL.snippetTemplate.length).toBeGreaterThan(0);
+    expect(lookupCardDef('portal')).toBe(PORTAL);
   });
 
   it('CARD_LIBRARY map keys match each card.type', () => {

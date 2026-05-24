@@ -67,6 +67,71 @@ const useLandingChrome = () => {
           from { opacity: 0; transform: scale(0.86) translateY(4px); }
           to   { opacity: 1; transform: scale(1)    translateY(0);   }
         }
+        /* Octocat hover — tilt + bob + a tiny blink. Pure CSS, no JS. */
+        .oct-btn { transition: background 0.2s, border-color 0.2s; }
+        .oct-svg {
+          transform-origin: 50% 60%;
+          transition: transform 0.35s cubic-bezier(0.2,1.4,0.4,1);
+        }
+        .oct-btn:hover .oct-svg {
+          animation: octBob 0.9s ease-in-out infinite;
+        }
+        @keyframes octBob {
+          0%   { transform: translateY(0)    rotate(-8deg) scale(1.04); }
+          25%  { transform: translateY(-1.5px) rotate(6deg)  scale(1.06); }
+          50%  { transform: translateY(0)    rotate(-4deg) scale(1.05); }
+          75%  { transform: translateY(-1px)  rotate(8deg)  scale(1.06); }
+          100% { transform: translateY(0)    rotate(-8deg) scale(1.04); }
+        }
+        .oct-eye { transform-origin: center; transform-box: fill-box; }
+        .oct-btn:hover .oct-eye-l { animation: octBlinkL 1.8s ease-in-out infinite; }
+        .oct-btn:hover .oct-eye-r { animation: octBlinkR 1.8s ease-in-out infinite; }
+        @keyframes octBlinkL {
+          0%, 42%, 50%, 100% { transform: scaleY(1); }
+          46% { transform: scaleY(0.1); }
+        }
+        @keyframes octBlinkR {
+          0%, 46%, 54%, 100% { transform: scaleY(1); }
+          50% { transform: scaleY(0.1); }
+        }
+        /* Composer icon — a tiny "snap" wiggle on hover */
+        .comp-btn .comp-svg {
+          transform-origin: 50% 60%;
+          transition: transform 0.3s cubic-bezier(0.2,1.4,0.4,1);
+        }
+        .comp-btn:hover .comp-svg {
+          animation: compSnap 0.7s ease-in-out infinite;
+        }
+        @keyframes compSnap {
+          0%, 100% { transform: rotate(0deg)  scale(1); }
+          25%      { transform: rotate(-4deg) scale(1.06); }
+          50%      { transform: rotate(0deg)  scale(1.08); }
+          75%      { transform: rotate(4deg)  scale(1.06); }
+        }
+        /* Tooltips for the nav icon buttons */
+        .icon-tip { position: relative; }
+        .icon-tip[data-tip]::after {
+          content: attr(data-tip);
+          position: absolute; top: calc(100% + 8px); left: 50%;
+          transform: translateX(-50%) translateY(-4px);
+          background: rgba(11,12,14,0.94);
+          color: #FEE7C7;
+          font: 600 10px "Geist Mono", ui-monospace, monospace;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          padding: 5px 9px; border-radius: 3px;
+          border: 1px solid rgba(252,180,39,0.35);
+          white-space: nowrap;
+          opacity: 0; pointer-events: none;
+          transition: opacity 0.18s, transform 0.18s;
+          z-index: 10;
+        }
+        .icon-tip[data-tip]:hover::after {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+        /* Auth pills — subtle hover lift */
+        .auth-pill { transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.18s; }
+        .auth-pill:hover { transform: translateY(-1px); }
       `;
       document.head.appendChild(style);
     }
@@ -131,29 +196,75 @@ const LandingNav = () => {
         <NavLink href="#code">Code</NavLink>
         <NavLink href="#faq">FAQ</NavLink>
       </nav>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
         <a
           href="https://github.com"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub"
+          data-tip="GitHub"
+          className="oct-btn icon-tip"
           style={{
+            width: 34, height: 34,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             color: SHADE.topbarText, textDecoration: 'none',
-            font: `500 12px ${TYPE.body}`, padding: '6px 12px',
-            border: '1px solid rgba(255,255,255,0.10)', borderRadius: 3,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
           }}
         >
-          GitHub
+          <span className="oct-svg" style={{ display: 'inline-flex' }}>
+            <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
+          </span>
         </a>
-        <a
-          href="/design"
+        <button
+          type="button"
+          className="auth-pill"
+          onClick={() => { alert('Auth coming soon'); }}
+          style={{
+            background: 'transparent', color: SHADE.cream,
+            border: `1px solid ${SHADE.gold}`,
+            borderRadius: 999,
+            padding: '6px 14px',
+            font: `600 11px ${TYPE.body}`,
+            letterSpacing: '0.10em', textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+        >
+          Log in
+        </button>
+        <button
+          type="button"
+          className="auth-pill"
+          onClick={() => { alert('Auth coming soon'); }}
           style={{
             background: SHADE.gold, color: '#1a1208',
-            border: `1px solid ${SHADE.goldDeep}`, borderRadius: 3,
-            padding: '8px 16px', textDecoration: 'none',
+            border: `1px solid ${SHADE.goldDeep}`,
+            borderRadius: 999,
+            padding: '6px 14px',
             font: `700 11px ${TYPE.body}`,
             letterSpacing: '0.10em', textTransform: 'uppercase',
-            display: 'inline-flex', alignItems: 'center', gap: 7,
+            cursor: 'pointer',
           }}
         >
-          Open composer
+          Sign up
+        </button>
+        <a
+          href="/design"
+          aria-label="Open composer"
+          data-tip="Open composer"
+          className="comp-btn icon-tip"
+          style={{
+            width: 34, height: 34,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: `linear-gradient(180deg, ${SHADE.gold} 0%, ${SHADE.goldDeep} 100%)`,
+            border: `1px solid ${SHADE.goldDeep}`, borderRadius: 6,
+            textDecoration: 'none',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 6px rgba(0,0,0,0.35)',
+          }}
+        >
+          <span className="comp-svg" style={{ display: 'inline-flex' }}>
+            <Icon name="composer-blocks" size={20} color={SHADE.gold} cream={SHADE.cream} />
+          </span>
         </a>
       </div>
     </nav>
@@ -172,6 +283,79 @@ const NavLink = ({ href, children }: { href: string; children: ReactNode }) => (
   >
     {children}
   </a>
+);
+
+// ─── Section separator — chunky filled diamond between sections ─────────
+// Replaces the older gold-circle-on-cream rule that read poorly: stronger
+// inkLine rules + a small filled diamond motif with a halo so the eye locks
+// on it without the separator getting loud.
+const SectionSeparator = () => (
+  <div
+    aria-hidden
+    style={{
+      maxWidth: 880, margin: '0 auto',
+      padding: '0 2rem',
+      display: 'flex', alignItems: 'center', gap: 18,
+      opacity: 0.85,
+    }}
+  >
+    <span
+      style={{
+        flex: 1, height: 1,
+        background:
+          `linear-gradient(90deg, rgba(252,180,39,0) 0%, ${SHADE.gold} 22%, ${SHADE.goldDeep} 78%, rgba(150,107,23,0) 100%)`,
+      }}
+    />
+    {/* chunky filled-diamond motif with a soft halo so it pops on either bg */}
+    <span
+      style={{
+        position: 'relative',
+        width: 18, height: 18,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute', inset: -6,
+          background: `radial-gradient(circle, ${SHADE.gold}30 0%, transparent 70%)`,
+          borderRadius: '50%',
+        }}
+      />
+      <span
+        style={{
+          position: 'relative',
+          width: 10, height: 10,
+          background: SHADE.gold,
+          border: `1px solid ${SHADE.goldDeep}`,
+          transform: 'rotate(45deg)',
+          boxShadow: `0 1px 0 ${SHADE.cream}40 inset, 0 2px 4px rgba(0,0,0,0.45)`,
+        }}
+      />
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute', left: -16, top: '50%',
+          width: 3, height: 3, borderRadius: '50%',
+          background: SHADE.goldDeep, transform: 'translateY(-50%)',
+        }}
+      />
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute', right: -16, top: '50%',
+          width: 3, height: 3, borderRadius: '50%',
+          background: SHADE.goldDeep, transform: 'translateY(-50%)',
+        }}
+      />
+    </span>
+    <span
+      style={{
+        flex: 1, height: 1,
+        background:
+          `linear-gradient(90deg, rgba(150,107,23,0) 0%, ${SHADE.goldDeep} 22%, ${SHADE.gold} 78%, rgba(252,180,39,0) 100%)`,
+      }}
+    />
+  </div>
 );
 
 // ─── Fixed left page TOC (hayba style) ──────────────────────────────────
@@ -1021,6 +1205,8 @@ export const Landing = () => {
         </div>
       </SectionShell>
 
+      <SectionSeparator />
+
       <section id="templates" style={{ padding: '7rem 2rem 6rem', position: 'relative' }}>
         <div style={{ maxWidth: 880, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ font: `700 11px ${TYPE.bodyMono}`, letterSpacing: '0.22em', textTransform: 'uppercase', color: SHADE.gold, marginBottom: 16 }}>
@@ -1049,6 +1235,8 @@ export const Landing = () => {
         <TemplatesGrid />
       </section>
 
+      <SectionSeparator />
+
       <SectionShell
         id="compose"
         eyebrow="The composer"
@@ -1058,6 +1246,8 @@ export const Landing = () => {
         <ComposerShowcase />
       </SectionShell>
 
+      <SectionSeparator />
+
       <SectionShell
         id="code"
         eyebrow="GLSL underneath"
@@ -1066,6 +1256,8 @@ export const Landing = () => {
       >
         <CodePanel />
       </SectionShell>
+
+      <SectionSeparator />
 
       <section id="stats" style={{ padding: '7rem 2rem 6rem', position: 'relative' }}>
         <div
@@ -1112,13 +1304,17 @@ export const Landing = () => {
               <StatsStrip />
             </div>
           </div>
-          {/* Transparent fractal — no card, no border. Sits on the page bg directly. */}
+          {/* Transparent fractal — no card, no border. Sits on the page bg directly.
+              Using padding-bottom:100% instead of aspect-ratio:1/1 because some
+              browsers don't commit aspect-ratio-derived heights until a layout
+              event, which made the fractal only appear after a window resize. */}
           <div
             style={{
               position: 'relative',
-              aspectRatio: '1 / 1',
               width: '100%',
               maxWidth: 520,
+              paddingBottom: 'min(100%, 520px)',
+              height: 0,
               justifySelf: 'end',
             }}
           >
@@ -1149,6 +1345,8 @@ export const Landing = () => {
           </div>
         </div>
       </section>
+
+      <SectionSeparator />
 
       <SectionShell
         id="faq"

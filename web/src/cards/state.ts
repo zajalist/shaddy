@@ -10,7 +10,15 @@
 import { create } from 'zustand';
 
 import { lookupCardDef } from './library';
-import type { Card, Parameter, ParameterValue, Recipe, TypedCard, WildcardCard } from './types';
+import type {
+  BlendMode,
+  Card,
+  Parameter,
+  ParameterValue,
+  Recipe,
+  TypedCard,
+  WildcardCard,
+} from './types';
 
 let _idCounter = 0;
 export function generateCardId(prefix = 'c'): string {
@@ -36,6 +44,9 @@ export type CardsState = {
   insertTypedCard: (cardType: string, atIndex?: number) => void;
   insertWildcard: (atIndex?: number, rawSource?: string, displayName?: string | null) => void;
   removeCard: (cardId: string) => void;
+  /** Insert a deep copy of `cardId` directly after it. Returns the new
+   *  card's id, or null if `cardId` wasn't found. */
+  duplicateCard: (cardId: string) => string | null;
   reorderCard: (cardId: string, toIndex: number) => void;
   toggleCardEnabled: (cardId: string) => void;
 
@@ -43,9 +54,15 @@ export type CardsState = {
   // Integration layer calls renderer.setUniform on the next animation frame;
   // no recompile needed.
   updateParamValue: (cardId: string, paramKey: string, value: ParameterValue) => void;
+
+  // Per-card composition — these DO change the emitted GLSL shape (wraps the
+  // card's body in a blend block) so the integration layer recompiles, same
+  // as a structural mutation.
+  setAlpha: (cardId: string, alpha: number) => void;
+  setBlendMode: (cardId: string, mode: BlendMode) => void;
 };
 
-export const useCardsStore = create<CardsState>((set) => ({
+export const useCardsStore = create<CardsState>((set, get) => ({
   recipe: EMPTY_RECIPE,
 
   setRecipe: (recipe) => set({ recipe }),
@@ -64,6 +81,8 @@ export const useCardsStore = create<CardsState>((set) => ({
         type: cardType,
         enabled: true,
         params,
+        alpha: 1,
+        blendMode: 'normal',
       };
       const cards = [...s.recipe.cards];
       const idx = atIndex ?? cards.length;
@@ -79,6 +98,8 @@ export const useCardsStore = create<CardsState>((set) => ({
         enabled: true,
         rawSource: rawSource ?? '  // your code here\n  d = 0.5;',
         displayName: displayName ?? null,
+        alpha: 1,
+        blendMode: 'normal',
       };
       const cards = [...s.recipe.cards];
       const idx = atIndex ?? cards.length;
@@ -90,6 +111,31 @@ export const useCardsStore = create<CardsState>((set) => ({
     set((s) => ({
       recipe: { ...s.recipe, cards: s.recipe.cards.filter((c) => c.id !== cardId) },
     })),
+
+  duplicateCard: (cardId) => {
+    const s = get();
+    const srcIdx = s.recipe.cards.findIndex((c) => c.id === cardId);
+    if (srcIdx < 0) return null;
+    const src = s.recipe.cards[srcIdx];
+    if (!src) return null;
+    // Deep-clone params (and the params subobjects) so future edits to either
+    // card don't bleed across. Wildcard rawSource is a primitive string —
+    // structural copy via spread is enough.
+    let clone: Card;
+    if (src.kind === 'typed') {
+      const newParams: Record<string, Parameter> = {};
+      for (const [k, p] of Object.entries(src.params)) {
+        newParams[k] = { value: p.value, animation: p.animation };
+      }
+      clone = { ...src, id: generateCardId(), params: newParams };
+    } else {
+      clone = { ...src, id: generateCardId('w') };
+    }
+    const cards = [...s.recipe.cards];
+    cards.splice(srcIdx + 1, 0, clone);
+    set({ recipe: { ...s.recipe, cards } });
+    return clone.id;
+  },
 
   reorderCard: (cardId, toIndex) =>
     set((s) => {
@@ -122,6 +168,27 @@ export const useCardsStore = create<CardsState>((set) => ({
             params: { ...c.params, [paramKey]: { value, animation: null } },
           };
         }),
+      },
+    })),
+
+  setAlpha: (cardId, alpha) =>
+    set((s) => {
+      const clamped = Math.max(0, Math.min(1, alpha));
+      return {
+        recipe: {
+          ...s.recipe,
+          cards: s.recipe.cards.map<Card>((c) =>
+            (c.id === cardId ? { ...c, alpha: clamped } : c)),
+        },
+      };
+    }),
+
+  setBlendMode: (cardId, mode) =>
+    set((s) => ({
+      recipe: {
+        ...s.recipe,
+        cards: s.recipe.cards.map<Card>((c) =>
+          (c.id === cardId ? { ...c, blendMode: mode } : c)),
       },
     })),
 }));

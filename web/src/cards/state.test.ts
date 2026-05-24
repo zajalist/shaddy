@@ -94,6 +94,42 @@ describe('useCardsStore — typed cards', () => {
   });
 });
 
+describe('useCardsStore — composition', () => {
+  it('insertTypedCard populates alpha: 1 and blendMode: "normal"', () => {
+    useCardsStore.getState().insertTypedCard('radial_gradient');
+    const card = useCardsStore.getState().recipe.cards[0];
+    if (card?.kind !== 'typed') throw new Error('expected typed');
+    expect(card.alpha).toBe(1);
+    expect(card.blendMode).toBe('normal');
+  });
+
+  it('insertWildcard populates alpha: 1 and blendMode: "normal"', () => {
+    useCardsStore.getState().insertWildcard(undefined, '  d = 0.7;');
+    const card = useCardsStore.getState().recipe.cards[0];
+    if (card?.kind !== 'wildcard') throw new Error('expected wildcard');
+    expect(card.alpha).toBe(1);
+    expect(card.blendMode).toBe('normal');
+  });
+
+  it('setAlpha clamps to [0,1] and mutates the targeted card', () => {
+    useCardsStore.getState().insertTypedCard('radial_gradient');
+    const id = useCardsStore.getState().recipe.cards[0]!.id;
+    useCardsStore.getState().setAlpha(id, 0.42);
+    expect(useCardsStore.getState().recipe.cards[0]?.alpha).toBe(0.42);
+    useCardsStore.getState().setAlpha(id, 2);
+    expect(useCardsStore.getState().recipe.cards[0]?.alpha).toBe(1);
+    useCardsStore.getState().setAlpha(id, -3);
+    expect(useCardsStore.getState().recipe.cards[0]?.alpha).toBe(0);
+  });
+
+  it('setBlendMode mutates the targeted card', () => {
+    useCardsStore.getState().insertTypedCard('radial_gradient');
+    const id = useCardsStore.getState().recipe.cards[0]!.id;
+    useCardsStore.getState().setBlendMode(id, 'screen');
+    expect(useCardsStore.getState().recipe.cards[0]?.blendMode).toBe('screen');
+  });
+});
+
 describe('useCardsStore — wildcards', () => {
   it('insertWildcard creates a wildcard with the given rawSource', () => {
     useCardsStore.getState().insertWildcard(undefined, '  d = 0.7;');

@@ -182,6 +182,99 @@ describe('helper emission', () => {
   });
 });
 
+describe('composition (alpha + blend)', () => {
+  const baseRecipe: Recipe = {
+    canvasAspect: 'square',
+    cards: [
+      {
+        kind: 'typed', id: 'c0', type: 'radial_gradient', enabled: true,
+        params: { softness: { value: 1, animation: null } },
+      },
+      {
+        kind: 'typed', id: 'c1', type: 'palette', enabled: true,
+        params: {
+          color_a: { value: [0.07, 0.09, 0.14], animation: null },
+          color_b: { value: [0.95, 0.55, 0.28], animation: null },
+        },
+      },
+    ],
+  };
+
+  it('default alpha+blend produces same GLSL as recipe without those fields', () => {
+    const withDefaults: Recipe = {
+      ...baseRecipe,
+      cards: baseRecipe.cards.map((c) => ({ ...c, alpha: 1, blendMode: 'normal' as const })),
+    };
+    expect(compile(withDefaults).glsl).toBe(compile(baseRecipe).glsl);
+  });
+
+  it('wraps body in mix() composition when alpha < 1', () => {
+    const recipe: Recipe = {
+      ...baseRecipe,
+      cards: [
+        baseRecipe.cards[0]!,
+        { ...baseRecipe.cards[1]!, alpha: 0.5 },
+      ],
+    };
+    const out = compile(recipe);
+    expect(out.glsl).toContain('vec3 _prev_col = col;');
+    expect(out.glsl).toContain('float _prev_d = d;');
+    expect(out.glsl).toContain('col = mix(_prev_col, _shadeBlend(_prev_col, col, 0), 0.5);');
+    expect(out.glsl).toContain('d = mix(_prev_d, d, 0.5);');
+  });
+
+  it("uses additive blend code (mode=1) when blendMode='add'", () => {
+    const recipe: Recipe = {
+      ...baseRecipe,
+      cards: [
+        baseRecipe.cards[0]!,
+        { ...baseRecipe.cards[1]!, blendMode: 'add' },
+      ],
+    };
+    const out = compile(recipe);
+    // Helper present + the mode literal `1` in this card's composition line.
+    expect(out.glsl).toContain('vec3 _shadeBlend(vec3 base, vec3 over, int mode)');
+    expect(out.glsl).toContain('return base + over;');
+    expect(out.glsl).toMatch(/_shadeBlend\(_prev_col, col, 1\)/);
+  });
+
+  it('emits alpha + blend metadata on marker when non-default', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed', id: 'c0', type: 'radial_gradient', enabled: true,
+          params: { softness: { value: 1, animation: null } },
+          alpha: 0.5, blendMode: 'add',
+        },
+      ],
+    };
+    const out = compile(recipe);
+    expect(out.glsl).toMatch(/\/\/#card c0 Radial gradient .* @\{"alpha":0\.5,"blend":"add"\}/);
+  });
+
+  it('omits composition metadata when defaults', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed', id: 'c0', type: 'radial_gradient', enabled: true,
+          params: { softness: { value: 1, animation: null } },
+          alpha: 1, blendMode: 'normal',
+        },
+      ],
+    };
+    const out = compile(recipe);
+    expect(out.glsl).not.toContain('@{');
+    expect(out.glsl).not.toContain('_shadeBlend');
+  });
+
+  it('omits blend helper when no card uses non-default composition', () => {
+    const out = compile(baseRecipe);
+    expect(out.glsl).not.toContain('_shadeBlend');
+  });
+});
+
 describe('validateRecipe', () => {
   it('returns empty when all cards are known', () => {
     expect(validateRecipe(RECIPE_RGV)).toEqual([]);
