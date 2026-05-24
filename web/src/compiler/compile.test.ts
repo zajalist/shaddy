@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { compile } from './compile';
-import { BLOCK_LIBRARY } from './blocks';
 import type { Block, Recipe } from './types';
 
 function emptyRecipe(): Recipe {
@@ -235,5 +234,3 @@ describe('compile — block walker', () => {
     expect(out.error.code).toBe('param_type_mismatch');
   });
 });
-
-void BLOCK_LIBRARY; // referenced so the test file compiles before Task 7 lands blocks
