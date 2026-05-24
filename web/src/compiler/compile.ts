@@ -97,6 +97,10 @@ export function compile(recipe: Recipe): CompileResult {
     lines.push('');
   }
 
+  const anyHelperEmitted = HELPER_EMISSION_ORDER.some(
+    (name) => helperClosure.has(name) && GLSL_HELPERS[name],
+  );
+  if (anyHelperEmitted) lines.push('// === helpers ===');
   for (const name of HELPER_EMISSION_ORDER) {
     if (!helperClosure.has(name)) continue;
     const body = GLSL_HELPERS[name];
@@ -139,8 +143,16 @@ function emitBlock(b: Block, def: BlockDef, lines: string[]): void {
   }
 
   // Substituted snippet — animated params resolve to the local name; static
-  // params resolve to the uniform name.
+  // params resolve to the uniform name. An unknown placeholder means the
+  // BlockDef.glsl references a name that's not in def.params — almost
+  // always a block-library authoring typo. Fail loudly so per-block tests
+  // catch it instead of emitting a reference to an undeclared uniform.
   const snippet = substitutePlaceholders(def.glsl, (paramName) => {
+    if (!(paramName in def.params)) {
+      throw new Error(
+        `[compiler] block "${def.type}" glsl references {{${paramName}}} which is not declared in def.params`,
+      );
+    }
     const p = b.params[paramName];
     if (p?.animation) return `_${b.id}_${paramName}`;
     return `u_${b.id}_${paramName}`;
@@ -161,7 +173,7 @@ function collectUniformsForBlock(
 ): void {
   for (const [paramName, paramDef] of Object.entries(def.params)) {
     const p = b.params[paramName];
-    if (!p) continue;
+    if (!p) continue; // pre-validated in validateBlockParams — defensive only.
 
     if (p.animation) {
       for (const ub of animUniformBindings(b.id, paramName, p.animation)) {
