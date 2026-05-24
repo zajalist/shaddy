@@ -1,0 +1,213 @@
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useMascotEyes } from './useMascotEyes';
+import './Mascot.css';
+
+export type MascotMood = 'neutral' | 'happy' | 'thinking' | 'sleeping';
+
+export interface MascotProps {
+  mood?: MascotMood;
+  size?: number;
+  idle?: boolean;
+  eyesFollow?: boolean;
+  hoverReact?: boolean;
+  clickReact?: boolean;
+  className?: string;
+  ariaLabel?: string;
+}
+
+const VIEWBOX_W = 1059;
+const VIEWBOX_H = 820;
+const VIEWBOX_OFFSET_Y = -120;
+const BOUNCE_MS = 420;
+
+export function Mascot({
+  mood = 'neutral',
+  size = 200,
+  idle = true,
+  eyesFollow = true,
+  hoverReact = true,
+  clickReact = true,
+  className = '',
+  ariaLabel = 'Mascot',
+}: MascotProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [bouncing, setBouncing] = useState(false);
+
+  const eyesActive = eyesFollow && mood !== 'thinking' && mood !== 'sleeping';
+  useMascotEyes(svgRef, eyesActive);
+
+  useEffect(() => {
+    if (!bouncing) return;
+    const t = window.setTimeout(() => setBouncing(false), BOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [bouncing]);
+
+  const handleClick = useCallback(() => {
+    if (!clickReact || mood === 'sleeping') return;
+    setBouncing(false);
+    requestAnimationFrame(() => setBouncing(true));
+  }, [clickReact, mood]);
+
+  const rawId = useId();
+  const id = rawId.replace(/:/g, '');
+  const gradId = `mascot-grad-${id}`;
+  const maskId = `mascot-mask-${id}`;
+
+  const classes = [
+    'mascot-root',
+    `mascot--${mood}`,
+    idle && mood !== 'sleeping' ? 'mascot--idle' : '',
+    mood === 'sleeping' ? 'mascot--sway' : '',
+    hoverReact && mood !== 'sleeping' ? 'mascot--hover-react' : '',
+    bouncing ? 'mascot--bouncing' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const height = Math.round((size * VIEWBOX_H) / VIEWBOX_W);
+
+  return (
+    <div
+      className={classes}
+      style={{ width: size, height }}
+      role="img"
+      aria-label={ariaLabel}
+      onClick={handleClick}
+    >
+      <div className="mascot-bob">
+        <div className="mascot-pose">
+          <div className="mascot-bounce">
+            <svg
+              ref={svgRef}
+              viewBox={`0 ${VIEWBOX_OFFSET_Y} ${VIEWBOX_W} ${VIEWBOX_H}`}
+              width="100%"
+              height="100%"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              focusable="false"
+              overflow="visible"
+            >
+              <defs>
+                <linearGradient
+                  id={gradId}
+                  x1="529.5"
+                  y1="0"
+                  x2="529.5"
+                  y2="700"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stopColor="#FCB427" />
+                  <stop offset="1" stopColor="#966B17" />
+                </linearGradient>
+                <mask id={maskId} fill="white">
+                  <path d="M341.523 0C370.459 0.0000972361 393.635 24.7571 398.917 53.2061C408.236 103.4 437.886 171 530 171C622.114 171 651.764 103.4 661.083 53.2061C666.365 24.7571 689.541 0.0000972424 718.477 0H830C857.614 0 880 22.3858 880 50V246.349C897.616 235.957 918.118 230 940 230C1005.72 230 1059 283.726 1059 350C1059 416.274 1005.72 470 940 470C918.118 470 897.616 464.042 880 453.65V650C880 677.614 857.614 700 830 700H230C202.386 700 180 677.614 180 650V453.054C162.162 463.814 141.298 470 119 470C53.2781 470 0 416.274 0 350C0 283.726 53.2781 230 119 230C141.297 230 162.162 236.185 180 246.945V50C180 22.3858 202.386 0.000000765159 230 0H341.523Z" />
+                </mask>
+              </defs>
+
+              <g className="mascot-body">
+                <path
+                  d="M341.523 0C370.459 0.0000972361 393.635 24.7571 398.917 53.2061C408.236 103.4 437.886 171 530 171C622.114 171 651.764 103.4 661.083 53.2061C666.365 24.7571 689.541 0.0000972424 718.477 0H830C857.614 0 880 22.3858 880 50V246.349C897.616 235.957 918.118 230 940 230C1005.72 230 1059 283.726 1059 350C1059 416.274 1005.72 470 940 470C918.118 470 897.616 464.042 880 453.65V650C880 677.614 857.614 700 830 700H230C202.386 700 180 677.614 180 650V453.054C162.162 463.814 141.298 470 119 470C53.2781 470 0 416.274 0 350C0 283.726 53.2781 230 119 230C141.297 230 162.162 236.185 180 246.945V50C180 22.3858 202.386 0.000000765159 230 0H341.523Z"
+                  fill={`url(#${gradId})`}
+                />
+                <path
+                  d="M341.523 0L341.523 -15H341.523V0ZM398.917 53.2061L384.169 55.9442V55.9442L398.917 53.2061ZM661.083 53.2061L675.831 55.9442V55.9442L661.083 53.2061ZM718.477 0V-15H718.477L718.477 0ZM880 50H895V50H880ZM880 246.349H865V272.613L887.621 259.268L880 246.349ZM880 453.65L887.621 440.731L865 427.386V453.65H880ZM880 650H895V650H880ZM830 700V715V715V700ZM230 700V715V715V700ZM180 650H165V650H180ZM180 453.054H195V426.488L172.252 440.21L180 453.054ZM180 246.945L172.252 259.79L195 273.511V246.945H180ZM180 50L165 50V50H180ZM230 0V-15V-15V0ZM341.523 0L341.523 15C361.361 15.0001 379.833 32.5899 384.169 55.9442L398.917 53.2061L413.665 50.4679C407.437 16.9243 379.556 -14.9999 341.523 -15L341.523 0ZM398.917 53.2061L384.169 55.9442C389.076 82.3714 399.54 114.756 422.077 140.752C445.113 167.322 479.741 186 530 186V171V156C488.145 156 461.891 140.878 444.744 121.1C427.098 100.746 418.078 74.2342 413.665 50.4679L398.917 53.2061ZM530 171V186C580.259 186 614.887 167.322 637.923 140.752C660.46 114.756 670.924 82.3714 675.831 55.9442L661.083 53.2061L646.335 50.4679C641.922 74.2342 632.902 100.746 615.256 121.1C598.109 140.878 571.855 156 530 156V171ZM661.083 53.2061L675.831 55.9442C680.167 32.5899 698.639 15.0001 718.477 15L718.477 0L718.477 -15C680.444 -14.9999 652.563 16.9243 646.335 50.4679L661.083 53.2061ZM718.477 0V15H830V0V-15H718.477V0ZM830 0V15C849.33 15 865 30.67 865 50H880H895C895 14.1015 865.898 -15 830 -15V0ZM880 50H865V246.349H880H895V50H880ZM880 246.349L887.621 259.268C902.997 250.198 920.877 245 940 245V230V215C915.359 215 892.235 221.716 872.379 233.429L880 246.349ZM940 230V245C997.32 245 1044 291.892 1044 350H1059H1074C1074 275.56 1014.12 215 940 215V230ZM1059 350H1044C1044 408.108 997.32 455 940 455V470V485C1014.12 485 1074 424.44 1074 350H1059ZM940 470V455C920.878 455 902.998 449.801 887.621 440.731L880 453.65L872.379 466.57C892.235 478.283 915.358 485 940 485V470ZM880 453.65H865V650H880H895V453.65H880ZM880 650H865C865 669.33 849.33 685 830 685V700V715C865.898 715 895 685.898 895 650H880ZM830 700V685H230V700V715H830V700ZM230 700V685C210.67 685 195 669.33 195 650H180H165C165 685.898 194.102 715 230 715V700ZM180 650H195V453.054H180H165V650H180ZM180 453.054L172.252 440.21C156.681 449.603 138.484 455 119 455V470V485C144.111 485 167.643 478.025 187.748 465.898L180 453.054ZM119 470V455C61.6805 455 15 408.108 15 350H0H-15C-15 424.44 44.8757 485 119 485V470ZM0 350H15C15 291.892 61.6805 245 119 245V230V215C44.8757 215 -15 275.56 -15 350H0ZM119 230V245C138.485 245 156.681 250.397 172.252 259.79L180 246.945L187.748 234.101C167.643 221.974 144.11 215 119 215V230ZM180 246.945H195V50H180H165V246.945H180ZM180 50L195 50C195 30.67 210.67 15 230 15V0V-15C194.101 -15 165 14.1015 165 50L180 50ZM230 0V15H341.523V0V-15H230V0Z"
+                  fill="#4A2F29"
+                  fillOpacity="0.1"
+                  mask={`url(#${maskId})`}
+                />
+              </g>
+
+              <g className="mascot-mouth">
+                <path
+                  d="M612.052 495.998C625.31 495.998 634.86 508.78 628.411 520.365C608.943 555.338 571.603 578.998 528.737 578.998C485.87 578.998 448.53 555.338 429.062 520.365C422.613 508.78 432.163 495.998 445.422 495.998H612.052Z"
+                  fill="#FEE7C7"
+                  fillOpacity="0.5"
+                />
+              </g>
+
+              <g className="mascot-eye mascot-eye--left">
+                <path
+                  d="M395.004 251.998C457.964 251.998 509.004 303.038 509.004 365.998C509.004 382.94 505.308 399.019 498.678 413.473C487.69 437.427 460.435 446.998 434.081 446.998H355.927C329.573 446.998 302.318 437.427 291.33 413.473C284.7 399.019 281.004 382.94 281.004 365.998C281.004 303.038 332.043 251.998 395.004 251.998Z"
+                  fill="#FEE7C7"
+                  fillOpacity="0.5"
+                />
+                <circle
+                  className="mascot-pupil mascot-pupil--left"
+                  cx="394.504"
+                  cy="396.498"
+                  r="46.5"
+                  fill="#7A4E0F"
+                />
+                <circle
+                  className="mascot-glint"
+                  cx="378"
+                  cy="380"
+                  r="11"
+                  fill="#FEE7C7"
+                  opacity="0.9"
+                />
+              </g>
+
+              <g className="mascot-eye mascot-eye--right">
+                <path
+                  d="M662.004 252.998C724.964 252.998 776.004 304.038 776.004 366.998C776.004 383.908 772.322 399.959 765.716 414.391C754.739 438.37 727.466 447.956 701.094 447.956H622.914C596.542 447.956 569.268 438.37 558.292 414.391C551.686 399.959 548.004 383.908 548.004 366.998C548.004 304.038 599.043 252.998 662.004 252.998Z"
+                  fill="#FEE7C7"
+                  fillOpacity="0.5"
+                />
+                <circle
+                  className="mascot-pupil mascot-pupil--right"
+                  cx="661.504"
+                  cy="396.498"
+                  r="46.5"
+                  fill="#7A4E0F"
+                />
+                <circle
+                  className="mascot-glint"
+                  cx="645"
+                  cy="380"
+                  r="11"
+                  fill="#FEE7C7"
+                  opacity="0.9"
+                />
+              </g>
+
+              <g className="mascot-thought" aria-hidden="true">
+                <circle cx="450" cy="-50" r="18" fill="#FCB427" />
+                <circle cx="530" cy="-50" r="18" fill="#FCB427" />
+                <circle cx="610" cy="-50" r="18" fill="#FCB427" />
+              </g>
+
+              <g className="mascot-zzz" aria-hidden="true">
+                <text
+                  x="620"
+                  y="40"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fontWeight="900"
+                  fontSize="96"
+                  fill="#FCB427"
+                >z</text>
+                <text
+                  x="720"
+                  y="-30"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fontWeight="900"
+                  fontSize="72"
+                  fill="#FCB427"
+                >z</text>
+                <text
+                  x="810"
+                  y="-90"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fontWeight="900"
+                  fontSize="54"
+                  fill="#FCB427"
+                >z</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
