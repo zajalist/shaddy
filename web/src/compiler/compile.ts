@@ -137,6 +137,16 @@ export function compile(recipe: Recipe): CompileResult {
 function emitBlock(b: Block, def: BlockDef, lines: string[]): void {
   lines.push('  ' + emitBlockOpen(b.id, b.type, b.params));
 
+  if (b.type === 'custom') {
+    const code = (b.params.code?.value as string | undefined) ?? '';
+    lines.push('  {');
+    for (const sl of code.split('\n')) lines.push('  ' + sl);
+    lines.push('  }');
+    lines.push('  ' + emitBlockClose(b.id));
+    lines.push('');
+    return;
+  }
+
   // Animation locals first.
   for (const [pname, p] of Object.entries(b.params)) {
     if (p.animation) lines.push('  ' + emitAnimLocal(b.id, pname, p.animation));

@@ -5,6 +5,7 @@
 import type { BlockDef } from '../types';
 import { BRIGHTNESS_CONTRAST } from './brightness-contrast';
 import { CHECKER } from './checker';
+import { CUSTOM } from './custom';
 import { DOTS } from './dots';
 import { GLOW } from './glow';
 import { GRAIN } from './grain';
@@ -32,6 +33,7 @@ import { WAVE_WARP } from './wave-warp';
 export {
   BRIGHTNESS_CONTRAST,
   CHECKER,
+  CUSTOM,
   DOTS,
   GLOW,
   GRAIN,
@@ -87,7 +89,8 @@ const ALL: BlockDef[] = [
   GRAIN,
   SCANLINES,
   BRIGHTNESS_CONTRAST,
-  // custom (Task 10 — not yet present; will be appended)
+  // custom
+  CUSTOM,
 ];
 
 export const BLOCK_LIBRARY: Record<string, BlockDef> = Object.fromEntries(

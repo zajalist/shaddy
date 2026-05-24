@@ -241,7 +241,7 @@ describe('per-block sanity — every Phase 1 + 2 block compiles with default par
     'swirl', 'repeat', 'palette', 'hue_cycle', 'triple_gradient',
     'wave_warp', 'glow', 'vignette', 'grain',
     'spiral', 'dots', 'checker', 'rotate', 'kaleidoscope', 'pixelate',
-    'invert', 'posterize', 'scanlines', 'brightness_contrast'])(
+    'invert', 'posterize', 'scanlines', 'brightness_contrast', 'custom'])(
     '%s compiles with default params',
     (type) => {
       const def = BLOCK_LIBRARY[type]!;
@@ -258,4 +258,38 @@ describe('per-block sanity — every Phase 1 + 2 block compiles with default par
       expect(out.ok).toBe(true);
     },
   );
+});
+
+describe('compile — custom block', () => {
+  it('emits the user code verbatim inside a block scope', () => {
+    const out = compile(
+      recipeOf([
+        block({
+          id: 'b1',
+          type: 'custom',
+          params: { code: { value: 'd = 0.42;\ncol = vec3(1, 0, 0);', animation: null } },
+        }),
+      ]),
+    );
+    if (!out.ok) throw new Error('expected ok');
+    expect(out.glsl).toContain('  {');
+    expect(out.glsl).toContain('d = 0.42;');
+    expect(out.glsl).toContain('col = vec3(1, 0, 0);');
+    expect(out.glsl).toContain('  }');
+  });
+
+  it('does NOT emit any per-block uniforms for a custom block', () => {
+    const out = compile(
+      recipeOf([
+        block({
+          id: 'b1',
+          type: 'custom',
+          params: { code: { value: 'd = 0.5;', animation: null } },
+        }),
+      ]),
+    );
+    if (!out.ok) throw new Error('expected ok');
+    const statics = out.uniforms.filter((u) => u.source.kind === 'static');
+    expect(statics.length).toBe(0);
+  });
 });
