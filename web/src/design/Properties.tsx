@@ -5,7 +5,7 @@
 // changes through useCardsStore.updateParamValue. When nothing is selected,
 // shows the global panel (canvas aspect, tempo, share).
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { RgbColorPicker } from 'react-colorful';
 
@@ -17,6 +17,7 @@ import {
   type Card,
   type CardDef,
   type ColorRgb,
+  type MediaSourceRef,
   type ShaderTemplate,
   type TypedCard,
 } from '@/cards';
@@ -287,6 +288,28 @@ const TypedCardProps = ({
                 />
               );
             }
+            if (p.kind === 'image') {
+              return (
+                <ImageParamRow
+                  key={key}
+                  label={p.label}
+                  cardId={card.id}
+                  paramKey={key}
+                  liveValue={(card.params[key]?.value as string | undefined) ?? ''}
+                />
+              );
+            }
+            if (p.kind === 'video') {
+              return (
+                <VideoParamRow
+                  key={key}
+                  label={p.label}
+                  cardId={card.id}
+                  paramKey={key}
+                  liveValue={(card.params[key]?.value as string | undefined) ?? ''}
+                />
+              );
+            }
             // color
             const v = live as ColorRgb;
             return (
@@ -463,6 +486,178 @@ const ActionButton = ({
     >
       {children}
     </button>
+  );
+};
+
+// ─── Image / video param rows ──────────────────────────────────────────
+//
+// Image: click "Choose…" → file picker → decode to <img> → push as
+// sourceRef on the Parameter so RecipeCanvas's per-frame texture pusher
+// uploads it. The data URL doubles as the serialised Recipe value so the
+// upload survives a Recipe round-trip (e.g. share URLs once we have them).
+//
+// Video: click "Start camera" → getUserMedia → bind <video> sourceRef.
+// Click "Stop" to release the stream. The video element is kept alive
+// (off-DOM) so subsequent frames keep flowing into the renderer.
+
+const ImageParamRow = ({
+  label, cardId, paramKey, liveValue,
+}: {
+  label: string;
+  cardId: string;
+  paramKey: string;
+  liveValue: string;
+}) => {
+  const setParamSource = useCardsStore((s) => s.setParamSource);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [thumb, setThumb] = useState<string | null>(liveValue || null);
+  useEffect(() => { setThumb(liveValue || null); }, [liveValue]);
+
+  const onFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const ref: MediaSourceRef = { kind: 'image', element: img };
+        setParamSource(cardId, paramKey, dataUrl, ref);
+        setThumb(dataUrl);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{
+          font: `600 10.5px ${TYPE.body}`, color: SHADE.textDim,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+        <span style={{ font: `500 11px ${TYPE.bodyMono}`, color: SHADE.textFaint }}>
+          {thumb ? 'loaded' : 'empty'}
+        </span>
+      </div>
+      {thumb && (
+        <img
+          src={thumb}
+          alt={label}
+          style={{
+            width: '100%', aspectRatio: '1 / 1', objectFit: 'cover',
+            borderRadius: 3, border: `1px solid ${SHADE.border}`, marginBottom: 8,
+          }}
+        />
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        style={{
+          width: '100%', padding: '8px 10px',
+          background: SHADE.surface1, border: `1px solid ${SHADE.border}`,
+          color: SHADE.text, borderRadius: 3,
+          font: `600 11px ${TYPE.body}`,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        {thumb ? 'Replace image' : 'Choose image…'}
+      </button>
+    </div>
+  );
+};
+
+const VideoParamRow = ({
+  label, cardId, paramKey, liveValue,
+}: {
+  label: string;
+  cardId: string;
+  paramKey: string;
+  liveValue: string;
+}) => {
+  const setParamSource = useCardsStore((s) => s.setParamSource);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const active = liveValue === 'webcam';
+
+  const start = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      await video.play();
+      videoRef.current = video;
+      streamRef.current = stream;
+      const ref: MediaSourceRef = { kind: 'video', element: video };
+      setParamSource(cardId, paramKey, 'webcam', ref);
+    } catch (e) {
+      console.warn('[webcam] getUserMedia failed:', e);
+    }
+  };
+
+  const stop = () => {
+    const s = streamRef.current;
+    if (s) for (const t of s.getTracks()) t.stop();
+    streamRef.current = null;
+    videoRef.current = null;
+    setParamSource(cardId, paramKey, '', null);
+  };
+
+  // Stop the stream when the row unmounts so we don't keep the camera LED on
+  // after the user navigates away from this card.
+  useEffect(() => () => {
+    const s = streamRef.current;
+    if (s) for (const t of s.getTracks()) t.stop();
+  }, []);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{
+          font: `600 10.5px ${TYPE.body}`, color: SHADE.textDim,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+        <span style={{
+          font: `500 11px ${TYPE.bodyMono}`,
+          color: active ? SHADE.gold : SHADE.textFaint,
+        }}>
+          {active ? 'live' : 'stopped'}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => (active ? stop() : void start())}
+        style={{
+          width: '100%', padding: '8px 10px',
+          background: active ? SHADE.gold : SHADE.surface1,
+          border: `1px solid ${active ? SHADE.goldDeep : SHADE.border}`,
+          color: active ? '#1a1208' : SHADE.text, borderRadius: 3,
+          font: `700 11px ${TYPE.body}`,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        {active ? 'Stop camera' : 'Start camera'}
+      </button>
+    </div>
   );
 };
 

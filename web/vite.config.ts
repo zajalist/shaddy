@@ -1,5 +1,8 @@
 import { fileURLToPath, URL } from 'node:url';
 import { spawn } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -23,8 +26,10 @@ const claudeAskPlugin = (): Plugin => ({
         let body = '';
         req.on('data', (chunk: Buffer) => {
           body += chunk.toString();
-          // Cap at 64 KB — the prompt + shader source should easily fit.
-          if (body.length > 64 * 1024) {
+          // Cap at 2 MB — image-to-recipe sends a base64 256×256 PNG which
+          // can easily run a few hundred KB. The legacy translate mode is
+          // still bounded by its own `prompt.length` check below.
+          if (body.length > 2 * 1024 * 1024) {
             res.statusCode = 413;
             res.end(JSON.stringify({ error: 'payload too large' }));
             req.destroy();
@@ -33,17 +38,20 @@ const claudeAskPlugin = (): Plugin => ({
         req.on('end', () => {
           let prompt: unknown;
           let mode: unknown;
+          let imageBase64: unknown;
           try {
-            // The plugin accepts two shapes, both keyed off `prompt`:
-            //   { prompt }                         — legacy "rewrite GLSL"
-            //   { prompt, mode: 'translate' }      — translate GLSL → Recipe
-            // The mode flag is informational (logged below) — the actual
-            // behaviour is identical: shell out to `claude -p`, return
-            // stdout. The CLIENT distinguishes by what it expects back
-            // (free GLSL text vs. JSON Recipe).
-            const parsed = JSON.parse(body) as { prompt?: unknown; mode?: unknown };
+            // The plugin accepts three shapes:
+            //   { prompt }                                  — legacy "rewrite GLSL"
+            //   { prompt, mode: 'translate' }               — translate GLSL → Recipe
+            //   { prompt, mode: 'image-to-recipe', imageBase64 } — vision Recipe
+            const parsed = JSON.parse(body) as {
+              prompt?: unknown;
+              mode?: unknown;
+              imageBase64?: unknown;
+            };
             prompt = parsed.prompt;
             mode = parsed.mode;
+            imageBase64 = parsed.imageBase64;
           } catch {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: 'invalid json' }));
@@ -60,6 +68,38 @@ const claudeAskPlugin = (): Plugin => ({
             console.log('[shaddy-claude-ask] mode=' + mode + ' prompt=' + String(prompt.length) + 'B');
           }
 
+          // Image-to-recipe mode writes the base64 to a temp PNG file and
+          // appends a CLI-readable file reference to the prompt: claude -p
+          // resolves `@/path/to/file.png` as an attached image (Claude
+          // Code's standard syntax). Plain `image-to-recipe` without a
+          // valid imageBase64 falls back to text-only.
+          let tempDir: string | null = null;
+          let tempPath: string | null = null;
+          let finalPrompt = prompt;
+          if (mode === 'image-to-recipe' && typeof imageBase64 === 'string') {
+            try {
+              const stripped = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+              const buf = Buffer.from(stripped, 'base64');
+              tempDir = mkdtempSync(join(tmpdir(), 'shaddy-img-'));
+              tempPath = join(tempDir, 'photo.png');
+              writeFileSync(tempPath, buf);
+              finalPrompt = prompt + '\n\nReference image: @' + tempPath;
+            } catch (e) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: 'failed to decode image: ' + String(e) }));
+              return;
+            }
+          }
+
+          const cleanup = (): void => {
+            if (tempDir) {
+              try { rmSync(tempDir, { recursive: true, force: true }); } catch { /* no-op */ }
+              tempDir = null;
+              tempPath = null;
+            }
+          };
+
           // `claude -p "<prompt>"` runs Claude Code non-interactively and
           // prints the response to stdout. We pass the prompt via stdin
           // instead of argv to dodge shell-escaping landmines on Windows.
@@ -70,6 +110,7 @@ const claudeAskPlugin = (): Plugin => ({
               stdio: ['pipe', 'pipe', 'pipe'],
             });
           } catch (e) {
+            cleanup();
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'failed to spawn claude: ' + String(e) }));
@@ -85,6 +126,7 @@ const claudeAskPlugin = (): Plugin => ({
             err += d.toString();
           });
           proc.on('error', (e: Error) => {
+            cleanup();
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(
@@ -97,6 +139,7 @@ const claudeAskPlugin = (): Plugin => ({
             );
           });
           proc.on('close', (code: number | null) => {
+            cleanup();
             res.setHeader('Content-Type', 'application/json');
             if (code !== 0) {
               res.statusCode = 502;
@@ -111,7 +154,7 @@ const claudeAskPlugin = (): Plugin => ({
             res.end(JSON.stringify({ result: out }));
           });
 
-          proc.stdin.write(prompt);
+          proc.stdin.write(finalPrompt);
           proc.stdin.end();
         });
       },

@@ -12,15 +12,22 @@ import type { CSSProperties, DragEvent, ReactNode } from 'react';
 // with PORTAL_PALETTE[N % len] so consecutive row breaks read as distinct
 // trails. (Row breaks are now driven by explicit `portal`-type cards the
 // user inserts via the "+ portal" button — auto-wrap is gone.)
-const PORTAL_PALETTE = ['#FCB427', '#B5365E', '#1F7FB8', '#6F7F1A', '#5C3FA8', '#B56A1D'];
+//
+// Deeper than the SHADE category colours so they hold contrast against the
+// warm cream chain background — the original gold/pink/blue washed out
+// against `bg: #e6e1d6`.
+const PORTAL_PALETTE = ['#966B17', '#7d2543', '#13567f', '#4a5610', '#3e2877', '#7d4a13'];
 
 import {
+  BUFFER_PASS_IDS,
   cloneRecipeWithFreshIds,
   compile,
+  getPassCards,
   lookupCardDef,
   STARTER_RECIPES,
   useCardsStore,
   type Card,
+  type PassId,
   type Recipe,
 } from '@/cards';
 import {
@@ -90,8 +97,8 @@ const PortalRow = ({
     <div
       aria-hidden
       style={{
-        flex: 1, height: 3,
-        background: `linear-gradient(90deg, ${color} 0%, ${color}cc 35%, ${color}55 70%, ${color}00 100%)`,
+        flex: 1, height: 4,
+        background: `linear-gradient(90deg, ${color} 0%, ${color}ee 45%, ${color}88 80%, ${color}33 100%)`,
       }}
     />
     {/* Tiny ring at the midpoint to read as a "portal" rather than just a fade */}
@@ -109,8 +116,8 @@ const PortalRow = ({
     <div
       aria-hidden
       style={{
-        flex: 1, height: 3,
-        background: `linear-gradient(90deg, ${color}00 0%, ${color}55 30%, ${color}cc 65%, ${color} 100%)`,
+        flex: 1, height: 4,
+        background: `linear-gradient(90deg, ${color}33 0%, ${color}88 20%, ${color}ee 55%, ${color} 100%)`,
       }}
     />
   </div>
@@ -384,7 +391,7 @@ function wildcardBlockFallback(): BlockDef {
 // instantly type a card name and append it.
 // "+ card" affordance — sits at the end of the chain. Bold square tile with
 // a chunky cartoony plus glyph. Reads as an actionable button at any size.
-const ENDCAP_SIZE = 38; // perfect square, small enough not to dominate the chain
+const ENDCAP_SIZE = 28; // perfect square, kept small so the puzzle chain stays the focal point
 const EndCap = ({ onClick }: { onClick?: () => void }) => (
   <button
     type="button"
@@ -421,7 +428,7 @@ const EndCap = ({ onClick }: { onClick?: () => void }) => (
       e.currentTarget.style.boxShadow = `0 3px 0 ${SHADE.inkLine}`;
     }}
   >
-    <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
+    <svg width="14" height="14" viewBox="0 0 24 24" style={{ display: 'block' }}>
       <rect x="10.4" y="3.6" width="3.2" height="16.8" rx="1.6" fill={SHADE.inkLine} />
       <rect x="3.6" y="10.4" width="16.8" height="3.2" rx="1.6" fill={SHADE.inkLine} />
     </svg>
@@ -473,7 +480,7 @@ const PortalCap = ({ onClick }: { onClick?: () => void }) => (
     {/* Portal glyph — classic carriage-return / wrap-down icon. A chunky
         hook that goes RIGHT, DOWN, then LEFT with an arrowhead pointing
         left. Reads as "next line / wrap around" instantly. */}
-    <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
+    <svg width="14" height="14" viewBox="0 0 24 24" style={{ display: 'block' }}>
       <path
         d="M19 5 L19 11 Q19 14 16 14 L7 14"
         stroke={SHADE.cream}
@@ -493,6 +500,216 @@ const PortalCap = ({ onClick }: { onClick?: () => void }) => (
     </svg>
   </button>
 );
+
+// ─── Pass tabs — chain-editor scope switcher ───────────────────────────
+// Sits ABOVE the chain. The active tab tells the chain UI which pass's
+// cards to operate on; "+ Add" enables a buffer pass slot. Image is
+// always present; A/B/C/D only show if the user has enabled them.
+//
+// Tab colors mirror the spec: A=blue, B=pink, C=green, D=purple. Active
+// tab matches the chain bg (cream) so it visually blends into the chain
+// surface — inactive tabs sit one shade darker.
+const BUFFER_TAB_COLORS: Record<'a' | 'b' | 'c' | 'd', string> = {
+  a: '#13567f', // blue
+  b: '#b5365e', // pink
+  c: '#4a5610', // green
+  d: '#3e2877', // purple
+};
+const BUFFER_TAB_LABELS: Record<'a' | 'b' | 'c' | 'd', string> = {
+  a: 'Buffer A', b: 'Buffer B', c: 'Buffer C', d: 'Buffer D',
+};
+
+const PassTabs = ({
+  passes,
+  activePassId,
+  onSelect,
+  onAdd,
+  onRemove,
+  onRename,
+}: {
+  passes: Array<{ id: PassId; name: string }>;
+  activePassId: PassId;
+  onSelect: (id: PassId) => void;
+  onAdd: (id: 'a' | 'b' | 'c' | 'd') => void;
+  onRemove: (id: 'a' | 'b' | 'c' | 'd') => void;
+  onRename: (id: 'a' | 'b' | 'c' | 'd', name: string) => void;
+}) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ id: 'a' | 'b' | 'c' | 'd'; x: number; y: number } | null>(null);
+  const enabledIds = new Set(passes.map((p) => p.id));
+  const availableSlots = BUFFER_PASS_IDS.filter((id) => !enabledIds.has(id));
+
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'flex-end', gap: 2,
+        paddingLeft: 4, paddingTop: 2,
+        // No bottom border on the strip — the active tab seamlessly
+        // continues into the chain below.
+        pointerEvents: 'auto',
+        userSelect: 'none',
+      }}
+    >
+      {passes.map((p) => {
+        const active = p.id === activePassId;
+        const isBuffer = p.id !== 'image';
+        const dotColor = isBuffer ? BUFFER_TAB_COLORS[p.id as 'a' | 'b' | 'c' | 'd'] : SHADE.text;
+        return (
+          <button
+            key={p.id}
+            onClick={() => onSelect(p.id)}
+            onContextMenu={(e) => {
+              if (!isBuffer) return;
+              e.preventDefault();
+              setContextMenu({ id: p.id as 'a' | 'b' | 'c' | 'd', x: e.clientX, y: e.clientY });
+            }}
+            title={isBuffer
+              ? `${p.name} — right-click for rename / remove`
+              : 'Image — the final pass that renders to the screen'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 11px 6px',
+              border: `1px solid ${SHADE.border}`,
+              borderBottom: active ? `1px solid ${SHADE.bg}` : `1px solid ${SHADE.border}`,
+              borderTopLeftRadius: 6, borderTopRightRadius: 6,
+              background: active ? SHADE.bg : SHADE.surface2,
+              color: active ? SHADE.text : SHADE.textDim,
+              font: `600 10.5px ${TYPE.body}`,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              marginBottom: active ? -1 : 0,
+              transition: 'background 120ms ease, color 120ms ease',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: dotColor,
+                opacity: active ? 1 : 0.7,
+              }}
+            />
+            <span>{p.name}</span>
+          </button>
+        );
+      })}
+      {availableSlots.length > 0 && (
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setMenuOpen((x) => !x)}
+            title="Add a buffer pass"
+            style={{
+              padding: '5px 10px 6px',
+              border: `1px dashed ${SHADE.border}`,
+              borderTopLeftRadius: 6, borderTopRightRadius: 6,
+              background: 'transparent',
+              color: SHADE.textDim,
+              font: `600 10.5px ${TYPE.body}`,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            + Add
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              style={{
+                position: 'absolute', top: '100%', left: 0, marginTop: 4,
+                background: SHADE.surface1,
+                border: `1px solid ${SHADE.border}`,
+                borderRadius: 4,
+                boxShadow: `0 4px 14px rgba(0,0,0,0.18)`,
+                padding: 4,
+                display: 'flex', flexDirection: 'column', gap: 2,
+                zIndex: 5,
+              }}
+              onMouseLeave={() => setMenuOpen(false)}
+            >
+              {availableSlots.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    onAdd(id);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: SHADE.text,
+                    font: `500 11px ${TYPE.body}`,
+                    letterSpacing: '0.06em',
+                    textAlign: 'left',
+                    minWidth: 110,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: BUFFER_TAB_COLORS[id],
+                    }}
+                  />
+                  {BUFFER_TAB_LABELS[id]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {contextMenu && (
+        <div
+          role="menu"
+          onMouseLeave={() => setContextMenu(null)}
+          style={{
+            position: 'fixed',
+            left: contextMenu.x, top: contextMenu.y,
+            background: SHADE.surface1,
+            border: `1px solid ${SHADE.border}`,
+            borderRadius: 4,
+            boxShadow: `0 4px 14px rgba(0,0,0,0.18)`,
+            padding: 4,
+            display: 'flex', flexDirection: 'column', gap: 2,
+            zIndex: 50,
+          }}
+        >
+          <button
+            onClick={() => {
+              const next = window.prompt('Rename buffer pass', BUFFER_TAB_LABELS[contextMenu.id]);
+              if (next && next.trim()) onRename(contextMenu.id, next.trim());
+              setContextMenu(null);
+            }}
+            style={contextMenuItemStyle}
+          >Rename</button>
+          <button
+            onClick={() => {
+              onRemove(contextMenu.id);
+              setContextMenu(null);
+            }}
+            style={{ ...contextMenuItemStyle, color: SHADE.catDistort }}
+          >Remove buffer</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const contextMenuItemStyle: CSSProperties = {
+  padding: '6px 14px',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  color: SHADE.text,
+  font: `500 11px ${TYPE.body}`,
+  letterSpacing: '0.06em',
+  textAlign: 'left',
+  minWidth: 140,
+};
 
 const BlockCanvas = ({ children, label }: { children?: ReactNode; label: string }) => (
   <div
@@ -627,6 +844,7 @@ const CodeDrawer = ({
             <PencilIcon size={14} color={editMode ? SHADE.gold : SHADE.cream} />
           </button>
           <button
+            title="Copy GLSL to clipboard"
             onClick={(e) => {
               e.stopPropagation();
               if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -634,14 +852,41 @@ const CodeDrawer = ({
               }
             }}
             style={{
-              background: 'transparent', color: SHADE.cream,
-              border: '1px solid rgba(254,231,199,0.20)', borderRadius: 3,
-              padding: '5px 9px', font: `600 10.5px ${TYPE.bodyMono}`,
-              letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
+              width: 28, height: 26, borderRadius: 3,
+              background: 'transparent',
+              border: '1px solid rgba(254,231,199,0.20)',
+              color: SHADE.cream, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 0,
             }}
           >
-            copy
+            {/* Charismatic copy icon — two slightly tilted card-corners
+                stacked. Back card is dimmer, front card has a chunky bite
+                taken out of one corner so it reads as "duplicate" /
+                "make a copy of this thing", not "clipboard". */}
+            <svg width="14" height="14" viewBox="0 0 24 24" style={{ display: 'block' }}>
+              {/* back card — tilted, dim */}
+              <rect
+                x="3.4" y="6" width="12" height="14" rx="2.4"
+                fill="none" stroke={SHADE.cream} strokeWidth="1.8"
+                opacity="0.55"
+                transform="rotate(-3 9.4 13)"
+              />
+              {/* front card — solid, slight tilt the other way, with a
+                  cut corner that nods at clipboard / page-fold convention */}
+              <path
+                d="M9 4 H17 L20.4 7.4 V18 A2 2 0 0 1 18.4 20 H9 A2 2 0 0 1 7 18 V6 A2 2 0 0 1 9 4 Z"
+                fill={SHADE.cream}
+                transform="rotate(3 13.7 12)"
+              />
+              {/* the folded corner highlight on the front card */}
+              <path
+                d="M17 4 V7.4 H20.4"
+                fill="none" stroke="rgba(26,18,8,0.55)" strokeWidth="1.4"
+                strokeLinecap="round" strokeLinejoin="round"
+                transform="rotate(3 13.7 12)"
+              />
+            </svg>
           </button>
           <button
             title="Open fullscreen"
@@ -859,19 +1104,8 @@ const PreviewPanel = ({
         <TogglePill active>1080²</TogglePill>
         <TogglePill active>60 fps</TogglePill>
       </div>
-      <div style={{ position: 'absolute', right: 8, bottom: 8 }}>
-        <button
-          style={{
-            width: 30, height: 30, borderRadius: 3,
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <Icon name="play" size={12} color="#fff" />
-        </button>
-      </div>
+      {/* Play button removed — animations always run; the affordance suggested
+          a paused state that never exists. */}
     </div>
   </div>
 );
@@ -1265,18 +1499,8 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
             pointerEvents: 'none',
           }}
         >
-          <button
-            style={{
-              width: 46, height: 46, borderRadius: 3,
-              background: SHADE.gold,
-              border: `1px solid ${SHADE.goldDeep}`,
-              color: '#1a1208', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              pointerEvents: 'auto',
-            }}
-          >
-            <Icon name="play" size={16} color="#1a1208" />
-          </button>
+          {/* Play button removed — animations always run; the affordance
+              suggested a paused state that never exists. */}
           <div style={{ flex: 1 }}>
             <div style={{ font: `700 14px ${TYPE.body}`, color: '#fff' }}>{title}</div>
             <div style={{ font: `500 11px ${TYPE.bodyMono}`, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
@@ -1358,16 +1582,35 @@ const UNDO_LIMIT = 50;
 
 function structuralFingerprint(recipe: Recipe): string {
   // Two recipes are structurally equivalent for undo purposes if they
-  // have the same ordered card ids + types + enabled flags. Param values
-  // are deliberately excluded so slider ticks don't churn the stack.
-  return recipe.cards
-    .map((c) => `${c.id}:${c.kind === 'typed' ? c.type : 'wildcard'}:${c.enabled ? 1 : 0}`)
-    .join('|');
+  // have the same ordered card ids + types + enabled flags across every
+  // pass. Param values are deliberately excluded so slider ticks don't
+  // churn the stack.
+  const passFp = (cards: Recipe['cards']) =>
+    cards
+      .map((c) => `${c.id}:${c.kind === 'typed' ? c.type : 'wildcard'}:${c.enabled ? 1 : 0}`)
+      .join('|');
+  const parts = [`image:${passFp(recipe.cards)}`];
+  for (const p of recipe.passes ?? []) {
+    parts.push(`${p.id}:${passFp(p.cards)}`);
+  }
+  return parts.join('//');
 }
 
 export const DesktopApp = () => {
   const recipe = useCardsStore((s) => s.recipe);
   const setRecipe = useCardsStore((s) => s.setRecipe);
+  const activePassId = useCardsStore((s) => s.activePassId);
+  const setActivePassId = useCardsStore((s) => s.setActivePassId);
+  const addBufferPassAction = useCardsStore((s) => s.addBufferPass);
+  const removeBufferPassAction = useCardsStore((s) => s.removeBufferPass);
+  const renameBufferPassAction = useCardsStore((s) => s.renameBufferPass);
+  // The chain UI operates on whichever pass is active. For the image pass
+  // this stays bit-identical to the old behaviour (recipe.cards).
+  const activeCards = getPassCards(recipe, activePassId);
+  const tabPasses: Array<{ id: PassId; name: string }> = [
+    { id: 'image', name: 'Image' },
+    ...(recipe.passes ?? []).map((p) => ({ id: p.id, name: p.name })),
+  ];
 
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -1401,7 +1644,8 @@ export const DesktopApp = () => {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
   const handleSelect = useCallback(
     (idx: number, mode: 'replace' | 'toggle') => {
-      const cards = useCardsStore.getState().recipe.cards;
+      const s = useCardsStore.getState();
+      const cards = getPassCards(s.recipe, s.activePassId);
       const card = cards[idx];
       if (!card) return;
       if (mode === 'toggle') toggleSelection(card.id);
@@ -1607,10 +1851,9 @@ export const DesktopApp = () => {
   }, [wrappedGlsl]);
 
   // Prune selectedIds for cards that no longer exist (after removal / undo /
-  // recipe swap) and clamp the editor index. Done in one effect — both
-  // depend on recipe.cards.
+  // recipe swap, or after a pass-tab switch) and clamp the editor index.
   useEffect(() => {
-    const liveIds = new Set(recipe.cards.map((c) => c.id));
+    const liveIds = new Set(activeCards.map((c) => c.id));
     setSelectedIds((prev) => {
       let changed = false;
       const next = new Set<string>();
@@ -1620,10 +1863,10 @@ export const DesktopApp = () => {
       }
       return changed ? next : prev;
     });
-    if (editorIdx != null && editorIdx >= recipe.cards.length) {
+    if (editorIdx != null && editorIdx >= activeCards.length) {
       setEditorIdx(null);
     }
-  }, [recipe.cards, editorIdx]);
+  }, [activeCards, editorIdx]);
 
   // Focus the palette search input. Used by both the "/" keyboard shortcut
   // and the EndCap "+" button — defined at component scope so both call
@@ -1696,7 +1939,7 @@ export const DesktopApp = () => {
         if (selectedIds.size === 0) return;
         e.preventDefault();
         const state = useCardsStore.getState();
-        const cards = state.recipe.cards;
+        const cards = getPassCards(state.recipe, state.activePassId);
         // Iterate in chain-order for deterministic placement.
         const ordered = cards.filter((c) => selectedIds.has(c.id));
         const newIds: string[] = [];
@@ -1713,7 +1956,8 @@ export const DesktopApp = () => {
       // ← / → — move selection across the chain. Always collapses any
       // multi-selection down to a single id (matches the requested behaviour).
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const cards = useCardsStore.getState().recipe.cards;
+        const s = useCardsStore.getState();
+        const cards = getPassCards(s.recipe, s.activePassId);
         if (cards.length === 0) return;
         e.preventDefault();
         // Anchor on the current single selection (or the first id of a
@@ -1746,7 +1990,8 @@ export const DesktopApp = () => {
       // Enter — open the editor for the (single) selected block.
       if (e.key === 'Enter') {
         if (selectedIds.size !== 1) return;
-        const cards = useCardsStore.getState().recipe.cards;
+        const s = useCardsStore.getState();
+        const cards = getPassCards(s.recipe, s.activePassId);
         const onlyId = [...selectedIds][0]!;
         const idx = cards.findIndex((c) => c.id === onlyId);
         if (idx >= 0) {
@@ -1775,17 +2020,17 @@ export const DesktopApp = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedIds, editorIdx, fullscreen, undo, redo, focusPaletteSearch, clearSelection]);
 
-  const blocksCount = recipe.cards.length;
+  const blocksCount = activeCards.length;
   // Single-card paths read the lone id when exactly one is selected.
   // Properties / preview-title degrade to "global" when ≥2 are selected.
   const singleSelectedId = selectedIds.size === 1 ? [...selectedIds][0]! : null;
   const singleSelectedIdx = singleSelectedId
-    ? recipe.cards.findIndex((c) => c.id === singleSelectedId)
+    ? activeCards.findIndex((c) => c.id === singleSelectedId)
     : -1;
   const selectedCard: Card | null =
-    singleSelectedIdx >= 0 ? recipe.cards[singleSelectedIdx]! : null;
+    singleSelectedIdx >= 0 ? activeCards[singleSelectedIdx]! : null;
   const editorCard: Card | null =
-    editorIdx != null && editorIdx < recipe.cards.length ? recipe.cards[editorIdx]! : null;
+    editorIdx != null && editorIdx < activeCards.length ? activeCards[editorIdx]! : null;
 
   // Bulk-action handlers — used by the multi-select chip in the chain and
   // (optionally) by the Properties panel surface in a future tweak.
@@ -1799,7 +2044,7 @@ export const DesktopApp = () => {
   const handleBulkDuplicate = useCallback(() => {
     if (selectedIds.size === 0) return;
     const state = useCardsStore.getState();
-    const cards = state.recipe.cards;
+    const cards = getPassCards(state.recipe, state.activePassId);
     const ordered = cards.filter((c) => selectedIds.has(c.id));
     const newIds: string[] = [];
     for (const c of ordered) {
@@ -1814,15 +2059,16 @@ export const DesktopApp = () => {
     : `Recipe · ${blocksCount} block${blocksCount === 1 ? '' : 's'}`;
 
   // Row count = portals + 1 (each portal opens a new row).
-  const portalCount = recipe.cards.reduce(
+  const portalCount = activeCards.reduce(
     (n, c) => n + (c.kind === 'typed' && c.type === 'portal' ? 1 : 0),
     0,
   );
   const rowCount = portalCount + 1;
   const blockCount = blocksCount - portalCount;
+  const passLabel = activePassId === 'image' ? 'IMAGE' : `BUFFER ${activePassId.toUpperCase()}`;
   const label = blocksCount === 0
-    ? 'CHAIN · empty'
-    : `CHAIN · ${rowCount} row${rowCount === 1 ? '' : 's'} · ${blockCount} block${blockCount === 1 ? '' : 's'}`;
+    ? `CHAIN · ${passLabel} · empty`
+    : `CHAIN · ${passLabel} · ${rowCount} row${rowCount === 1 ? '' : 's'} · ${blockCount} block${blockCount === 1 ? '' : 's'}`;
 
   const containerStyle: CSSProperties = {
     width: '100vw', height: '100vh', background: SHADE.bg, color: SHADE.text,
@@ -1832,11 +2078,30 @@ export const DesktopApp = () => {
 
   return (
     <div style={containerStyle}>
-      <TopBar tempo={120} />
+      <TopBar />
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
         <Palette />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
           <BlockCanvas label={label}>
+            {/* Chain-pass tabs — always visible (even on empty recipes so
+                the user can switch between Image / Buffer A / etc before
+                inserting any cards). Sits between the canvas label strip
+                and the chain itself. */}
+            <div
+              style={{
+                position: 'absolute', left: 56, right: 32, top: 40,
+                pointerEvents: 'auto',
+              }}
+            >
+              <PassTabs
+                passes={tabPasses}
+                activePassId={activePassId}
+                onSelect={setActivePassId}
+                onAdd={addBufferPassAction}
+                onRemove={removeBufferPassAction}
+                onRename={renameBufferPassAction}
+              />
+            </div>
             {blocksCount === 0 ? (
               <EmptyHero />
             ) : (
@@ -1852,7 +2117,7 @@ export const DesktopApp = () => {
                 }}
               >
                 <Chain
-                  items={recipe.cards}
+                  items={activeCards}
                   selectedIds={selectedIds}
                   onSelect={handleSelect}
                   onOpen={setEditorIdx}

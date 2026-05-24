@@ -18,7 +18,38 @@ export type Uniform =
   | { kind: 'float'; value: number }
   | { kind: 'vec2'; value: [number, number] }
   | { kind: 'vec3'; value: [number, number, number] }
-  | { kind: 'vec4'; value: [number, number, number, number] };
+  | { kind: 'vec4'; value: [number, number, number, number] }
+  | { kind: 'sampler2D'; value: TextureSource }
+  /** A reference to one of the multi-pass buffer FBOs. The renderer resolves
+   *  the buffer id to the LAST-rendered (or, for same-pass self-reference,
+   *  the previous-frame ping-pong) texture. Cards use this kind when their
+   *  ParamDef is `kind: 'buffer'`. */
+  | { kind: 'sampler2D-buffer'; value: 'a' | 'b' | 'c' | 'd' };
+
+/** Source data the `sampler2D` uniform can be backed by. Renderer uploads
+ *  these via texImage2D on first set, and re-uploads every frame when the
+ *  source is a (likely-moving) <video>. */
+export type TextureSource =
+  | HTMLImageElement
+  | HTMLCanvasElement
+  | HTMLVideoElement
+  | ImageBitmap;
+
+/** One pass in a multi-pass pipeline. The renderer compiles each pass into
+ *  its own GLSL program, allocates an offscreen FBO (or pair, for
+ *  ping-pong'd buffer passes) per non-image pass, and runs them in order
+ *  every frame. */
+export type MultiPassDef = {
+  id: 'image' | 'a' | 'b' | 'c' | 'd';
+  fragmentSource: string;
+};
+
+/** Result of a multi-pass compile — one ok/error per pass. The renderer
+ *  hot-swaps the WHOLE pipeline atomically (only when every pass compiles
+ *  successfully); on any failure the previous pipeline keeps running. */
+export type CompileMultiResult =
+  | { ok: true }
+  | { ok: false; failures: Array<{ id: MultiPassDef['id']; errors: GLSLError[] }> };
 
 export interface RendererAPI {
   /** Attach the WebGL canvas to a host element. Idempotent. */
@@ -26,6 +57,12 @@ export interface RendererAPI {
 
   /** Compile a new fragment shader. Hot-swaps on success; keeps last good on failure. */
   compile(fragmentSource: string): CompileResult;
+
+  /** Compile a multi-pass pipeline. The renderer runs the passes in array
+   *  order each frame; buffer passes (id ≠ 'image') write into ping-pong'd
+   *  FBOs; the final 'image' pass renders to the screen. Hot-swaps the
+   *  whole pipeline atomically — any failure preserves the previous one. */
+  compileMulti(passes: MultiPassDef[]): CompileMultiResult;
 
   /** Set or clear a named uniform. Persists across compiles. */
   setUniform(name: string, value: Uniform | null): void;

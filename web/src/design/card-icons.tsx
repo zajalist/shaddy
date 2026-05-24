@@ -1226,4 +1226,247 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <path d="M13 11 L13 19 L15 17.2 L16.2 19.6 L17.4 19 L16.2 16.6 L18.6 16.6 Z" fill={cream} stroke={c} strokeWidth="0.8" strokeLinejoin="round" />
     </>
   ),
+
+  // ───────────────────── BOOK OF SHADERS — patterns ────────────────────────
+
+  'card-circles-grid': ({ c, cream }) => (
+    <>
+      {[6, 12, 18].flatMap((cy) =>
+        [6, 12, 18].map((cx) => (
+          <circle key={`${cx},${cy}`} cx={cx} cy={cy} r="2.4" fill={c} />
+        )),
+      )}
+      <circle cx="12" cy="12" r="1" fill={cream} opacity="0.7" />
+    </>
+  ),
+
+  'card-truchet-tris': ({ c, cream }) => (
+    <>
+      <path d="M3 3 L11 3 L3 11 Z" fill={c} />
+      <path d="M13 3 L21 3 L21 11 Z" fill={c} />
+      <path d="M3 13 L3 21 L11 21 Z" fill={cream} opacity="0.85" />
+      <path d="M21 13 L21 21 L13 21 Z" fill={cream} opacity="0.85" />
+      <path d="M3 3 L21 21" stroke={c} strokeWidth="0.4" opacity="0.3" />
+    </>
+  ),
+
+  'card-metaballs': ({ c, cream }) => (
+    <>
+      <circle cx="9" cy="10" r="5" fill={c} opacity="0.85" />
+      <circle cx="15" cy="13" r="5" fill={c} opacity="0.85" />
+      <circle cx="12" cy="17" r="3.6" fill={c} opacity="0.85" />
+      <ellipse cx="11.4" cy="11.4" rx="2.4" ry="1.2" fill={cream} opacity="0.65" transform="rotate(-15 11.4 11.4)" />
+    </>
+  ),
+
+  'card-triangular-tiles': ({ c, cream }) => (
+    <>
+      <path d="M4 19 L9 19 L6.5 14.5 Z" fill={c} />
+      <path d="M9 19 L14 19 L11.5 14.5 Z" fill={cream} opacity="0.85" />
+      <path d="M14 19 L19 19 L16.5 14.5 Z" fill={c} />
+      <path d="M6.5 14.5 L11.5 14.5 L9 10 Z" fill={cream} opacity="0.85" />
+      <path d="M11.5 14.5 L16.5 14.5 L14 10 Z" fill={c} />
+      <path d="M9 10 L14 10 L11.5 5.5 Z" fill={cream} opacity="0.85" />
+    </>
+  ),
+
+  'card-concentric-squares': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="0.6" fill="none" stroke={c} strokeWidth="1.4" />
+      <rect x="6" y="6" width="12" height="12" rx="0.6" fill="none" stroke={cream} strokeWidth="1.4" />
+      <rect x="9" y="9" width="6" height="6" rx="0.6" fill="none" stroke={c} strokeWidth="1.4" />
+      <rect x="11" y="11" width="2" height="2" fill={c} />
+    </>
+  ),
+
+  'card-random-squares': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="4.5" height="4.5" fill={c} />
+      <rect x="13" y="3" width="4.5" height="4.5" fill={c} />
+      <rect x="8" y="8" width="4.5" height="4.5" fill={c} opacity="0.7" />
+      <rect x="18" y="8" width="3" height="4.5" fill={cream} opacity="0.6" />
+      <rect x="3" y="13" width="4.5" height="4.5" fill={cream} opacity="0.65" />
+      <rect x="13" y="13" width="4.5" height="4.5" fill={c} />
+      <rect x="8" y="18" width="4.5" height="3" fill={cream} opacity="0.6" />
+      <rect x="18" y="18" width="3" height="3" fill={c} />
+    </>
+  ),
+
+  'card-dot-grid-2': ({ c, cream }) => (
+    <>
+      {[5, 9, 13, 17, 21].map((cy) =>
+        [5, 9, 13, 17, 21].map((cx) => (
+          <circle key={`${cx},${cy}`} cx={cx} cy={cy} r="1.2" fill={c} />
+        )),
+      )}
+      <circle cx="13" cy="13" r="1.2" fill={cream} />
+    </>
+  ),
+
+  'card-lemniscate': ({ c, cream }) => (
+    <>
+      <path d="M12 12 Q5 4 5 12 Q5 20 12 12 Q19 4 19 12 Q19 20 12 12 Z" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="7.6" cy="12" r="1.1" fill={cream} opacity="0.8" />
+      <circle cx="16.4" cy="12" r="1.1" fill={cream} opacity="0.8" />
+    </>
+  ),
+
+  'card-rose-petals': ({ c, cream }) => (
+    <>
+      {[0, 60, 120, 180, 240, 300].map((a, i) => {
+        const r = (a * Math.PI) / 180;
+        return (
+          <ellipse
+            key={i}
+            cx={12 + Math.cos(r) * 4.5}
+            cy={12 + Math.sin(r) * 4.5}
+            rx="4"
+            ry="2"
+            fill={c}
+            opacity={i % 2 ? 0.7 : 0.9}
+            transform={`rotate(${a} ${12 + Math.cos(r) * 4.5} ${12 + Math.sin(r) * 4.5})`}
+          />
+        );
+      })}
+      <circle cx="12" cy="12" r="1.6" fill={cream} />
+    </>
+  ),
+
+  'card-cardioid-shape': ({ c, cream }) => (
+    <>
+      <path d="M12 5 Q19 7 18 14 Q16 19 12 21 Q8 19 6 14 Q5 7 12 5 Z" fill={c} />
+      <path d="M12 5 Q9 8 12 11 Q15 8 12 5 Z" fill={cream} opacity="0.4" />
+    </>
+  ),
+
+  'card-concentric-polygons': ({ c, cream }) => (
+    <>
+      <path d="M12 3.6 L19.8 8.2 L19.8 15.8 L12 20.4 L4.2 15.8 L4.2 8.2 Z" fill="none" stroke={c} strokeWidth="1.4" />
+      <path d="M12 6.6 L17.2 9.6 L17.2 14.4 L12 17.4 L6.8 14.4 L6.8 9.6 Z" fill="none" stroke={cream} strokeWidth="1.4" />
+      <path d="M12 9.4 L14.6 11 L14.6 13 L12 14.6 L9.4 13 L9.4 11 Z" fill={c} />
+    </>
+  ),
+
+  'card-polar-grid': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill="none" stroke={c} strokeWidth="0.9" opacity="0.7" />
+      <circle cx="12" cy="12" r="6" fill="none" stroke={c} strokeWidth="0.9" opacity="0.6" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke={c} strokeWidth="0.9" opacity="0.6" />
+      {[0, 45, 90, 135].map((a) => {
+        const r = (a * Math.PI) / 180;
+        const dx = Math.cos(r) * 9;
+        const dy = Math.sin(r) * 9;
+        return (
+          <line key={a} x1={12 - dx} y1={12 - dy} x2={12 + dx} y2={12 + dy}
+            stroke={c} strokeWidth="0.9" opacity="0.6" />
+        );
+      })}
+      <circle cx="12" cy="12" r="1.3" fill={cream} />
+    </>
+  ),
+
+  'card-wavy-stripes': ({ c, cream }) => (
+    <>
+      <path d="M5 5 Q7 7 5 9 Q3 11 5 13 Q7 15 5 17 Q3 19 5 21" fill="none" stroke={c} strokeWidth="2" />
+      <path d="M10 5 Q12 7 10 9 Q8 11 10 13 Q12 15 10 17 Q8 19 10 21" fill="none" stroke={cream} strokeWidth="2" opacity="0.85" />
+      <path d="M15 5 Q17 7 15 9 Q13 11 15 13 Q17 15 15 17 Q13 19 15 21" fill="none" stroke={c} strokeWidth="2" />
+      <path d="M20 5 Q22 7 20 9 Q18 11 20 13 Q22 15 20 17 Q18 19 20 21" fill="none" stroke={cream} strokeWidth="2" opacity="0.85" />
+    </>
+  ),
+
+  'card-radial-stripes': ({ c, cream }) => (
+    <>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => {
+        const r = (a * Math.PI) / 180;
+        return (
+          <path
+            key={a}
+            d={`M12 12 L${12 + Math.cos(r - 0.18) * 10} ${12 + Math.sin(r - 0.18) * 10} L${12 + Math.cos(r + 0.18) * 10} ${12 + Math.sin(r + 0.18) * 10} Z`}
+            fill={i % 2 ? c : cream}
+            opacity={i % 2 ? 1 : 0.8}
+          />
+        );
+      })}
+      <circle cx="12" cy="12" r="1.6" fill={cream} />
+    </>
+  ),
+
+  'card-cross-hatch': ({ c, cream }) => (
+    <>
+      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={cream} opacity="0.15" />
+      {[6, 10, 14, 18].map((p) => (
+        <line key={`h${p}`} x1="3.4" y1={p} x2="20.6" y2={p} stroke={c} strokeWidth="1.4" />
+      ))}
+      {[6, 10, 14, 18].map((p) => (
+        <line key={`v${p}`} x1={p} y1="3.4" x2={p} y2="20.6" stroke={c} strokeWidth="1.4" opacity="0.8" />
+      ))}
+    </>
+  ),
+
+  // ─────────────────── ISLAMIC GEOMETRIC PATTERNS ──────────────────────────
+
+  'card-islamic-8pt-star': ({ c, cream }) => (
+    <>
+      <path
+        d="M12 3 L13.5 8 L18 6 L16 10.5 L21 12 L16 13.5 L18 18 L13.5 16 L12 21 L10.5 16 L6 18 L8 13.5 L3 12 L8 10.5 L6 6 L10.5 8 Z"
+        fill={c}
+      />
+      <rect x="9.6" y="9.6" width="4.8" height="4.8" fill={cream} opacity="0.85" transform="rotate(45 12 12)" />
+    </>
+  ),
+
+  'card-islamic-6pt-star': ({ c, cream }) => (
+    <>
+      <path d="M12 3 L15 9 L21 9 L17 13 L19 19 L12 16 L5 19 L7 13 L3 9 L9 9 Z" fill={c} />
+      <path d="M12 7 L13.2 10.4 L16.6 11 L14 12.8 L14.8 16 L12 14.2 L9.2 16 L10 12.8 L7.4 11 L10.8 10.4 Z" fill={cream} opacity="0.7" />
+    </>
+  ),
+
+  'card-islamic-12pt-rosette': ({ c, cream }) => (
+    <>
+      {Array.from({ length: 12 }, (_, i) => {
+        const a = (i * 30 * Math.PI) / 180;
+        const aOut = (i * 30 + 15) * Math.PI / 180;
+        const x1 = 12 + Math.cos(a) * 9;
+        const y1 = 12 + Math.sin(a) * 9;
+        const x2 = 12 + Math.cos(aOut) * 5;
+        const y2 = 12 + Math.sin(aOut) * 5;
+        return <path key={i} d={`M12 12 L${x1} ${y1} L${x2} ${y2} Z`} fill={c} opacity={i % 2 ? 0.85 : 1} />;
+      })}
+      <circle cx="12" cy="12" r="2.4" fill={cream} />
+    </>
+  ),
+
+  'card-zellige-grid': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="8" height="8" fill={c} />
+      <rect x="13" y="3" width="8" height="8" fill={cream} opacity="0.85" />
+      <rect x="3" y="13" width="8" height="8" fill={cream} opacity="0.7" />
+      <rect x="13" y="13" width="8" height="8" fill={c} opacity="0.7" />
+      <rect x="11" y="3" width="2" height="18" fill={cream} opacity="0.4" />
+      <rect x="3" y="11" width="18" height="2" fill={cream} opacity="0.4" />
+    </>
+  ),
+
+  'card-kufic-grid': ({ c, cream }) => (
+    <>
+      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="1.2" fill={cream} opacity="0.18" />
+      <rect x="5" y="6.5" width="6" height="1.6" fill={c} />
+      <rect x="14" y="6.5" width="5" height="1.6" fill={c} />
+      <rect x="9" y="10" width="1.6" height="6" fill={c} />
+      <rect x="15" y="10" width="1.6" height="6" fill={c} />
+      <rect x="11" y="14" width="6" height="1.6" fill={c} />
+      <rect x="5" y="18" width="4" height="1.6" fill={c} />
+      <rect x="5" y="10" width="1.6" height="4" fill={c} />
+    </>
+  ),
+
+  'card-arabesque-curls': ({ c, cream }) => (
+    <>
+      <path d="M4 12 Q8 4 12 12 Q16 20 20 12" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" />
+      <path d="M6 8 Q8 6 8.8 8 Q9.4 10 7.6 10 Q5.8 10 6 8 Z" fill={c} />
+      <path d="M17 16 Q15 18 14.2 16 Q13.6 14 15.4 14 Q17.2 14 17 16 Z" fill={c} />
+      <circle cx="12" cy="12" r="1.4" fill={cream} />
+    </>
+  ),
 };

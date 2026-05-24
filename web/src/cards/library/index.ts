@@ -1,4 +1,4 @@
-// The card library. Currently 139 typed cards + the wildcard escape hatch.
+// The card library. Currently 161+ typed cards + the wildcard escape hatch.
 // Adding a card is content work — drop a file in this folder, add it to
 // CARD_LIBRARY_LIST, and the compiler + UI pick it up automatically.
 // Helper-function dependencies declared via CardDef.helpers are resolved
@@ -62,6 +62,31 @@ import { SPIRAL_ARMS } from './spiral-arms';
 import { SUNBURST } from './sunburst';
 import { TRIANGLE_GRID } from './triangle-grid';
 import { TRUCHET } from './truchet';
+
+// ── Book of Shaders — patterns & curves ──
+import { CARDIOID_SHAPE } from './cardioid-shape';
+import { CIRCLES_GRID } from './circles-grid';
+import { CONCENTRIC_POLYGONS } from './concentric-polygons';
+import { CONCENTRIC_SQUARES } from './concentric-squares';
+import { CROSS_HATCH } from './cross-hatch';
+import { DOT_GRID_2 } from './dot-grid-2';
+import { LEMNISCATE } from './lemniscate';
+import { METABALLS } from './metaballs';
+import { POLAR_GRID } from './polar-grid';
+import { RADIAL_STRIPES } from './radial-stripes';
+import { RANDOM_SQUARES } from './random-squares';
+import { ROSE_PETALS } from './rose-petals';
+import { TRIANGULAR_TILES } from './triangular-tiles';
+import { TRUCHET_TRIS } from './truchet-tris';
+import { WAVY_STRIPES } from './wavy-stripes';
+
+// ── Islamic geometric patterns ──
+import { ARABESQUE_CURLS } from './arabesque-curls';
+import { ISLAMIC_12PT_ROSETTE } from './islamic-12pt-rosette';
+import { ISLAMIC_6PT_STAR } from './islamic-6pt-star';
+import { ISLAMIC_8PT_STAR } from './islamic-8pt-star';
+import { KUFIC_GRID } from './kufic-grid';
+import { ZELLIGE_GRID } from './zellige-grid';
 
 // ── shapes: extra SDFs ──
 import { CAPSULE } from './capsule';
@@ -166,6 +191,17 @@ import { MOUSE_GLOW } from './mouse-glow';
 import { MOUSE_PAINT_D } from './mouse-paint-d';
 import { MOUSE_REPEL } from './mouse-repel';
 
+// ── media-input cards (sampler2D-backed) ──
+import { IMAGE_INPUT } from './image_input';
+import { WEBCAM_INPUT } from './webcam_input';
+
+// ── buffer-pass cards — multi-pass feedback / cross-buffer sampling ──
+import { SAMPLE_BUFFER_A } from './sample_buffer_a';
+import { SAMPLE_BUFFER_B } from './sample_buffer_b';
+import { SAMPLE_BUFFER_C } from './sample_buffer_c';
+import { SAMPLE_BUFFER_D } from './sample_buffer_d';
+import { FEEDBACK_DECAY } from './feedback_decay';
+
 // ── 3D — raymarched SDF scene contributions (mode: '3d') ──
 import { BOX_3D } from './box-3d';
 import { GROUND_3D } from './ground-3d';
@@ -191,6 +227,13 @@ export {
   BRICK_WALL, CAUSTICS, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
   SPIRAL_ARMS, SUNBURST, TRIANGLE_GRID, TRUCHET,
+  // Book of Shaders — patterns & curves
+  CIRCLES_GRID, TRUCHET_TRIS, METABALLS, TRIANGULAR_TILES, CONCENTRIC_SQUARES,
+  RANDOM_SQUARES, DOT_GRID_2, LEMNISCATE, ROSE_PETALS, CARDIOID_SHAPE,
+  CONCENTRIC_POLYGONS, POLAR_GRID, WAVY_STRIPES, RADIAL_STRIPES, CROSS_HATCH,
+  // Islamic geometric patterns
+  ISLAMIC_8PT_STAR, ISLAMIC_6PT_STAR, ISLAMIC_12PT_ROSETTE,
+  ZELLIGE_GRID, KUFIC_GRID, ARABESQUE_CURLS,
   // fractals
   BURNING_SHIP, MANDELBROT, MANDELBULB_2D, NEWTON, ORBIT_TRAP_CIRCLE, SIERPINSKI,
   // new distortions
@@ -210,6 +253,10 @@ export {
   RIM_LIGHT, SKETCH, SOFT_SHADOW, SPHERE_AO, TINT, VHS_GLITCH,
   // mouse-interactive
   MOUSE_GLOW, MOUSE_PAINT_D, MOUSE_REPEL,
+  // media-input
+  IMAGE_INPUT, WEBCAM_INPUT,
+  // buffer-pass — multi-pass feedback / cross-buffer sampling
+  SAMPLE_BUFFER_A, SAMPLE_BUFFER_B, SAMPLE_BUFFER_C, SAMPLE_BUFFER_D, FEEDBACK_DECAY,
   // 3D — raymarched SDF scene contributions
   SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D,
 };
@@ -239,7 +286,13 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   STAR, HEART, CROSS, ARC, ELLIPSE, CAPSULE, SEGMENT,
   TRAPEZOID, PARALLELOGRAM, VESICA, PIE_SLICE, HORSESHOE,
   // Repeating patterns
-  STRIPES, HEX_GRID, TRIANGLE_GRID, DIAMOND_GRID, BRICK_WALL, TRUCHET,
+  STRIPES, WAVY_STRIPES, RADIAL_STRIPES, CROSS_HATCH,
+  HEX_GRID, TRIANGLE_GRID, TRIANGULAR_TILES, DIAMOND_GRID, BRICK_WALL,
+  CIRCLES_GRID, DOT_GRID_2, CONCENTRIC_SQUARES, RANDOM_SQUARES,
+  TRUCHET, TRUCHET_TRIS,
+  // Islamic geometric tilings — polar symmetry + star SDFs
+  ISLAMIC_8PT_STAR, ISLAMIC_6PT_STAR, ISLAMIC_12PT_ROSETTE,
+  ZELLIGE_GRID, KUFIC_GRID, ARABESQUE_CURLS,
   // Noise family
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
   // Math / waves
@@ -247,7 +300,9 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Fractals
   JULIA, MANDELBROT, MANDELBULB_2D, BURNING_SHIP, NEWTON, SIERPINSKI, ORBIT_TRAP_CIRCLE,
   // Polar / radial
-  CONCENTRIC_RINGS, SUNBURST, ROSE_CURVE, SECTOR, SPIRAL_ARMS,
+  CONCENTRIC_RINGS, SUNBURST, ROSE_CURVE, ROSE_PETALS, CARDIOID_SHAPE,
+  LEMNISCATE, CONCENTRIC_POLYGONS, POLAR_GRID, METABALLS,
+  SECTOR, SPIRAL_ARMS,
   // Gradients
   GRADIENT_LINEAR, GRADIENT_CONIC,
 
@@ -294,6 +349,20 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   PULSE_BRIGHTNESS, PULSE_HUE,
   // Mouse-interactive — read u_mouse, wired by RecipeCanvas in centred uv space
   MOUSE_GLOW,
+
+  // ─── INPUTS — user media → sampler2D textures ───
+  // These need a live HTMLImageElement / HTMLVideoElement bound by the
+  // integration layer. RecipeCanvas notices image/video params on compile
+  // and pushes the texture uniform every frame for videos.
+  IMAGE_INPUT, WEBCAM_INPUT,
+
+  // ─── BUFFER PASSES — multi-pass feedback / cross-buffer sampling ───
+  // These cards reference an offscreen FBO produced by a buffer pass
+  // (A/B/C/D). The multi-pass renderer binds the appropriate FBO texture
+  // into each card's `sampler2D` uniform before drawing. Self-reference
+  // (a sample_buffer_a inside Buffer A) reads the PREVIOUS frame via the
+  // renderer's ping-pong wiring.
+  SAMPLE_BUFFER_A, SAMPLE_BUFFER_B, SAMPLE_BUFFER_C, SAMPLE_BUFFER_D, FEEDBACK_DECAY,
 
   // ─── 3D — raymarched SDF scene contributions ───
   // These have mode:'3d' and contribute via Card3DContribution.sdfExpr /

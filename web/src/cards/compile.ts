@@ -28,12 +28,16 @@ import type {
   Card,
   CardDef,
   CompiledShader,
+  ParameterValue,
+  Pass,
+  PassId,
   Recipe,
   Span,
   TypedCard,
   UniformBinding,
   WildcardCard,
 } from './types';
+import { PASS_RENDER_ORDER } from './types';
 
 // Standard variables every card snippet can read or write.
 const MAIN_PRELUDE = [
@@ -96,9 +100,16 @@ function compile2d(recipe: Recipe): CompiledShader {
     if (def.mode === '3d') return;
     for (const [paramKey, paramDef] of Object.entries(def.params)) {
       const name = uniformNameFor(cardIndex, paramKey);
-      const glType = paramDef.kind === 'color' ? 'vec3' : 'float';
+      const glType = glslTypeForParam(paramDef.kind);
       uniformDecls.push(`uniform ${glType} ${name};`);
-      const value = card.params[paramKey]?.value ?? paramDef.default;
+      // Image/video/buffer params: value is a string (data URL / 'webcam' /
+      // buffer id 'a'..'d'). For media kinds the default may be null →
+      // coerce to '' so the binding always carries a ParameterValue. The
+      // integration layer reads sourceRef off the live Parameter (or, for
+      // 'buffer' kinds, the multi-pass renderer maps the value string to
+      // the appropriate FBO texture).
+      const fallback: ParameterValue = paramKindFallback(paramDef);
+      const value: ParameterValue = card.params[paramKey]?.value ?? fallback;
       uniforms.push({ name, cardId: card.id, paramKey, value });
     }
   });
@@ -209,10 +220,10 @@ function compile2d(recipe: Recipe): CompiledShader {
 const MAIN_3D_HEAD = [
   '  vec2 uv = (v_uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0) * 2.0;',
   '  g_material = G_MATERIAL_INIT;',
-  '  vec3 ro = vec3(0.0, 1.2, 4.0 + u_mouse.x * 1.2);',
-  '  vec3 ta = vec3(0.0, 0.5, 0.0);',
+  '  vec3 ro = u_cam_eye;',
+  '  vec3 ta = u_cam_target;',
   '  vec3 ww = normalize(ta - ro);',
-  '  vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));',
+  '  vec3 uu = normalize(cross(ww, u_cam_up));',
   '  vec3 vv = cross(uu, ww);',
   '  vec3 rd = normalize(uv.x * uu + uv.y * vv + 1.6 * ww);',
   '  float t = 0.0;',
@@ -241,6 +252,14 @@ function compile3d(recipe: Recipe): CompiledShader {
   const uniformDecls: string[] = [];
   const uniforms: UniformBinding[] = [];
 
+  // Camera uniforms — driven from view state (not the recipe). Declared
+  // ahead of per-card uniforms so the standard 3D head can reference them.
+  // The renderer auto-binds these every frame from the camera controller in
+  // RecipeCanvas; defaults match the original hard-coded eye/target/up.
+  uniformDecls.push('uniform vec3 u_cam_eye;');
+  uniformDecls.push('uniform vec3 u_cam_target;');
+  uniformDecls.push('uniform vec3 u_cam_up;');
+
   // ── Pass 1: uniform decls + bindings (3D cards only) + find last material ──
   let materialExpr = 'vec3(0.85, 0.7, 0.45)';
   recipe.cards.forEach((card, cardIndex) => {
@@ -249,9 +268,10 @@ function compile3d(recipe: Recipe): CompiledShader {
     if (!def || def.mode !== '3d') return;
     for (const [paramKey, paramDef] of Object.entries(def.params)) {
       const name = uniformNameFor(cardIndex, paramKey);
-      const glType = paramDef.kind === 'color' ? 'vec3' : 'float';
+      const glType = glslTypeForParam(paramDef.kind);
       uniformDecls.push(`uniform ${glType} ${name};`);
-      const value = card.params[paramKey]?.value ?? paramDef.default;
+      const fallback: ParameterValue = paramKindFallback(paramDef);
+      const value: ParameterValue = card.params[paramKey]?.value ?? fallback;
       uniforms.push({ name, cardId: card.id, paramKey, value });
     }
     if (def.contribution3d?.material !== undefined) {
@@ -617,13 +637,37 @@ export function uniformNameFor(cardIndex: number, paramKey: string): string {
   return `u_card${cardIndex}_${paramKey}`;
 }
 
+/** GL type for a given ParamDef.kind. Image + video + buffer params are
+ *  textures bound through the runtime's sampler2D path. */
+function glslTypeForParam(
+  kind: 'float' | 'color' | 'select' | 'image' | 'video' | 'buffer',
+): string {
+  if (kind === 'color') return 'vec3';
+  if (kind === 'image' || kind === 'video' || kind === 'buffer') return 'sampler2D';
+  return 'float';
+}
+
 function buildParamDisplays(def: CardDef, card: TypedCard): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [paramKey, paramDef] of Object.entries(def.params)) {
-    const value = card.params[paramKey]?.value ?? paramDef.default;
+    const fallback: ParameterValue = paramKindFallback(paramDef);
+    const value: ParameterValue = card.params[paramKey]?.value ?? fallback;
     out[paramKey] = formatParameterForDisplay(value);
   }
   return out;
+}
+
+/** Resolve the fallback ParameterValue when a card's params object doesn't
+ *  yet have an entry for `paramKey` (e.g. recipe was authored before a card
+ *  added a new param). Image/video kinds use '' for a null default; buffer
+ *  kinds carry the buffer id literal; everything else uses the numeric/RGB
+ *  default. */
+function paramKindFallback(paramDef: CardDef['params'][string]): ParameterValue {
+  if (paramDef.kind === 'image' || paramDef.kind === 'video') {
+    return paramDef.default ?? '';
+  }
+  if (paramDef.kind === 'buffer') return paramDef.default;
+  return paramDef.default;
 }
 
 /** Quick sanity check used by tests: every card type referenced by a recipe
@@ -639,3 +683,73 @@ export function validateRecipe(recipe: Recipe): string[] {
 }
 
 void WILDCARD_FRIENDLY_NAME; // re-exported via cards/index; referenced so tree-shaking can't drop it under strict imports
+
+// ─── Multi-pass compiler ───────────────────────────────────────────────
+//
+// A multi-pass recipe has one CompiledShader per enabled pass. The render
+// order is fixed: A → B → C → D → Image (PASS_RENDER_ORDER). Earlier passes
+// write into their own offscreen FBO (ping-pong'd to support same-pass
+// feedback), and later passes can sample any earlier pass's output via
+// `sampler2D` uniforms named `u_buffer_{a,b,c,d}` — the renderer binds the
+// last-completed frame's texture into those slots before drawing.
+//
+// Wiring sample_buffer_* cards:
+//   - The cards declare a `buffer` ParamDef whose `value` is the literal
+//     buffer id ('a'..'d'). The compiler emits a per-card `sampler2D`
+//     uniform exactly like image/video params.
+//   - The renderer reads the uniform binding's string value to know WHICH
+//     buffer texture to bind to that uniform's texture unit.
+//
+// Ping-pong (same-pass feedback): each buffer pass owns TWO FBOs and swaps
+// every frame. When a card inside buffer-A samples buffer A, it gets the
+// PREVIOUS frame's output (the "read" FBO) while the pass writes into the
+// other FBO (the "write" FBO). The renderer enforces this at bind time —
+// the compiler doesn't need any special-case marker.
+
+export type CompiledPass = {
+  id: PassId;
+  /** Display name from the source pass — useful for the renderer when
+   *  logging compile failures per pass. */
+  name: string;
+  /** Compiled shader for this pass. */
+  shader: CompiledShader;
+};
+
+export type CompiledMultiPass = {
+  /** In render order (A → B → C → D → Image), filtered to passes the recipe
+   *  actually has cards/enables for. The Image pass is always present. */
+  passes: CompiledPass[];
+};
+
+/** Compile a recipe into N shaders — one per enabled pass — in the order
+ *  the renderer should execute them (PASS_RENDER_ORDER). A single-pass
+ *  recipe (no `recipe.passes` field) yields exactly one CompiledPass for
+ *  'image', which is bit-identical to what `compile(recipe)` returns. */
+export function compileMultiPass(recipe: Recipe): CompiledMultiPass {
+  const enabledBufferPasses = new Map<PassId, Pass>();
+  for (const p of recipe.passes ?? []) {
+    if (p.id === 'image') continue; // image is sourced from recipe.cards
+    enabledBufferPasses.set(p.id, p);
+  }
+
+  const passes: CompiledPass[] = [];
+  for (const id of PASS_RENDER_ORDER) {
+    if (id === 'image') {
+      passes.push({ id: 'image', name: 'Image', shader: compile(recipe) });
+      continue;
+    }
+    const pass = enabledBufferPasses.get(id);
+    if (!pass) continue; // buffer pass not enabled — skip
+    // A buffer pass compiles like a sub-recipe whose `cards` are its own.
+    // Inherit canvasAspect + mode from the parent recipe so 3D-in-buffer
+    // pass works the same as 3D-in-image. We do NOT carry along the
+    // parent's passes (a buffer pass doesn't get to recurse).
+    const subRecipe: Recipe = {
+      canvasAspect: recipe.canvasAspect,
+      cards: pass.cards,
+      ...(pass.mode ?? recipe.mode ? { mode: pass.mode ?? recipe.mode } : {}),
+    };
+    passes.push({ id, name: pass.name, shader: compile(subRecipe) });
+  }
+  return { passes };
+}

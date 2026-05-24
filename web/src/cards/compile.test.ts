@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compile, uniformNameFor, validateRecipe } from './compile';
+import { compile, compileMultiPass, uniformNameFor, validateRecipe } from './compile';
 import { END_MARKER, MARKER_PREFIX } from './markers';
 import type { Recipe } from './types';
 
@@ -356,6 +356,99 @@ describe('3D compile', () => {
     expect(smoothMinCalls.length).toBe(2);
     // 3 spans — sphere, smoothness, sphere.
     expect(out.spans).toHaveLength(3);
+  });
+});
+
+describe('compileMultiPass', () => {
+  it('a single-pass recipe (no passes field) yields exactly one CompiledPass for image, identical to compile()', () => {
+    const out = compileMultiPass(RECIPE_RGV);
+    expect(out.passes).toHaveLength(1);
+    expect(out.passes[0]?.id).toBe('image');
+    expect(out.passes[0]?.name).toBe('Image');
+    // The image pass's shader is bit-identical to the single-pass compile.
+    expect(out.passes[0]?.shader.glsl).toBe(compile(RECIPE_RGV).glsl);
+  });
+
+  it('a 2-pass recipe (A + image) emits two shaders in render order: A first, image second', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed', id: 'i0', type: 'sample_buffer_a', enabled: true,
+          params: {
+            source:  { value: 'a', animation: null },
+            channel: { value: 1,   animation: null },
+          },
+        },
+      ],
+      passes: [
+        {
+          id: 'a', name: 'Buffer A',
+          cards: [
+            {
+              kind: 'typed', id: 'a0', type: 'radial_gradient', enabled: true,
+              params: { softness: { value: 1, animation: null } },
+            },
+          ],
+        },
+      ],
+    };
+    const out = compileMultiPass(recipe);
+    expect(out.passes.map((p) => p.id)).toEqual(['a', 'image']);
+    // Each pass's shader is non-empty and contains its own card body.
+    expect(out.passes[0]?.shader.glsl).toContain('//#card a0 Radial gradient');
+    expect(out.passes[1]?.shader.glsl).toContain('//#card i0 Sample Buffer A');
+    // Both shaders terminate with //#end.
+    expect(out.passes[0]?.shader.glsl).toContain(END_MARKER);
+    expect(out.passes[1]?.shader.glsl).toContain(END_MARKER);
+  });
+
+  it('a buffer-sampling card emits the right sampler2D uniform binding (value carries the buffer id)', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed', id: 'i0', type: 'sample_buffer_a', enabled: true,
+          params: {
+            source:  { value: 'a', animation: null },
+            channel: { value: 1,   animation: null },
+          },
+        },
+      ],
+      passes: [
+        {
+          id: 'a', name: 'Buffer A',
+          cards: [
+            {
+              kind: 'typed', id: 'a0', type: 'radial_gradient', enabled: true,
+              params: { softness: { value: 1, animation: null } },
+            },
+          ],
+        },
+      ],
+    };
+    const out = compileMultiPass(recipe);
+    const imageShader = out.passes.find((p) => p.id === 'image')!.shader;
+    // The image pass declares a sampler2D for the buffer-sampling card's
+    // `source` param and a float for `channel`. The renderer reads the
+    // string value 'a' to resolve to Buffer A's FBO texture.
+    expect(imageShader.glsl).toContain('uniform sampler2D u_card0_source;');
+    const sourceUniform = imageShader.uniforms.find((u) => u.paramKey === 'source');
+    expect(sourceUniform?.value).toBe('a');
+    expect(sourceUniform?.name).toBe('u_card0_source');
+  });
+
+  it('skips buffer pass entries when present in passes but with no cards (still listed in render order)', () => {
+    const recipe: Recipe = {
+      canvasAspect: 'square',
+      cards: [],
+      passes: [
+        { id: 'b', name: 'Buffer B', cards: [] },
+      ],
+    };
+    const out = compileMultiPass(recipe);
+    // Buffer B is enabled (empty but present) → listed before image.
+    expect(out.passes.map((p) => p.id)).toEqual(['b', 'image']);
   });
 });
 

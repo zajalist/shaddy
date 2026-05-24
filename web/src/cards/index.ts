@@ -12,6 +12,8 @@ export type {
   WildcardCard,
   Parameter,
   ParameterValue,
+  MediaParamValue,
+  MediaSourceRef,
   ColorRgb,
   CardCategory,
   ParamDef,
@@ -24,13 +26,15 @@ export type {
   BlendMode,
   Card3DContribution,
   ShaderTemplate,
+  Pass,
+  PassId,
 } from './types';
 
-export { BLEND_MODES } from './types';
+export { BLEND_MODES, BUFFER_PASS_IDS, PASS_RENDER_ORDER } from './types';
 
 export { MARKER_PREFIX, END_MARKER } from './markers';
 
-export { compile, uniformNameFor, validateRecipe } from './compile';
+export { compile, compileMultiPass, uniformNameFor, validateRecipe } from './compile';
 export { formatParameterForDisplay, formatParameterAsGlslLiteral, isColor } from './format';
 export { reparse, normalizeGlsl, extractDisplayName } from './reparse';
 
@@ -38,8 +42,14 @@ export {
   useCardsStore,
   generateCardId,
   cloneRecipeWithFreshIds,
+  DEFAULT_CAMERA,
+  getPassCards,
+  setPassCards,
+  addBufferPass,
+  removeBufferPass,
+  renameBufferPass,
 } from './state';
-export type { CardsState } from './state';
+export type { CardsState, CameraView, CameraVec3 } from './state';
 
 export { STARTER_RECIPES } from './starter-recipes';
 export type { StarterRecipe } from './starter-recipes';

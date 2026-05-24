@@ -234,6 +234,74 @@ export const GLSL_HELPERS: Record<string, string> = {
   return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
 }`,
 
+  // ASCII bitmap glyph lookup — 10 hardcoded 5x7 character bitmaps ordered
+  // light → dark: ' .:-=+*#%@'. Each glyph is 7 rows of 5 bits (MSB = left).
+  // Returns 1.0 if the bit at (x, y) for glyph index `g` is set, else 0.0.
+  // x ∈ [0,4], y ∈ [0,6] with y=0 at the top.
+  // Out-of-range coordinates return 0.0 (acts as built-in border).
+  asciiGlyph5x7: `float asciiGlyph5x7(int g, int x, int y) {
+  if (x < 0 || x > 4 || y < 0 || y > 6) return 0.0;
+  int row = 0;
+  // ' ' (0)  blank
+  // '.' (1)  bottom dot
+  if (g == 1) {
+    if (y == 5) row = 12;       // ..11.
+    else if (y == 6) row = 12;  // ..11.
+  }
+  // ':' (2)  two dots
+  else if (g == 2) {
+    if (y == 1 || y == 2) row = 12;
+    else if (y == 4 || y == 5) row = 12;
+  }
+  // '-' (3)  horizontal dash mid
+  else if (g == 3) {
+    if (y == 3) row = 14;       // .111. = 01110 = 14
+  }
+  // '=' (4)  two horizontal dashes
+  else if (g == 4) {
+    if (y == 2 || y == 4) row = 14;
+  }
+  // '+' (5)  plus
+  else if (g == 5) {
+    if (y == 1 || y == 2 || y == 4 || y == 5) row = 4;
+    else if (y == 3) row = 14;
+  }
+  // '*' (6)  asterisk
+  else if (g == 6) {
+    if (y == 1) row = 21;        // .1.1.1 → 10101 = 21
+    else if (y == 2) row = 14;   // .111. = 01110 = 14
+    else if (y == 3) row = 31;
+    else if (y == 4) row = 14;
+    else if (y == 5) row = 21;
+  }
+  // '#' (7)  hash — heavy
+  else if (g == 7) {
+    if (y == 1 || y == 5) row = 10;   // .1.1. = 01010 = 10
+    else if (y == 2 || y == 4) row = 31;
+    else if (y == 3) row = 10;
+  }
+  // '%' (8)  percent — denser
+  else if (g == 8) {
+    if (y == 1) row = 25;   // 11.01 = 11001 = 25
+    else if (y == 2) row = 26; // 11.1. = 11010 = 26
+    else if (y == 3) row = 4;
+    else if (y == 4) row = 11; // .1.11 = 01011 = 11
+    else if (y == 5) row = 19; // 1..11 = 10011 = 19
+  }
+  // '@' (9)  at — densest
+  else if (g == 9) {
+    if (y == 0) row = 14;        // .111.
+    else if (y == 1) row = 17;   // 1...1
+    else if (y == 2) row = 23;   // 1.111 = 10111 = 23
+    else if (y == 3) row = 21;   // 1.1.1
+    else if (y == 4) row = 23;   // 1.111
+    else if (y == 5) row = 16;   // 1....
+    else if (y == 6) row = 15;   // .1111
+  }
+  int bit = (row >> (4 - x)) & 1;
+  return float(bit);
+}`,
+
   // ─── 3D raymarch helpers ────────────────────────────────────────────────
   // Hard min — straight CSG union of two SDFs.
   sdMin: `float sdMin(float a, float b) { return min(a, b); }`,
@@ -319,6 +387,7 @@ export const HELPER_EMISSION_ORDER: readonly string[] = [
   'sdfTrapezoid',
   'sdfParallelogram',
   'sdfHorseshoe',
+  'asciiGlyph5x7',
   // 3D — sdMin/sdSmoothMin/sdf*3 are needed BEFORE sdScene, sceneNormal3 +
   // softShadow3 are needed AFTER sdScene (the 3D compiler emits sdScene
   // between the two halves, see compile.ts.compile3d).

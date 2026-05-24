@@ -5,7 +5,7 @@
 // real-range mapping; color params get a click-to-pick swatch (react-colorful);
 // wildcard cards get a textarea for their raw GLSL.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { RgbColorPicker } from 'react-colorful';
 
@@ -17,6 +17,7 @@ import {
   type Card,
   type CardDef,
   type ColorRgb,
+  type MediaSourceRef,
   type ParamDef,
   type TypedCard,
   type WildcardCard,
@@ -27,6 +28,7 @@ import type { CategoryKey } from './tokens';
 import { Icon } from './icons';
 import { SliderRail } from './components';
 import { categoryToBlock, normalizedToParam, paramToNormalized } from './card-adapter';
+import { useIsMobile } from './useIsMobile';
 
 export type BlockEditorProps = {
   card: Card;
@@ -50,33 +52,38 @@ export const BlockEditor = ({ card, onClose }: BlockEditorProps) => {
   return <TypedEditor card={card} def={def} onClose={onClose} />;
 };
 
-const Modal = ({ onClose, children }: { onClose: () => void; children: ReactNode }) => (
-  <div
-    role="dialog"
-    style={{
-      position: 'absolute', inset: 0,
-      background: 'rgba(15, 18, 26, 0.45)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 32, zIndex: 30,
-    }}
-    onClick={onClose}
-  >
+const Modal = ({ onClose, children }: { onClose: () => void; children: ReactNode }) => {
+  const isMobile = useIsMobile();
+  return (
     <div
-      onClick={(e) => e.stopPropagation()}
+      role="dialog"
       style={{
-        width: 'min(920px, 96%)', maxHeight: '92%',
-        background: SHADE.bg,
-        border: `1px solid ${SHADE.inkLine}`,
-        borderRadius: 4,
-        display: 'flex', flexDirection: 'column',
-        overflow: 'hidden',
+        position: 'absolute', inset: 0,
+        background: isMobile ? SHADE.bg : 'rgba(15, 18, 26, 0.45)',
+        backdropFilter: isMobile ? undefined : 'blur(4px)',
+        display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'center',
+        padding: isMobile ? 0 : 32, zIndex: 30,
       }}
+      onClick={onClose}
     >
-      {children}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: isMobile ? '100%' : 'min(920px, 96%)',
+          maxHeight: isMobile ? '100%' : '92%',
+          height: isMobile ? '100%' : 'auto',
+          background: SHADE.bg,
+          border: isMobile ? 'none' : `1px solid ${SHADE.inkLine}`,
+          borderRadius: isMobile ? 0 : 4,
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Header = ({
   cat, title, paramCount, onReset, onClose, cardId,
@@ -359,7 +366,10 @@ const TypedEditor = ({
         if (c.id !== card.id || c.kind !== 'typed') return c;
         const freshParams: TypedCard['params'] = {};
         for (const [k, p] of Object.entries(def.params)) {
-          freshParams[k] = { value: p.default, animation: null };
+          const v = (p.kind === 'image' || p.kind === 'video')
+            ? (p.default ?? '')
+            : p.default;
+          freshParams[k] = { value: v, animation: null, sourceRef: null };
         }
         return { ...c, params: freshParams };
       }),
@@ -540,9 +550,188 @@ const ParamRow = ({
       </div>
     );
   }
+  if (def.kind === 'image') {
+    return (
+      <EditorImageRow
+        label={def.label}
+        cardId={card.id}
+        paramKey={paramKey}
+        liveValue={(card.params[paramKey]?.value as string | undefined) ?? ''}
+      />
+    );
+  }
+  if (def.kind === 'video') {
+    return (
+      <EditorVideoRow
+        label={def.label}
+        cardId={card.id}
+        paramKey={paramKey}
+        liveValue={(card.params[paramKey]?.value as string | undefined) ?? ''}
+      />
+    );
+  }
   // color
   const v = live as ColorRgb;
   return <ColorRow label={def.label} value={v} onChange={onChange} />;
+};
+
+// ─── Image / video param rows (modal flavour) ──────────────────────────
+
+const EditorImageRow = ({
+  label, cardId, paramKey, liveValue,
+}: {
+  label: string;
+  cardId: string;
+  paramKey: string;
+  liveValue: string;
+}) => {
+  const setParamSource = useCardsStore((s) => s.setParamSource);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [thumb, setThumb] = useState<string | null>(liveValue || null);
+  useEffect(() => { setThumb(liveValue || null); }, [liveValue]);
+
+  const onFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const ref: MediaSourceRef = { kind: 'image', element: img };
+        setParamSource(cardId, paramKey, dataUrl, ref);
+        setThumb(dataUrl);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+        <span style={{
+          font: `700 11px ${TYPE.body}`,
+          color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+        <span style={{ marginLeft: 'auto', font: `500 11px ${TYPE.bodyMono}`, color: SHADE.textFaint }}>
+          {thumb ? 'loaded' : 'empty'}
+        </span>
+      </div>
+      {thumb && (
+        <img
+          src={thumb}
+          alt={label}
+          style={{
+            width: '100%', maxHeight: 240, objectFit: 'contain',
+            borderRadius: 3, border: `1px solid ${SHADE.border}`, marginBottom: 10,
+            background: SHADE.surface4,
+          }}
+        />
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        style={{
+          width: '100%', padding: '10px 12px',
+          background: SHADE.surface1, border: `1px solid ${SHADE.border}`,
+          color: SHADE.text, borderRadius: 3,
+          font: `700 11px ${TYPE.body}`,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        {thumb ? 'Replace image' : 'Choose image…'}
+      </button>
+    </div>
+  );
+};
+
+const EditorVideoRow = ({
+  label, cardId, paramKey, liveValue,
+}: {
+  label: string;
+  cardId: string;
+  paramKey: string;
+  liveValue: string;
+}) => {
+  const setParamSource = useCardsStore((s) => s.setParamSource);
+  const streamRef = useRef<MediaStream | null>(null);
+  const active = liveValue === 'webcam';
+
+  const start = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      await video.play();
+      streamRef.current = stream;
+      const ref: MediaSourceRef = { kind: 'video', element: video };
+      setParamSource(cardId, paramKey, 'webcam', ref);
+    } catch (e) {
+      console.warn('[webcam] getUserMedia failed:', e);
+    }
+  };
+
+  const stop = () => {
+    const s = streamRef.current;
+    if (s) for (const t of s.getTracks()) t.stop();
+    streamRef.current = null;
+    setParamSource(cardId, paramKey, '', null);
+  };
+
+  useEffect(() => () => {
+    const s = streamRef.current;
+    if (s) for (const t of s.getTracks()) t.stop();
+  }, []);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+        <span style={{
+          font: `700 11px ${TYPE.body}`,
+          color: SHADE.text, letterSpacing: '0.10em', textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+        <span style={{
+          marginLeft: 'auto', font: `500 11px ${TYPE.bodyMono}`,
+          color: active ? SHADE.gold : SHADE.textFaint,
+        }}>
+          {active ? 'live' : 'stopped'}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => (active ? stop() : void start())}
+        style={{
+          width: '100%', padding: '10px 12px',
+          background: active ? SHADE.gold : SHADE.surface1,
+          border: `1px solid ${active ? SHADE.goldDeep : SHADE.border}`,
+          color: active ? '#1a1208' : SHADE.text, borderRadius: 3,
+          font: `700 11px ${TYPE.body}`,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        {active ? 'Stop camera' : 'Start camera'}
+      </button>
+    </div>
+  );
 };
 
 const ColorRow = ({

@@ -505,50 +505,43 @@ const ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
-  // Composer "blocks snapping together" — three chunky puzzle-ish tiles
-  // with a tab/notch that visibly interlock. Slight rotation for hand-drawn
-  // playfulness. Single-color (gold via `c`), cream highlight + soft shadow.
+  // Composer icon — TWO chunky puzzle pieces interlocking horizontally
+  // with a clear tab-in-notch joint at the centre. At small navbar size the
+  // previous three-stacked-tiles design collapsed visually into two
+  // horizontal bars; this version reads as "puzzle pieces snapping" from
+  // 16px upward. Sparkle in the top-right for charisma.
   'composer-blocks': ({ c, cream }) => (
     <>
-      {/* soft drop shadow for depth */}
-      <g transform="translate(0.6 0.8)" opacity="0.35">
-        <path
-          d="M3.6 5.4 H10 a1.4 1.4 0 0 1 1.4 1.4 v1 a1 1 0 0 0 2 0 v-1 a1.4 1.4 0 0 1 1.4 -1.4 H20 a1.4 1.4 0 0 1 1.4 1.4 V12 a1.4 1.4 0 0 1 -1.4 1.4 h-1 a1 1 0 0 0 0 2 h1 a1.4 1.4 0 0 1 1.4 1.4 v0.4 a1.4 1.4 0 0 1 -1.4 1.4 H4 a1.4 1.4 0 0 1 -1.4 -1.4 V6.8 a1.4 1.4 0 0 1 1 -1.4 Z"
-          fill={SHADOW}
-        />
+      {/* soft drop shadow */}
+      <g transform="translate(0.6 0.9)" opacity="0.32">
+        <path d="M4 6 H10 V9 A1 1 0 0 0 11 10 A1 1 0 0 0 12 9 V6 H20 V18 H4 Z" fill={SHADOW} />
       </g>
 
-      {/* top-left tile — has a TAB poking right */}
-      <g transform="rotate(-3 6.5 7.8)">
+      {/* LEFT piece — solid square with a TAB poking right at mid-height.
+          Slightly tilted left for hand-drawn personality. */}
+      <g transform="rotate(-2.5 7.2 12)">
         <path
-          d="M3.4 4.4 H9.4 a1.2 1.2 0 0 1 1.2 1.2 v0.9 a0.95 0.95 0 0 0 1.9 0 v-0.9 a0 0 0 0 1 0 0 V10.2 a1.2 1.2 0 0 1 -1.2 1.2 H3.4 a1.2 1.2 0 0 1 -1.2 -1.2 V5.6 a1.2 1.2 0 0 1 1.2 -1.2 Z"
+          d="M3.2 5.2 H10.2 V10.4 A1.1 1.1 0 0 0 11.3 11.5 H12.3 A1.1 1.1 0 0 0 13.4 12.6 V13.4 A1.1 1.1 0 0 0 12.3 14.5 H11.3 A1.1 1.1 0 0 0 10.2 15.6 V18.6 H3.2 Z"
           fill={c}
         />
-        {/* highlight slab */}
-        <rect x="3.4" y="4.4" width="7.2" height="1.6" rx="0.8" fill={cream} opacity="0.32" />
+        <rect x="3.2" y="5.2" width="7" height="1.6" rx="0.7" fill={cream} opacity="0.4" />
       </g>
 
-      {/* top-right tile — has a NOTCH cut into its left edge */}
-      <g transform="rotate(2.4 17 7.6)">
+      {/* RIGHT piece — solid square with a NOTCH cut into its left at
+          mid-height that exactly meets the left piece's tab. Tilted right. */}
+      <g transform="rotate(2.5 16.8 12)">
         <path
-          d="M14.6 4.2 a1.2 1.2 0 0 0 -1.2 1.2 v0.6 a0.9 0.9 0 0 1 -1.8 0 v-0.6 a1.2 1.2 0 0 0 -1.2 -1.2 H10.4 V10.2 a1.2 1.2 0 0 0 1.2 1.2 h8.6 a1.2 1.2 0 0 0 1.2 -1.2 V5.4 a1.2 1.2 0 0 0 -1.2 -1.2 Z"
-          fill={c}
-          opacity="0.92"
+          d="M20.8 5.2 H13.8 V10.4 A1.1 1.1 0 0 1 12.7 11.5 H11.7 A1.1 1.1 0 0 1 10.6 12.6 V13.4 A1.1 1.1 0 0 1 11.7 14.5 H12.7 A1.1 1.1 0 0 1 13.8 15.6 V18.6 H20.8 Z"
+          fill={c} opacity="0.92"
         />
-        <rect x="11.6" y="4.2" width="9.8" height="1.6" rx="0.8" fill={cream} opacity="0.28" />
+        <rect x="14" y="5.2" width="6.8" height="1.6" rx="0.7" fill={cream} opacity="0.36" />
       </g>
 
-      {/* bottom tile — wider, with a tab poking UP that fits into the seam above */}
-      <g transform="rotate(-1.4 12 17)">
-        <path
-          d="M3.8 14.4 H10.6 a0.9 0.9 0 0 1 0.9 -0.9 h0.9 a0.9 0.9 0 0 1 0.9 0.9 H20.2 a1.3 1.3 0 0 1 1.3 1.3 V19.6 a1.3 1.3 0 0 1 -1.3 1.3 H3.8 a1.3 1.3 0 0 1 -1.3 -1.3 V15.7 a1.3 1.3 0 0 1 1.3 -1.3 Z"
-          fill={c}
-        />
-        <rect x="3.8" y="14.4" width="17.7" height="1.6" rx="0.8" fill={cream} opacity="0.32" />
-        {/* two stitch dots for cartoony hand-drawn feel */}
-        <circle cx="8.2"  cy="18.4" r="0.7" fill={cream} opacity="0.6" />
-        <circle cx="15.8" cy="18.4" r="0.7" fill={cream} opacity="0.6" />
-      </g>
+      {/* charisma sparkle top-right */}
+      <path
+        d="M20 3.6 L20.5 5.2 L22 5.6 L20.5 6 L20 7.6 L19.5 6 L18 5.6 L19.5 5.2 Z"
+        fill={cream}
+      />
     </>
   ),
 };

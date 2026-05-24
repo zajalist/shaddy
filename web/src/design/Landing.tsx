@@ -12,6 +12,7 @@ import { RoamingMascot } from './RoamingMascot';
 import { TemplatesShared } from './TemplatesShared';
 import type { Template } from './TemplatesShared';
 import { FractalEntity } from './FractalEntity';
+import { useIsMobile } from './useIsMobile';
 
 // Marketing landing — single-color throughout (no per-section bg shifts), the
 // product motto from the repo README, hayba-style fixed left TOC + scroll-
@@ -137,8 +138,19 @@ const useLandingChrome = () => {
       document.head.appendChild(style);
     }
     const prev = document.body.style.background;
+    const prevOverflowX = document.body.style.overflowX;
+    const prevHtmlOverflowX = document.documentElement.style.overflowX;
     document.body.style.background = PAGE_BG;
-    return () => { document.body.style.background = prev; };
+    // Kill any horizontal overflow on narrow viewports — every wide section
+    // already shrinks on mobile, but stray box-shadows / nav widths can still
+    // create a tiny horizontal scrollbar that wrecks the mobile feel.
+    document.body.style.overflowX = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
+    return () => {
+      document.body.style.background = prev;
+      document.body.style.overflowX = prevOverflowX;
+      document.documentElement.style.overflowX = prevHtmlOverflowX;
+    };
   }, []);
 };
 
@@ -163,20 +175,24 @@ const useNavScroll = () => {
 // ─── Topbar — sticky, fades on scroll direction ──────────────────────────
 const LandingNav = () => {
   const { hidden, scrolled } = useNavScroll();
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <nav
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80,
-        height: 60, padding: '0 28px',
-        display: 'flex', alignItems: 'center', gap: 22,
-        background: scrolled ? 'rgba(11,12,14,0.78)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(14px) saturate(140%)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(14px) saturate(140%)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
+        height: 60, padding: isMobile ? '0 16px' : '0 28px',
+        display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 22,
+        background: scrolled || menuOpen ? 'rgba(11,12,14,0.78)' : 'transparent',
+        backdropFilter: scrolled || menuOpen ? 'blur(14px) saturate(140%)' : 'none',
+        WebkitBackdropFilter: scrolled || menuOpen ? 'blur(14px) saturate(140%)' : 'none',
+        borderBottom: scrolled || menuOpen ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
         color: SHADE.topbarText,
         font: `500 12.5px ${TYPE.body}`,
-        overflow: 'hidden',
-        transform: hidden ? 'translateY(-100%)' : 'translateY(0)',
+        // The mobile menu drawer hangs below the topbar — it must not be
+        // clipped by the topbar's overflow.
+        overflow: menuOpen ? 'visible' : 'hidden',
+        transform: hidden && !menuOpen ? 'translateY(-100%)' : 'translateY(0)',
         transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1), background 0.3s, backdrop-filter 0.3s, border-color 0.3s',
       }}
     >
@@ -185,51 +201,51 @@ const LandingNav = () => {
         <ShadeLogo size={22} />
         <span style={{ font: `700 14px ${TYPE.display}`, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Shaddy</span>
       </a>
-      <nav
-        style={{
-          position: 'absolute', left: '50%', top: 0, bottom: 0,
-          transform: 'translateX(-50%)',
-          display: 'flex', alignItems: 'center', gap: 4, zIndex: 1,
-        }}
-      >
-        <NavLink href="#how">How it works</NavLink>
-        <NavLink href="#compose">Compose</NavLink>
-        <NavLink href="#code">Code</NavLink>
-        <NavLink href="#faq">FAQ</NavLink>
-      </nav>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
-        <a
-          href="https://github.com"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="GitHub"
-          data-tip="GitHub"
-          className="oct-btn icon-tip"
+      {/* Desktop centered nav — hidden on mobile in favour of a hamburger sheet */}
+      {!isMobile && (
+        <nav
           style={{
-            width: 34, height: 34,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: SHADE.topbarText, textDecoration: 'none',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+            position: 'absolute', left: '50%', top: 0, bottom: 0,
+            transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 4, zIndex: 1,
           }}
         >
-          <span className="oct-svg" style={{ display: 'inline-flex' }}>
-            <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
-          </span>
-        </a>
-        {/* Real auth button — talks to the OIDC server configured in
-            `web/src/auth/config.ts`. Renders a "Sign in" pill when signed
-            out and a small avatar/username badge with a dropdown signout
-            when signed in. Will fail with a clear error in the console
-            until the user fills in their issuer URL + client id. */}
-        <SignInButton />
+          <NavLink href="#how">How it works</NavLink>
+          <NavLink href="#compose">Compose</NavLink>
+          <NavLink href="#code">Code</NavLink>
+          <NavLink href="#faq">FAQ</NavLink>
+        </nav>
+      )}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10, position: 'relative', zIndex: 1 }}>
+        {!isMobile && (
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub"
+            data-tip="GitHub"
+            className="oct-btn icon-tip"
+            style={{
+              width: 34, height: 34,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              color: SHADE.topbarText, textDecoration: 'none',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+            }}
+          >
+            <span className="oct-svg" style={{ display: 'inline-flex' }}>
+              <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
+            </span>
+          </a>
+        )}
+        {!isMobile && <SignInButton />}
         <a
           href="/design"
           aria-label="Open composer"
-          data-tip="Open composer"
+          data-tip={isMobile ? undefined : 'Open composer'}
           className="comp-btn icon-tip"
           style={{
-            width: 34, height: 34,
+            width: isMobile ? 44 : 34, height: isMobile ? 44 : 34,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: `linear-gradient(180deg, ${SHADE.gold} 0%, ${SHADE.goldDeep} 100%)`,
             border: `1px solid ${SHADE.goldDeep}`, borderRadius: 6,
@@ -241,7 +257,80 @@ const LandingNav = () => {
             <Icon name="composer-blocks" size={20} color={SHADE.gold} cream={SHADE.cream} />
           </span>
         </a>
+        {isMobile && (
+          <button
+            type="button"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setMenuOpen((x) => !x)}
+            style={{
+              width: 44, height: 44, padding: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6,
+              color: SHADE.topbarText,
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {menuOpen ? <path d="M6 6l12 12 M6 18L18 6" /> : <><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></>}
+            </svg>
+          </button>
+        )}
       </div>
+      {isMobile && menuOpen && (
+        <div
+          style={{
+            position: 'fixed', left: 0, right: 0, top: 60,
+            background: 'rgba(11,12,14,0.96)',
+            backdropFilter: 'blur(14px)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            padding: '12px 16px 18px',
+            display: 'flex', flexDirection: 'column', gap: 4,
+            zIndex: 1,
+          }}
+        >
+          {[
+            { href: '#how', label: 'How it works' },
+            { href: '#compose', label: 'Compose' },
+            { href: '#code', label: 'Code' },
+            { href: '#faq', label: 'FAQ' },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center',
+                minHeight: 48, padding: '0 8px',
+                color: SHADE.cream, textDecoration: 'none',
+                font: `500 16px ${TYPE.body}`,
+                letterSpacing: '0.01em',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              {item.label}
+            </a>
+          ))}
+          <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="GitHub"
+              style={{
+                width: 44, height: 44,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: SHADE.topbarText, textDecoration: 'none',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+              }}
+            >
+              <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
+            </a>
+            <SignInButton />
+          </div>
+        </div>
+      )}
     </nav>
   );
 };
@@ -348,6 +437,7 @@ const TOC: TocItem[] = [
 const PageTOC = () => {
   const [active, setActive] = useState('top');
   const [visible, setVisible] = useState(false);
+  const isMobile = useIsMobile(1024); // hide below desktop — TOC needs wide gutter space
   useEffect(() => {
     const onScroll = () => {
       const heroH = (document.getElementById('top')?.offsetHeight ?? 600);
@@ -368,6 +458,7 @@ const PageTOC = () => {
       window.removeEventListener('resize', onScroll);
     };
   }, []);
+  if (isMobile) return null;
   return (
     <aside
       aria-label="Page sections"
@@ -429,7 +520,7 @@ const Hero = () => (
       minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      textAlign: 'center', padding: '7rem 2rem 6rem',
+      textAlign: 'center', padding: 'clamp(5rem, 9vw, 7rem) clamp(1.25rem, 4vw, 2rem) clamp(4rem, 7vw, 6rem)',
       overflow: 'hidden',
     }}
   >
@@ -575,17 +666,20 @@ const FeatureRow = ({
   body: ReactNode;
   visual: ReactNode;
   reverse?: boolean;
-}) => (
+}) => {
+  const isMobile = useIsMobile();
+  return (
   <div
     style={{
       maxWidth: 1180, margin: '0 auto',
-      display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.2fr)',
-      gap: 56,
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'minmax(280px, 1fr) minmax(280px, 1.2fr)',
+      gap: isMobile ? 28 : 56,
       alignItems: 'center',
-      padding: '0 2rem',
+      padding: isMobile ? '0 1.25rem' : '0 2rem',
     }}
   >
-    <div style={{ order: reverse ? 2 : 1 }}>
+    <div style={{ order: isMobile ? 1 : (reverse ? 2 : 1) }}>
       <div style={{ font: `700 11px ${TYPE.bodyMono}`, letterSpacing: '0.22em', textTransform: 'uppercase', color: SHADE.gold, marginBottom: 16 }}>
         {eyebrow}
       </div>
@@ -604,16 +698,17 @@ const FeatureRow = ({
         {body}
       </div>
     </div>
-    <div style={{ order: reverse ? 1 : 2, position: 'relative' }}>
+    <div style={{ order: isMobile ? 2 : (reverse ? 1 : 2), position: 'relative' }}>
       {visual}
     </div>
   </div>
-);
+  );
+};
 
 const SectionShell = ({
   id, eyebrow, title, subtitle, children,
 }: { id?: string; eyebrow: string; title: ReactNode; subtitle?: string; children?: ReactNode }) => (
-  <section id={id} style={{ padding: '7rem 2rem 6rem' }}>
+  <section id={id} style={{ padding: 'clamp(4rem, 8vw, 7rem) clamp(1.25rem, 4vw, 2rem) clamp(3.5rem, 7vw, 6rem)' }}>
     <div style={{ maxWidth: 880, margin: '0 auto', textAlign: 'center' }}>
       <div
         style={{
@@ -770,10 +865,12 @@ const FeatureCanvas = () => (
 // ─── Composer showcase (inline mock of the editor) ───────────────────────
 const ComposerShowcase = () => {
   const chain = [blockById('circle')!, blockById('ripple')!, blockById('palette')!];
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
         maxWidth: 1180, margin: '4rem auto 0',
+        marginInline: isMobile ? '1rem' : 'auto',
         background: SHADE.bg,
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 3,
@@ -795,25 +892,32 @@ const ComposerShowcase = () => {
         <span style={{ font: `500 11px ${TYPE.bodyMono}`, color: SHADE.topbarText, letterSpacing: '0.08em', position: 'relative', zIndex: 1 }}>120 BPM</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 240px', minHeight: 380 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 240px',
+        minHeight: isMobile ? 'auto' : 380,
+      }}>
+        {!isMobile && (
         <div style={{ background: SHADE.bg, borderRight: `1px solid ${SHADE.border}`, padding: 14 }}>
           <CategoryHeader color={SHADE.catShape}   label="Shapes" />
           <CategoryHeader color={SHADE.catDistort} label="Distort" />
           <CategoryHeader color={SHADE.catColor}   label="Colors" />
           <CategoryHeader color={SHADE.catEffect}  label="Effects" />
         </div>
+        )}
         <div
           style={{
             background: SHADE.bg, position: 'relative',
-            padding: '30px 24px',
+            padding: isMobile ? '20px 14px' : '30px 24px',
             backgroundImage: `
               linear-gradient(${SHADE.border} 1px, transparent 1px),
               linear-gradient(90deg, ${SHADE.border} 1px, transparent 1px)
             `,
             backgroundSize: '32px 32px',
+            overflowX: 'auto',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
             {chain.map((b, i) => {
               const variant: BlockVariant = {
                 left: i === 0 ? 'flat' : 'notch',
@@ -1182,7 +1286,7 @@ export const Landing = () => {
 
       <SectionSeparator />
 
-      <section id="templates" style={{ padding: '7rem 2rem 6rem', position: 'relative' }}>
+      <section id="templates" style={{ padding: 'clamp(4rem, 8vw, 7rem) clamp(1.25rem, 4vw, 2rem) clamp(3.5rem, 7vw, 6rem)', position: 'relative' }}>
         <div style={{ maxWidth: 880, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ font: `700 11px ${TYPE.bodyMono}`, letterSpacing: '0.22em', textTransform: 'uppercase', color: SHADE.gold, marginBottom: 16 }}>
             12 starter templates
@@ -1234,12 +1338,12 @@ export const Landing = () => {
 
       <SectionSeparator />
 
-      <section id="stats" style={{ padding: '7rem 2rem 6rem', position: 'relative' }}>
+      <section id="stats" style={{ padding: 'clamp(4rem, 8vw, 7rem) clamp(1.25rem, 4vw, 2rem) 6rem', position: 'relative' }}>
         <div
           style={{
             maxWidth: 1180, margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: 'minmax(320px, 1.05fr) minmax(320px, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: 48,
             alignItems: 'center',
           }}

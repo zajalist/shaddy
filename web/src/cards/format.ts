@@ -26,12 +26,26 @@ export function formatColorForDisplay([r, g, b]: ColorRgb): string {
 }
 
 export function formatParameterForDisplay(value: ParameterValue): string {
+  if (typeof value === 'string') {
+    // Media-param value — a data URL or 'webcam'. Don't dump megabytes of
+    // base64 into the marker comment; just show a short tag.
+    if (value === '') return '(none)';
+    if (value === 'webcam') return 'webcam';
+    if (value.startsWith('data:')) return 'image';
+    return value.slice(0, 24);
+  }
   return isColor(value) ? formatColorForDisplay(value) : formatFloatForDisplay(value);
 }
 
 /** Render a value as a GLSL literal (used for default initializers, never
  *  for the in-snippet placeholders — those become uniform refs). */
 export function formatParameterAsGlslLiteral(value: ParameterValue): string {
+  if (typeof value === 'string') {
+    // Media-param literals aren't representable inline (they're textures);
+    // emit a benign black colour so any caller that fell through has
+    // valid GLSL. In practice no card uses this for image/video params.
+    return 'vec3(0.0)';
+  }
   if (isColor(value)) {
     const [r, g, b] = value;
     return `vec3(${glslFloat(r)}, ${glslFloat(g)}, ${glslFloat(b)})`;

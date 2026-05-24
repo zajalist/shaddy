@@ -7,6 +7,9 @@
 
 /** The Recipe is the source of truth. The emitted GLSL is a *projection*. */
 export type Recipe = {
+  /** The image pass cards — what renders to screen. Kept at the top level for
+   *  full back-compat with single-pass readers across the app. When
+   *  `passes` is set, this stays in sync with the image entry inside it. */
   cards: Card[];
   canvasAspect: 'square' | 'portrait' | 'landscape';
   /** Compiler dispatch flag. '2d' (default, omitted in old recipes) emits the
@@ -15,7 +18,35 @@ export type Recipe = {
    *  meaningfully (2d cards become no-ops). Old Recipe JSON without this
    *  field is treated as '2d'. */
   mode?: ShaderTemplate;
+  /** OPTIONAL extra buffer passes (A/B/C/D). The image pass is implicit and
+   *  always present — it's the top-level `cards` array. Buffer passes render
+   *  to offscreen FBOs in alphabetical order BEFORE the image pass, and can
+   *  sample each other (or themselves, ping-pong) via the
+   *  `sample_buffer_{a,b,c,d}` cards. Omit the field for a single-pass
+   *  recipe (the back-compat default). */
+  passes?: Pass[];
 };
+
+/** One render pass in a multi-pass recipe. The image pass is always present
+ *  (sourced from `Recipe.cards`); buffer passes A/B/C/D are added via the
+ *  chain-tabs UI and stored in `Recipe.passes`. */
+export type Pass = {
+  id: PassId;
+  name: string;
+  cards: Card[];
+  mode?: ShaderTemplate;
+};
+
+/** Pass identifier. 'image' is the final-to-screen pass; 'a'..'d' are
+ *  offscreen FBOs that earlier passes write to and later passes can sample. */
+export type PassId = 'image' | 'a' | 'b' | 'c' | 'd';
+
+/** Render order for multi-pass: A → B → C → D → Image. Earlier passes write
+ *  to their own FBO; later passes can sample any earlier pass's output. */
+export const PASS_RENDER_ORDER: readonly PassId[] = ['a', 'b', 'c', 'd', 'image'] as const;
+
+/** Buffer-only pass ids (A-D, no image). */
+export const BUFFER_PASS_IDS: readonly Exclude<PassId, 'image'>[] = ['a', 'b', 'c', 'd'] as const;
 
 /** Which shader template the compiler should emit. See Recipe.mode. */
 export type ShaderTemplate = '2d' | '3d';
@@ -63,10 +94,26 @@ export type Parameter = {
   value: ParameterValue;
   /** PR #2 fills this with the Animation tagged union. */
   animation: null;
+  /** For media-backed params (kind: 'image' | 'video'), the live source the
+   *  renderer should sample as a sampler2D. The Recipe.value stays a string
+   *  (a data URL for images, an opaque tag like 'webcam' for video) so the
+   *  Recipe remains serialisable; the integration layer carries the actual
+   *  element across compile cycles via this field. */
+  sourceRef?: MediaSourceRef | null;
 };
 
-export type ParameterValue = number | ColorRgb;
+/** Live media a sampler2D param is bound to. */
+export type MediaSourceRef =
+  | { kind: 'image'; element: HTMLImageElement | HTMLCanvasElement | ImageBitmap }
+  | { kind: 'video'; element: HTMLVideoElement };
+
+export type ParameterValue = number | ColorRgb | MediaParamValue;
 export type ColorRgb = readonly [number, number, number];
+
+/** Stored value for image/video params. For images: a data URL (so it
+ *  round-trips through Recipe JSON serialisation). For videos: the string
+ *  'webcam' (the live source is non-serialisable; the UI re-acquires it). */
+export type MediaParamValue = string;
 
 // ─── Card library schema ────────────────────────────────────────────────
 
@@ -82,7 +129,22 @@ export type ParamDef =
        *  emitted as a `float` uniform that the shader casts via `int(u_*)`. */
       default: number;
       options: ReadonlyArray<{ value: number; label: string }>;
-    };
+    }
+  /** A user-supplied still image (PNG/JPG). Stored in the Recipe as a data
+   *  URL; emitted as a `sampler2D` uniform the compiler can reference inside
+   *  the snippet. */
+  | { kind: 'image'; label: string; default: MediaParamValue | null }
+  /** A live video feed (webcam). Stored in the Recipe as the string
+   *  'webcam' (the live element isn't serialisable); emitted as a
+   *  `sampler2D` uniform that RecipeCanvas re-uploads each frame. */
+  | { kind: 'video'; label: string; default: MediaParamValue | null }
+  /** A reference to another pass's previous-frame FBO. Emitted as a
+   *  `sampler2D` uniform; the multi-pass renderer binds the appropriate
+   *  buffer texture every frame (using the ping-pong "previous" slot when
+   *  the consumer pass is the same as the producer). Stored as a string
+   *  literal of the target buffer id ('a' | 'b' | 'c' | 'd') so the Recipe
+   *  round-trips through JSON. */
+  | { kind: 'buffer'; label: string; default: 'a' | 'b' | 'c' | 'd' };
 
 /** A 3D card's contribution to the raymarched scene. Used by cards with
  *  `mode: '3d'`. The compiler walks 3D cards in recipe order and threads

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useCardsStore } from '@/cards';
 import { BLOCK_LIB, CATEGORIES, SHADE, TYPE } from './tokens';
 import type { BlockDef } from './tokens';
 import { Icon, ShadeLogo } from './icons';
 import { Starfield } from './Starfield';
+import { PhotoToCardsPopover } from './PhotoToCards';
 
 // ─── Text-only difference-blend toggle pill ───────────────────────────────
 export const TogglePill = ({
@@ -34,7 +35,28 @@ export const TogglePill = ({
 };
 
 // ─── Hayba-style top bar with starfield, centered nav, sign-in pill ──────
-export const TopBar = ({ tempo = 120, tapping = false }: { tempo?: number; tapping?: boolean }) => (
+export const TopBar = () => {
+  // Photo → Blocks popover state. Anchored against the topbar's right edge
+  // (28px right gutter from the parent) and pinned just below the 60px
+  // topbar height. Tracks its own open flag so we don't have to thread
+  // props from DesktopApp/MobileApp.
+  const photoBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoAnchor, setPhotoAnchor] = useState<{ top: number; right: number }>({
+    top: 64,
+    right: 32,
+  });
+  const openPhoto = () => {
+    const btn = photoBtnRef.current;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      // Position the popover just under the topbar, right-aligned to the
+      // button's right edge so it doesn't overflow the viewport.
+      setPhotoAnchor({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    }
+    setPhotoOpen(true);
+  };
+  return (
   <div
     style={{
       height: 60, flex: '0 0 auto',
@@ -51,8 +73,17 @@ export const TopBar = ({ tempo = 120, tapping = false }: { tempo?: number; tappi
   >
     <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
 
-    {/* logo (compact, no wordmark — Hayba style) */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
+    {/* logo (compact, Hayba style) — clickable, returns to / landing */}
+    <a
+      href="/"
+      title="Back to landing"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        position: 'relative', zIndex: 1,
+        textDecoration: 'none',
+        cursor: 'pointer',
+      }}
+    >
       <ShadeLogo size={22} />
       <span
         style={{
@@ -64,28 +95,10 @@ export const TopBar = ({ tempo = 120, tapping = false }: { tempo?: number; tappi
       >
         Shaddy
       </span>
-    </div>
+    </a>
 
-    {/* tempo cluster */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: SHADE.topbarDim, position: 'relative', zIndex: 1 }}>
-      <span style={{ font: `500 12.5px ${TYPE.bodyMono}`, color: SHADE.topbarText, letterSpacing: '0.08em' }}>
-        {tempo} BPM
-      </span>
-      <button
-        style={{
-          background: tapping ? SHADE.gold : 'transparent',
-          color: tapping ? '#1a1208' : SHADE.topbarText,
-          border: `1px solid ${tapping ? SHADE.gold : 'rgba(255,255,255,0.10)'}`,
-          borderRadius: 3, padding: '4px 10px',
-          font: `500 10px ${TYPE.bodyMono}`,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
-          cursor: 'pointer',
-          transition: 'all 0.15s',
-        }}
-      >
-        tap
-      </button>
-    </div>
+    {/* Tempo cluster removed — kept the topbar minimal until a real
+        animation engine is wired up to BPM. */}
 
     {/* centered nav with hover-underline animation */}
     <nav
@@ -96,34 +109,48 @@ export const TopBar = ({ tempo = 120, tapping = false }: { tempo?: number; tappi
         zIndex: 1,
       }}
     >
-      <NavLink active>Compose</NavLink>
-      <NavLink>Library</NavLink>
-      <NavLink>Learn</NavLink>
-      <NavLink>Gallery</NavLink>
-      <NavLink>Docs</NavLink>
+      <NavLink href="/design" active>Compose</NavLink>
+      <NavLink href="/library">Library</NavLink>
+      <NavLink href="/learn">Learn</NavLink>
+      <NavLink href="/gallery">Gallery</NavLink>
+      <NavLink href="/docs">Docs</NavLink>
     </nav>
 
     {/* right cluster: icon-only tools + gold share + sign-in silhouette */}
     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
-      <TopbarIconBtn icon="tb-photo"  title="Photo → blocks" />
+      <TopbarIconBtn
+        icon="tb-photo"
+        title="Photo → blocks"
+        onClick={openPhoto}
+        buttonRef={photoBtnRef}
+      />
       <TopbarIconBtn icon="tb-paste"  title="Paste GLSL" />
       <TopbarIconBtn icon="tb-share"  title="Share recipe" variant="gold" />
       <TopbarIconBtn icon="tb-signin" title="Sign in" as="a" href="#" />
     </div>
+    {photoOpen && (
+      <PhotoToCardsPopover
+        anchor={photoAnchor}
+        onClose={() => setPhotoOpen(false)}
+      />
+    )}
   </div>
-);
+  );
+};
 
 // Icon-only topbar button — 36px square, chunky cartoony icon centered.
 // `variant="gold"` paints the gold-filled CTA pill used for SHARE.
 // `as="a"` renders as an anchor (used by Sign in so it remains a link).
 const TopbarIconBtn = ({
-  icon, title, variant = 'outline', as = 'button', href,
+  icon, title, variant = 'outline', as = 'button', href, onClick, buttonRef,
 }: {
   icon: string;
   title: string;
   variant?: 'outline' | 'gold';
   as?: 'button' | 'a';
   href?: string;
+  onClick?: () => void;
+  buttonRef?: React.RefObject<HTMLButtonElement | null>;
 }) => {
   const gold = variant === 'gold';
   const baseStyle: CSSProperties = {
@@ -165,9 +192,11 @@ const TopbarIconBtn = ({
   }
   return (
     <button
+      ref={buttonRef}
       type="button"
       title={title}
       aria-label={title}
+      onClick={onClick}
       style={baseStyle}
       onMouseEnter={(e) => {
         if (gold) {
@@ -191,9 +220,9 @@ const TopbarIconBtn = ({
   );
 };
 
-const NavLink = ({ children, active = false }: { children: ReactNode; active?: boolean }) => (
+const NavLink = ({ children, active = false, href = '#' }: { children: ReactNode; active?: boolean; href?: string }) => (
   <a
-    href="#"
+    href={href}
     style={{
       position: 'relative',
       color: active ? SHADE.topbarText : SHADE.topbarDim,

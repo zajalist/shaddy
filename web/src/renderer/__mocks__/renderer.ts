@@ -11,7 +11,7 @@
 //   - setUniform / resize  → accepted, no-op (CSS handles sizing)
 //   - getFps()             → constant 60
 
-import type { CompileResult, RendererAPI, Uniform } from '../index';
+import type { CompileMultiResult, CompileResult, MultiPassDef, RendererAPI, Uniform } from '../index';
 
 // 1x1 transparent PNG, base64-encoded. Tiny, valid, and never throws on decode.
 const TINY_PNG_DATA_URL =
@@ -70,6 +70,17 @@ export function createRenderer(): RendererAPI {
         for (const cb of subscribers) cb(result);
       }
       return result;
+    },
+
+    compileMulti(_passes: MultiPassDef[]): CompileMultiResult {
+      // Mock pretends every pass compiles cleanly; the design doc says
+      // downstream tracks should be able to build without WebGL.
+      const result: CompileResult = { ok: true };
+      if (firstCompileResult === null) {
+        firstCompileResult = result;
+        for (const cb of subscribers) cb(result);
+      }
+      return { ok: true };
     },
 
     setUniform(_name: string, _value: Uniform | null): void {
