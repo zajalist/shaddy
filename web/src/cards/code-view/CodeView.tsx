@@ -13,8 +13,10 @@
 
 import { cpp } from '@codemirror/lang-cpp';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 import {
+  Annotation,
   Compartment,
   EditorState,
   type Range,
@@ -58,22 +60,48 @@ export interface CodeViewProps {
 }
 
 const BASE_THEME = EditorView.theme({
-  '&': { height: '100%', backgroundColor: '#0a0a0a', color: '#e4e4e7' },
+  '&': { height: '100%', backgroundColor: 'transparent', color: '#e6ddc7' },
   '.cm-scroller': {
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    fontSize: '12.5px',
-    lineHeight: '1.55',
+    fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+    fontSize: '13px',
+    lineHeight: '1.7',
+    padding: '10px 0',
   },
-  '.cm-gutters': { backgroundColor: '#0a0a0a', color: '#3f3f46', border: 'none' },
-  '.cm-activeLine': { backgroundColor: '#18181b' },
-  '.cm-activeLineGutter': { backgroundColor: '#18181b' },
-  [`.${PREAMBLE_LINE_CLASS}`]: { color: '#52525b', fontStyle: 'italic' },
-  [`.${MARKER_LINE_CLASS}`]: { color: '#fb923c', fontStyle: 'italic' },
+  '.cm-content': { padding: '0 6px' },
+  '.cm-gutters': {
+    backgroundColor: 'transparent',
+    color: '#564f43',
+    border: 'none',
+    paddingLeft: '14px',
+    paddingRight: '10px',
+  },
+  '.cm-lineNumbers .cm-gutterElement': { fontSize: '11px', paddingTop: '1px' },
+  '.cm-activeLine': { backgroundColor: 'rgba(255, 248, 227, 0.04)' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#c8bca4' },
+  [`.${PREAMBLE_LINE_CLASS}`]: { color: '#6b6258', fontStyle: 'italic' },
+  [`.${MARKER_LINE_CLASS}`]: { color: '#ffb627', fontStyle: 'italic', opacity: '0.95' },
   [`.${FLASH_LINE_CLASS}`]: {
-    backgroundColor: 'rgba(251, 146, 60, 0.18)',
+    backgroundColor: 'rgba(255, 182, 39, 0.20)',
     transition: 'background-color 0.6s ease-out',
   },
 });
+
+// Palette-tuned syntax — numbers mustard, strings mint, keywords cobalt,
+// types coral. Subdued background, no italics on operators (cleaner).
+const RISO_SYNTAX = HighlightStyle.define([
+  { tag: t.keyword, color: '#8aa6ff', fontWeight: '600' },
+  { tag: [t.controlKeyword, t.moduleKeyword], color: '#8aa6ff', fontWeight: '600' },
+  { tag: t.number, color: '#ffb627' },
+  { tag: t.string, color: '#5cdb95' },
+  { tag: t.comment, color: '#6b6258', fontStyle: 'italic' },
+  { tag: [t.typeName, t.className], color: '#ff8a87' },
+  { tag: t.function(t.variableName), color: '#e2b9ff' },
+  { tag: t.variableName, color: '#e6ddc7' },
+  { tag: [t.operator, t.punctuation], color: '#a39a8b' },
+  { tag: [t.bool, t.null], color: '#ffb627', fontWeight: '600' },
+  { tag: t.atom, color: '#ffb627' },
+  { tag: t.macroName, color: '#e2b9ff' },
+]);
 
 // ─── Decorations: highlight preamble + marker lines ─────────────────────
 
@@ -156,9 +184,15 @@ function isLineLockedForEdit(text: string, lineNum: number, preambleLines: numbe
   return false;
 }
 
+// Annotation we set on programmatic dispatches so the locked-line filter
+// lets them through. User typing has no such annotation, so the filter still
+// protects the preamble + marker lines from manual edits.
+const PROGRAMMATIC_DISPATCH = Annotation.define<true>();
+
 function lockedLineFilter(preambleLines: number): Extension {
   return EditorState.transactionFilter.of((tr) => {
     if (!tr.docChanged || tr.changes.empty) return tr;
+    if (tr.annotation(PROGRAMMATIC_DISPATCH)) return tr;
     let blocked = false;
     tr.changes.iterChanges((fromA, toA) => {
       if (blocked) return;
@@ -201,7 +235,7 @@ export function CodeView(props: CodeViewProps) {
           highlightActiveLine(),
           history(),
           cpp(),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          syntaxHighlighting(RISO_SYNTAX, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           BASE_THEME,
           lineDecorationsField(preambleLineCount),
@@ -227,7 +261,10 @@ export function CodeView(props: CodeViewProps) {
     if (!view) return;
     const current = view.state.doc.toString();
     if (current === source) return;
-    view.dispatch({ changes: { from: 0, to: current.length, insert: source } });
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: source },
+      annotations: PROGRAMMATIC_DISPATCH.of(true),
+    });
   }, [source]);
 
   // Sync editMode toggle.
@@ -274,11 +311,12 @@ export function CodeView(props: CodeViewProps) {
   return (
     <div className="relative w-full h-full flex flex-col">
       {props.syntaxPending && (
-        <div className="absolute top-1 right-2 z-10 text-[10px] uppercase tracking-wider text-amber-400/90 bg-amber-950/80 px-2 py-0.5 rounded">
+        <div className="absolute top-2 right-3 z-10 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-mono font-bold text-ink bg-coral border-2 border-ink px-2 py-0.5 rounded">
+          <span className="w-1.5 h-1.5 rounded-full bg-ink dot-live" />
           syntax pending
         </div>
       )}
-      <div ref={hostRef} className="flex-1 w-full overflow-hidden" />
+      <div ref={hostRef} className="flex-1 w-full overflow-hidden scroll-ghost" />
     </div>
   );
 }
