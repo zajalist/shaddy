@@ -233,6 +233,53 @@ export const GLSL_HELPERS: Record<string, string> = {
   p = vec2(p.x, abs(p.y - r)) - w;
   return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
 }`,
+
+  // ─── 3D raymarch helpers ────────────────────────────────────────────────
+  // Hard min — straight CSG union of two SDFs.
+  sdMin: `float sdMin(float a, float b) { return min(a, b); }`,
+
+  // iq's polynomial smooth-min. k controls blend radius; k=0 == hard min().
+  sdSmoothMin: `float sdSmoothMin(float a, float b, float k) {
+  if (k <= 0.0) return min(a, b);
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}`,
+
+  // 3D box SDF (iq). b = half-extents per axis.
+  sdfBox3: `float sdfBox3(vec3 p, vec3 b) {
+  vec3 q = abs(p) - b;
+  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}`,
+
+  // Torus SDF (iq). t.x = major radius, t.y = minor radius.
+  sdfTorus3: `float sdfTorus3(vec3 p, vec2 t) {
+  vec2 q = vec2(length(p.xz) - t.x, p.y);
+  return length(q) - t.y;
+}`,
+
+  // Numerical-gradient surface normal — assumes sdScene exists at emit time.
+  sceneNormal3: `vec3 sceneNormal3(vec3 p) {
+  vec2 e = vec2(0.001, 0.0);
+  return normalize(vec3(
+    sdScene(p + e.xyy) - sdScene(p - e.xyy),
+    sdScene(p + e.yxy) - sdScene(p - e.yxy),
+    sdScene(p + e.yyx) - sdScene(p - e.yyx)
+  ));
+}`,
+
+  // iq's soft-shadow march — call AFTER sdScene exists. 32 iterations gives
+  // a usable penumbra at low cost; w widens the shadow gradient.
+  softShadow3: `float softShadow3(vec3 ro, vec3 rd, float mint, float maxt, float w) {
+  float res = 1.0;
+  float t = mint;
+  for (int i = 0; i < 32; i++) {
+    float h = sdScene(ro + rd * t);
+    res = min(res, h / (w * t));
+    t += clamp(h, 0.005, 0.5);
+    if (res < -1.0 || t > maxt) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}`,
 };
 
 /** Helper → list of other helpers it depends on. Resolved transitively at compile. */
@@ -272,7 +319,23 @@ export const HELPER_EMISSION_ORDER: readonly string[] = [
   'sdfTrapezoid',
   'sdfParallelogram',
   'sdfHorseshoe',
+  // 3D — sdMin/sdSmoothMin/sdf*3 are needed BEFORE sdScene, sceneNormal3 +
+  // softShadow3 are needed AFTER sdScene (the 3D compiler emits sdScene
+  // between the two halves, see compile.ts.compile3d).
+  'sdMin',
+  'sdSmoothMin',
+  'sdfBox3',
+  'sdfTorus3',
+  'sceneNormal3',
+  'softShadow3',
 ];
+
+/** Helpers that must be emitted AFTER sdScene() in the 3D compiler — they
+ *  reference sdScene by name so they're not valid until the scene exists. */
+export const HELPERS_AFTER_SCENE: ReadonlySet<string> = new Set([
+  'sceneNormal3',
+  'softShadow3',
+]);
 
 /** Expand a set of helper names to include all transitive dependencies. */
 export function resolveHelperClosure(requested: Iterable<string>): Set<string> {

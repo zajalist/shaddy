@@ -1,127 +1,104 @@
-// Tests for the AskClaude popover. We mock global `fetch` to keep the
-// suite hermetic — the real plugin shells out to `claude -p`, which we
-// never want to run from CI/tests.
+// Tests for the translate flow in AskClaude.tsx.
+//
+// The old popover-based tests are gone — the popover was deleted in favour
+// of an inline edit-mode flow owned by the CodeDrawer. What remains here is
+// the pure data path:
+//   1. translateGlslToRecipe shells out to /__claude_ask and returns a
+//      validated Recipe.
+//   2. Garbage / non-Recipe JSON throws cleanly so the caller can keep the
+//      last-good Recipe.
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, cleanup, act } from '@testing-library/react';
 
-import { AskClaude } from './AskClaude';
+import { translateGlslToRecipe, coerceRecipe } from './AskClaude';
+import type { Recipe } from '@/cards';
 
 const SAMPLE_GLSL = '#version 300 es\nprecision highp float;\nvoid main(){ fragColor = vec4(1.0); }';
 
+const SAMPLE_RECIPE: Recipe = {
+  canvasAspect: 'square',
+  mode: '2d',
+  cards: [
+    {
+      kind: 'typed', id: 'c0', type: 'radial_gradient', enabled: true,
+      alpha: 1, blendMode: 'normal',
+      params: { softness: { value: 0.5, animation: null } },
+    },
+  ],
+};
+
 beforeEach(() => {
-  // Fresh fetch mock for every test.
   globalThis.fetch = vi.fn();
 });
 
 afterEach(() => {
-  cleanup();
   vi.restoreAllMocks();
 });
 
-describe('AskClaude', () => {
-  it('renders nothing when closed', () => {
-    const { container } = render(
-      <AskClaude open={false} glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={() => {}} />,
-    );
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('renders the popover when open', () => {
-    render(
-      <AskClaude open glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={() => {}} />,
-    );
-    expect(screen.getByTestId('ask-claude-popover')).toBeTruthy();
-    expect(screen.getByText('Ask Claude')).toBeTruthy();
-    expect(screen.getByPlaceholderText(/make the colors more vibrant/i)).toBeTruthy();
-  });
-
-  it('submits the request, calls fetch with the prompt, and surfaces the response', async () => {
+describe('translateGlslToRecipe', () => {
+  it('POSTs the prompt to /__claude_ask and parses the returned Recipe JSON', async () => {
+    const claudeResponse: Recipe = {
+      canvasAspect: 'portrait',
+      mode: '2d',
+      cards: [
+        {
+          kind: 'typed', id: '<auto>', type: 'palette', enabled: true,
+          alpha: 1, blendMode: 'normal',
+          params: { hue: { value: 0.25, animation: null } },
+        },
+        {
+          kind: 'wildcard', id: '<auto>', enabled: true,
+          alpha: 1, blendMode: 'normal',
+          rawSource: '// raw\ncol.rgb *= 1.2;',
+          displayName: 'Brighten',
+        },
+      ],
+    };
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    const claudeResponse = '#version 300 es\nprecision highp float;\nvoid main(){ fragColor = vec4(0.0); }';
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ result: claudeResponse }),
+      text: async () => JSON.stringify({ result: JSON.stringify(claudeResponse) }),
     });
 
-    render(
-      <AskClaude open glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={() => {}} />,
-    );
+    const result = await translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE);
 
-    const textarea = screen.getByPlaceholderText(/make the colors more vibrant/i);
-    fireEvent.change(textarea, { target: { value: 'make it darker' } });
-
-    fireEvent.click(screen.getByTestId('ask-claude-submit'));
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/__claude_ask');
     expect(init.method).toBe('POST');
-    const body = JSON.parse(init.body as string) as { prompt: string };
-    expect(body.prompt).toContain('make it darker');
+    const body = JSON.parse(init.body as string) as { prompt: string; mode: string };
+    expect(body.mode).toBe('translate');
     expect(body.prompt).toContain(SAMPLE_GLSL);
+    // The current recipe is embedded in the prompt so Claude can use it
+    // as a starting point.
+    expect(body.prompt).toContain('radial_gradient');
 
-    await waitFor(() => {
-      expect(screen.getByTestId('ask-claude-preview')).toBeTruthy();
-    });
-    expect(screen.getByText(/vec4\(0\.0\)/)).toBeTruthy();
+    expect(result.canvasAspect).toBe('portrait');
+    expect(result.cards).toHaveLength(2);
+    expect(result.cards[0]?.kind).toBe('typed');
+    expect(result.cards[1]?.kind).toBe('wildcard');
   });
 
-  it('calls onReplace and closes when Apply is clicked', async () => {
+  it('strips ```json code fences if Claude wraps the response', async () => {
+    const claudeResponse: Recipe = {
+      canvasAspect: 'square',
+      cards: [],
+    };
+    const wrapped = '```json\n' + JSON.stringify(claudeResponse) + '\n```';
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    const claudeResponse = '#version 300 es\nvoid main(){ fragColor = vec4(0.5); }';
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify({ result: claudeResponse }),
-    });
-
-    const onReplace = vi.fn();
-    const onClose = vi.fn();
-    render(<AskClaude open glsl={SAMPLE_GLSL} onClose={onClose} onReplace={onReplace} />);
-
-    fireEvent.change(screen.getByPlaceholderText(/make the colors more vibrant/i), {
-      target: { value: 'go darker' },
-    });
-    fireEvent.click(screen.getByTestId('ask-claude-submit'));
-
-    await waitFor(() => screen.getByTestId('ask-claude-apply'));
-    fireEvent.click(screen.getByTestId('ask-claude-apply'));
-
-    expect(onReplace).toHaveBeenCalledWith(claudeResponse);
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('strips ```glsl code fences if Claude wraps the response', async () => {
-    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    const wrapped = '```glsl\n#version 300 es\nvoid main(){ fragColor = vec4(0.0); }\n```';
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
       text: async () => JSON.stringify({ result: wrapped }),
     });
 
-    const onReplace = vi.fn();
-    render(<AskClaude open glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={onReplace} />);
-
-    fireEvent.change(screen.getByPlaceholderText(/make the colors more vibrant/i), {
-      target: { value: 'do a thing' },
-    });
-    fireEvent.click(screen.getByTestId('ask-claude-submit'));
-
-    await waitFor(() => screen.getByTestId('ask-claude-apply'));
-    fireEvent.click(screen.getByTestId('ask-claude-apply'));
-
-    const passed = onReplace.mock.calls[0]?.[0] as string;
-    expect(passed.startsWith('```')).toBe(false);
-    expect(passed.endsWith('```')).toBe(false);
-    expect(passed).toContain('#version 300 es');
+    const result = await translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE);
+    expect(result.cards).toEqual([]);
+    expect(result.canvasAspect).toBe('square');
   });
 
-  it('surfaces an error message when the server returns a non-OK response', async () => {
+  it('throws when the server returns a non-OK response', async () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValueOnce({
       ok: false,
@@ -129,26 +106,89 @@ describe('AskClaude', () => {
       text: async () => JSON.stringify({ error: 'claude exited 1', stderr: 'boom' }),
     });
 
-    render(<AskClaude open glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={() => {}} />);
-
-    fireEvent.change(screen.getByPlaceholderText(/make the colors more vibrant/i), {
-      target: { value: 'whatever' },
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('ask-claude-submit'));
-    });
-
-    const errorBox = await screen.findByTestId('ask-claude-error');
-    expect(errorBox.textContent).toMatch(/claude exited 1/);
+    await expect(translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE)).rejects.toThrow(/claude exited 1/);
   });
 
-  it('does not submit when the textarea is empty', () => {
+  it('throws when Claude returns text that is not JSON', async () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    render(<AskClaude open glsl={SAMPLE_GLSL} onClose={() => {}} onReplace={() => {}} />);
-    const submitBtn = screen.getByTestId('ask-claude-submit') as HTMLButtonElement;
-    expect(submitBtn.disabled).toBe(true);
-    fireEvent.click(submitBtn);
-    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ result: 'sure! here is a recipe for you' }),
+    });
+
+    await expect(translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE)).rejects.toThrow(/did not return JSON/);
+  });
+
+  it('throws when Claude returns JSON that is not Recipe-shaped (no cards array)', async () => {
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ result: JSON.stringify({ hello: 'world' }) }),
+    });
+
+    await expect(translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE)).rejects.toThrow(/does not match the Recipe shape/);
+  });
+
+  it('throws when Claude returns an empty response', async () => {
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ result: '   ' }),
+    });
+
+    await expect(translateGlslToRecipe(SAMPLE_GLSL, SAMPLE_RECIPE)).rejects.toThrow(/empty response/);
+  });
+});
+
+describe('coerceRecipe', () => {
+  it('returns null for non-object payloads', () => {
+    expect(coerceRecipe(null)).toBeNull();
+    expect(coerceRecipe(42)).toBeNull();
+    expect(coerceRecipe('hi')).toBeNull();
+    expect(coerceRecipe([])).toBeNull();
+  });
+
+  it('returns null when cards is missing or not an array', () => {
+    expect(coerceRecipe({ canvasAspect: 'square' })).toBeNull();
+    expect(coerceRecipe({ cards: 'oops' })).toBeNull();
+  });
+
+  it('defaults canvasAspect to "square" and mode to "2d" on missing fields', () => {
+    const r = coerceRecipe({ cards: [] });
+    expect(r).not.toBeNull();
+    expect(r?.canvasAspect).toBe('square');
+    expect(r?.mode).toBe('2d');
+  });
+
+  it('drops malformed cards but keeps well-formed ones', () => {
+    const r = coerceRecipe({
+      canvasAspect: 'square',
+      cards: [
+        { kind: 'typed', id: 'x', type: 'palette', enabled: true, params: { hue: { value: 0.5 } } },
+        { kind: 'typed' }, // missing type → dropped
+        { kind: 'wildcard', id: 'w', rawSource: '// hi', displayName: 'hi' },
+        'garbage', // dropped
+      ],
+    });
+    expect(r?.cards).toHaveLength(2);
+    expect(r?.cards[0]?.kind).toBe('typed');
+    expect(r?.cards[1]?.kind).toBe('wildcard');
+  });
+
+  it('coerces vec3 parameter values from arrays', () => {
+    const r = coerceRecipe({
+      cards: [{
+        kind: 'typed', id: 'c', type: 'palette',
+        params: { color: { value: [1, 0.5, 0.25] } },
+      }],
+    });
+    const card = r?.cards[0];
+    expect(card?.kind).toBe('typed');
+    if (card?.kind === 'typed') {
+      expect(card.params.color?.value).toEqual([1, 0.5, 0.25]);
+    }
   });
 });

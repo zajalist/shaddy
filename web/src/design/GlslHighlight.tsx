@@ -11,8 +11,15 @@
 //   - preproc   → magenta (#version, #define, etc.)
 //   - builtins  → cream-bold (sin, cos, mix, fract, …)
 //   - punct     → cream
+//
+// Edit mode: when `editable` is true, the component renders a textarea
+// overlaid on top of the highlighted <pre>. The textarea text is rendered
+// transparent (caret-color cream) so the user sees the highlighted overlay
+// while typing into the real input. They share the same font / line-height
+// / padding so the two layers stay aligned glyph-for-glyph.
 
 import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { SHADE } from './tokens';
 
 // Order matters: longer alternations before shorter ones to avoid prefix matches.
@@ -186,11 +193,17 @@ function tokenize(src: string): SpanRecord[] {
 
 export type GlslHighlightProps = {
   source: string;
+  /** When true, render an overlaid textarea so the user can edit `source`.
+   *  The highlighted layer becomes the visual feedback; the textarea drives
+   *  text input + caret. Requires onSourceChange. */
+  editable?: boolean;
+  /** Called when the textarea text changes. Ignored in read-only mode. */
+  onSourceChange?: (next: string) => void;
 };
 
-export const GlslHighlight = ({ source }: GlslHighlightProps) => {
+export const GlslHighlight = ({ source, editable, onSourceChange }: GlslHighlightProps) => {
   const tokens = useMemo(() => tokenize(source), [source]);
-  return (
+  const highlighted = (
     <>
       {tokens.map((t, i) => {
         const baseStyle = {
@@ -200,7 +213,9 @@ export const GlslHighlight = ({ source }: GlslHighlightProps) => {
         };
         // Identifiers with a known doc render as <a> with a tooltip that
         // hover-shows the description; clicking opens the Khronos spec page.
-        if (t.doc && t.href) {
+        // In edit mode we can't have anchor tags (they'd swallow clicks meant
+        // for the textarea overlay) so drop the tooltip wrapping there.
+        if (!editable && t.doc && t.href) {
           return (
             <a
               key={i}
@@ -221,7 +236,7 @@ export const GlslHighlight = ({ source }: GlslHighlightProps) => {
             </a>
           );
         }
-        if (t.doc) {
+        if (!editable && t.doc) {
           return (
             <span key={i} title={t.doc} style={{ ...baseStyle, cursor: 'help' }}>
               {t.text}
@@ -231,5 +246,66 @@ export const GlslHighlight = ({ source }: GlslHighlightProps) => {
         return <span key={i} style={baseStyle}>{t.text}</span>;
       })}
     </>
+  );
+
+  if (!editable) {
+    return highlighted;
+  }
+
+  // Edit mode: wrap the highlighted <pre> in a relative positioner with an
+  // overlaid <textarea>. Both share font, line-height, padding, and
+  // white-space so each glyph the user types sits directly under the
+  // matching coloured span in the highlight overlay.
+  //
+  // The textarea is `position: absolute; inset: 0` with `color: transparent`
+  // and `caretColor: cream`. Its background is also transparent so the
+  // highlight bleeds through. `whiteSpace: pre` + `overflow: hidden`
+  // matches the parent <pre> behaviour exactly.
+  const sharedTextStyle: CSSProperties = {
+    margin: 0,
+    padding: 0,
+    font: 'inherit',
+    lineHeight: 'inherit',
+    letterSpacing: 'inherit',
+    tabSize: 2,
+    whiteSpace: 'pre',
+    wordBreak: 'normal',
+    overflowWrap: 'normal',
+  };
+  return (
+    <span style={{ position: 'relative', display: 'block' }}>
+      <span aria-hidden style={{ ...sharedTextStyle, display: 'block', pointerEvents: 'none' }}>
+        {highlighted}
+        {/* Trailing newline ensures the highlight overlay extends one line
+            below the last user line, matching textarea behaviour. */}
+        {'\n'}
+      </span>
+      <textarea
+        value={source}
+        onChange={(e) => onSourceChange?.(e.target.value)}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        data-testid="glsl-editor-textarea"
+        style={{
+          ...sharedTextStyle,
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          outline: 'none',
+          resize: 'none',
+          background: 'transparent',
+          color: 'transparent',
+          caretColor: SHADE.cream,
+          // Selection bleeds through as a translucent gold band so the
+          // user can see what they're highlighting against the coloured
+          // tokens below.
+          // (browser-default selection colour usually looks fine, this
+          // is the same visual as a regular textarea.)
+        }}
+      />
+    </span>
   );
 };

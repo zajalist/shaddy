@@ -17,6 +17,7 @@ import {
   type Card,
   type CardDef,
   type ColorRgb,
+  type ShaderTemplate,
   type TypedCard,
 } from '@/cards';
 
@@ -42,6 +43,7 @@ export const PropertiesPanel = ({ selectedCard, selectedIndex }: PropertiesPanel
       overflow: 'auto', minHeight: 0,
     }}
   >
+    <ModePill />
     {selectedCard ? (
       <SelectedCardProps card={selectedCard} index={selectedIndex} />
     ) : (
@@ -49,6 +51,63 @@ export const PropertiesPanel = ({ selectedCard, selectedIndex }: PropertiesPanel
     )}
   </div>
 );
+
+// ─── Recipe mode pill (2D / 3D toggle) ────────────────────────────────
+// Lives at the very top of the right column so it's visible regardless of
+// whether a card is selected. Clicking toggles between '2d' and '3d' — the
+// compiler dispatches on Recipe.mode and emits a different shader template.
+
+const ModePill = () => {
+  const mode: ShaderTemplate = useCardsStore((s) => s.recipe.mode ?? '2d');
+  const setMode = useCardsStore((s) => s.setMode);
+  const next: ShaderTemplate = mode === '3d' ? '2d' : '3d';
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 14px',
+        borderBottom: `1px solid ${SHADE.border}`,
+        background: SHADE.surface1,
+      }}
+    >
+      <span
+        style={{
+          font: `700 9.5px ${TYPE.bodyMono}`,
+          color: SHADE.textFaint,
+          letterSpacing: '0.18em', textTransform: 'uppercase',
+        }}
+      >
+        Mode
+      </span>
+      <button
+        type="button"
+        onClick={() => setMode(next)}
+        title={`Switch to ${next.toUpperCase()} pipeline`}
+        style={{
+          padding: '4px 12px',
+          background: mode === '3d' ? SHADE.gold : SHADE.surface3,
+          border: `1.5px solid ${mode === '3d' ? SHADE.goldDeep : SHADE.inkLine}`,
+          borderRadius: 3,
+          color: mode === '3d' ? '#1a1208' : SHADE.text,
+          font: `700 11px ${TYPE.bodyMono}`,
+          letterSpacing: '0.16em', textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        {mode}
+      </button>
+      <span
+        style={{
+          marginLeft: 'auto',
+          font: `500 10px ${TYPE.body}`,
+          color: SHADE.textDim, fontStyle: 'italic',
+        }}
+      >
+        {mode === '3d' ? 'raymarched SDF' : 'fragment'}
+      </span>
+    </div>
+  );
+};
 
 // ─── Selected card props ───────────────────────────────────────────────
 

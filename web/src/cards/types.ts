@@ -9,7 +9,16 @@
 export type Recipe = {
   cards: Card[];
   canvasAspect: 'square' | 'portrait' | 'landscape';
+  /** Compiler dispatch flag. '2d' (default, omitted in old recipes) emits the
+   *  classic uv/d/col fragment template. '3d' emits a raymarched SDF scene
+   *  with Lambert + soft shadow shading; only cards with mode:'3d' contribute
+   *  meaningfully (2d cards become no-ops). Old Recipe JSON without this
+   *  field is treated as '2d'. */
+  mode?: ShaderTemplate;
 };
+
+/** Which shader template the compiler should emit. See Recipe.mode. */
+export type ShaderTemplate = '2d' | '3d';
 
 /** A card is either a typed entry from the CARD_LIBRARY or a wildcard that
  *  carries arbitrary GLSL the system cannot represent as a known card. */
@@ -75,6 +84,34 @@ export type ParamDef =
       options: ReadonlyArray<{ value: number; label: string }>;
     };
 
+/** A 3D card's contribution to the raymarched scene. Used by cards with
+ *  `mode: '3d'`. The compiler walks 3D cards in recipe order and threads
+ *  these expressions into sdScene() / the lighting pass. `{{paramKey}}`
+ *  placeholders are substituted with a uniform reference, same as 2D.
+ *
+ *  Card "kinds" via the optional fields:
+ *   - sdfExpr     → emits `d = sdMin/sdSmoothMin(d, <sdfExpr>, k)` into sdScene
+ *   - domainExpr  → emits `p = <domainExpr>` (transforms `p` for cards that follow)
+ *   - smoothness  → sets the union smoothness `k` for subsequent unions
+ *   - material    → sets the global `mat` colour the lighting pass uses
+ *   At most one of {sdfExpr, domainExpr, smoothness, material} should be set
+ *   per card; the compiler dispatches on whichever is present.
+ */
+export type Card3DContribution = {
+  /** A GLSL expression returning `float` given a vec3 `p`. */
+  sdfExpr?: string;
+  /** A GLSL expression returning vec3 — `p` is rebound to this value for
+   *  subsequent cards (acts as a wrapping distortion). */
+  domainExpr?: string;
+  /** A GLSL expression returning float — sets the union smoothness `k` for
+   *  subsequent unions. 0 means a hard min(). */
+  smoothness?: string;
+  /** A GLSL expression returning vec3 — sets the global material colour. The
+   *  LAST material-card before raymarch wins (v1 — material is global, not
+   *  per-surface). */
+  material?: string;
+};
+
 /** A typed-card definition. Wildcards have no CardDef — they're a hard-coded
  *  shape in the compiler/UI. */
 export type CardDef = {
@@ -85,11 +122,18 @@ export type CardDef = {
   icon: string;
   params: Record<string, ParamDef>;
   /** GLSL body emitted into main() for this card. `{{paramKey}}` placeholders
-   *  are substituted with a uniform reference (e.g. `u_card3_softness`). */
+   *  are substituted with a uniform reference (e.g. `u_card3_softness`).
+   *  Required for 2D cards; 3D cards keep a placeholder snippet (referenced
+   *  by library.test.ts only — the compiler ignores it when mode==='3d'). */
   snippetTemplate: string;
   /** Names of helper functions this card depends on. The compiler emits the
    *  union of all required helpers exactly once at the top of the shader. */
   helpers?: string[];
+  /** Defaults to '2d'. 3D cards contribute via `contribution3d` and are
+   *  no-ops in 2D recipes; 2D cards are no-ops in 3D recipes. */
+  mode?: ShaderTemplate;
+  /** Required when mode === '3d'. */
+  contribution3d?: Card3DContribution;
 };
 
 // ─── Compiler output ────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import type {
   Parameter,
   ParameterValue,
   Recipe,
+  ShaderTemplate,
   TypedCard,
   WildcardCard,
 } from './types';
@@ -60,6 +61,10 @@ export type CardsState = {
   // as a structural mutation.
   setAlpha: (cardId: string, alpha: number) => void;
   setBlendMode: (cardId: string, mode: BlendMode) => void;
+
+  // Recipe-level mode toggle — 2D fragment vs 3D raymarched scene. Inserting
+  // a 3D card auto-flips this via insertTypedCard.
+  setMode: (mode: ShaderTemplate) => void;
 };
 
 export const useCardsStore = create<CardsState>((set, get) => ({
@@ -87,7 +92,12 @@ export const useCardsStore = create<CardsState>((set, get) => ({
       const cards = [...s.recipe.cards];
       const idx = atIndex ?? cards.length;
       cards.splice(idx, 0, card);
-      return { recipe: { ...s.recipe, cards } };
+      // Auto-flip the recipe to 3D mode when a 3D card is inserted into a
+      // 2D recipe. The reverse direction is NEVER auto-applied — a user has
+      // to explicitly toggle back to 2D (via the mode pill in Properties).
+      const nextMode: ShaderTemplate | undefined =
+        def.mode === '3d' && s.recipe.mode !== '3d' ? '3d' : s.recipe.mode;
+      return { recipe: { ...s.recipe, cards, ...(nextMode ? { mode: nextMode } : {}) } };
     }),
 
   insertWildcard: (atIndex, rawSource, displayName) =>
@@ -191,6 +201,9 @@ export const useCardsStore = create<CardsState>((set, get) => ({
           (c.id === cardId ? { ...c, blendMode: mode } : c)),
       },
     })),
+
+  setMode: (mode) =>
+    set((s) => ({ recipe: { ...s.recipe, mode } })),
 }));
 
 /** Replace every card.id (and any nested ids) with fresh ones. Used when

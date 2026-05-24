@@ -18,18 +18,23 @@ import {
   cloneRecipeWithFreshIds,
   compile,
   lookupCardDef,
-  reparse,
   STARTER_RECIPES,
   useCardsStore,
   type Card,
   type Recipe,
 } from '@/cards';
-import { FRAGMENT_PREAMBLE, USER_LINE_OFFSET } from '@/renderer';
+import {
+  FRAGMENT_PREAMBLE,
+  USER_LINE_OFFSET,
+  createRenderer,
+  type GLSLError,
+  type RendererAPI,
+} from '@/renderer';
 
 import { SHADE, TYPE, blockById } from './tokens';
 import type { BlockDef } from './tokens';
 import { Icon, ShadeMascot } from './icons';
-import { Block, BLOCK_H } from './Block';
+import { Block } from './Block';
 import { GlslHighlight } from './GlslHighlight';
 import type { BlockVariant } from './Block';
 import {
@@ -38,7 +43,7 @@ import {
 import { PropertiesPanel } from './Properties';
 import { RecipeCanvas } from './RecipeCanvas';
 import { BlockEditor } from './BlockEditor';
-import { AskClaude } from './AskClaude';
+import { TranslateStatus, translateGlslToRecipe, type TranslateState } from './AskClaude';
 
 const DEFAULT_STARTER_ID = 'sunset';
 
@@ -377,77 +382,115 @@ function wildcardBlockFallback(): BlockDef {
 // confusing without doing anything, so it's now a real button that focuses
 // the palette search field (same effect as pressing `/`) so the user can
 // instantly type a card name and append it.
+// "+ card" affordance — sits at the end of the chain. Bold square tile with
+// a chunky cartoony plus glyph. Reads as an actionable button at any size.
+const ENDCAP_SIZE = 38; // perfect square, small enough not to dominate the chain
 const EndCap = ({ onClick }: { onClick?: () => void }) => (
   <button
     type="button"
     onClick={onClick}
-    title="add a card to the end of the chain  ·  /"
+    title="add a card  ·  /"
     style={{
-      marginLeft: 6, height: BLOCK_H - 12, width: 36,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'transparent',
-      border: `1.5px dashed ${SHADE.border}`,
-      borderRadius: 6,
-      color: SHADE.textDim,
+      marginLeft: 10, height: ENDCAP_SIZE, width: ENDCAP_SIZE,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      background: SHADE.surface1,
+      border: `2px solid ${SHADE.inkLine}`,
+      borderRadius: 8,
+      color: SHADE.inkLine,
       cursor: 'pointer',
-      font: `700 18px ${TYPE.body}`,
-      lineHeight: 1,
       padding: 0,
-      transition: 'border-color 160ms ease, color 160ms ease, background 160ms ease',
+      boxShadow: `0 2px 0 ${SHADE.inkLine}`,
+      transition: 'transform 120ms ease, box-shadow 120ms ease, background 160ms ease',
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = SHADE.gold;
-      e.currentTarget.style.color = SHADE.gold;
-      e.currentTarget.style.background = `${SHADE.gold}15`;
+      e.currentTarget.style.background = `${SHADE.gold}`;
+      e.currentTarget.style.transform = 'translateY(-1px)';
+      e.currentTarget.style.boxShadow = `0 3px 0 ${SHADE.inkLine}`;
     }}
     onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = SHADE.border;
-      e.currentTarget.style.color = SHADE.textDim;
-      e.currentTarget.style.background = 'transparent';
+      e.currentTarget.style.background = SHADE.surface1;
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = `0 2px 0 ${SHADE.inkLine}`;
+    }}
+    onMouseDown={(e) => {
+      e.currentTarget.style.transform = 'translateY(1px)';
+      e.currentTarget.style.boxShadow = `0 1px 0 ${SHADE.inkLine}`;
+    }}
+    onMouseUp={(e) => {
+      e.currentTarget.style.transform = 'translateY(-1px)';
+      e.currentTarget.style.boxShadow = `0 3px 0 ${SHADE.inkLine}`;
     }}
   >
-    +
+    <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
+      <rect x="10.4" y="3.6" width="3.2" height="16.8" rx="1.6" fill={SHADE.inkLine} />
+      <rect x="3.6" y="10.4" width="16.8" height="3.2" rx="1.6" fill={SHADE.inkLine} />
+    </svg>
   </button>
 );
 
 // "+ portal" affordance — sits next to the EndCap on the last row. Inserts
 // a portal marker card so the next card the user adds lands on a new row.
-// Always gold-toned to suggest the gold portal trail it produces.
+// Inverted palette of EndCap (light tile, dark glyph → dark tile, cream
+// glyph). Reads as a button PAIR with EndCap: same shape, same chunky
+// drop-shadow press, opposite tonal weight. The earlier gold-on-gold was
+// muddy and yellow-heavy.
 const PortalCap = ({ onClick }: { onClick?: () => void }) => (
   <button
     type="button"
     onClick={onClick}
     title="insert portal (row break)"
     style={{
-      marginLeft: 6, height: BLOCK_H - 12, width: 44,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-      background: `${SHADE.gold}10`,
-      border: `1.5px dashed ${SHADE.gold}`,
-      borderRadius: 6,
-      color: SHADE.goldDeep,
+      marginLeft: 8, height: ENDCAP_SIZE, width: ENDCAP_SIZE,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: SHADE.inkLine,
+      border: `2px solid ${SHADE.inkLine}`,
+      borderRadius: 8,
+      color: SHADE.cream,
       cursor: 'pointer',
-      font: `700 12px ${TYPE.bodyMono}`,
-      letterSpacing: '0.08em',
-      lineHeight: 1,
       padding: 0,
-      transition: 'border-color 160ms ease, color 160ms ease, background 160ms ease',
+      boxShadow: `0 2px 0 #000`,
+      transition: 'transform 120ms ease, box-shadow 120ms ease, background 160ms ease',
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.background = `${SHADE.gold}28`;
-      e.currentTarget.style.borderColor = SHADE.goldDeep;
+      e.currentTarget.style.background = '#3a3833';
+      e.currentTarget.style.transform = 'translateY(-1px)';
+      e.currentTarget.style.boxShadow = `0 3px 0 #000`;
     }}
     onMouseLeave={(e) => {
-      e.currentTarget.style.background = `${SHADE.gold}10`;
-      e.currentTarget.style.borderColor = SHADE.gold;
+      e.currentTarget.style.background = SHADE.inkLine;
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = `0 2px 0 #000`;
+    }}
+    onMouseDown={(e) => {
+      e.currentTarget.style.transform = 'translateY(1px)';
+      e.currentTarget.style.boxShadow = `0 1px 0 #000`;
+    }}
+    onMouseUp={(e) => {
+      e.currentTarget.style.transform = 'translateY(-1px)';
+      e.currentTarget.style.boxShadow = `0 3px 0 #000`;
     }}
   >
-    {/* tiny ring glyph to evoke the portal trail */}
-    <span aria-hidden style={{
-      width: 11, height: 11, borderRadius: '50%',
-      border: `2px solid ${SHADE.gold}`,
-      display: 'inline-block',
-    }} />
-    <span>↵</span>
+    {/* Portal glyph — classic carriage-return / wrap-down icon. A chunky
+        hook that goes RIGHT, DOWN, then LEFT with an arrowhead pointing
+        left. Reads as "next line / wrap around" instantly. */}
+    <svg width="18" height="18" viewBox="0 0 24 24" style={{ display: 'block' }}>
+      <path
+        d="M19 5 L19 11 Q19 14 16 14 L7 14"
+        stroke={SHADE.cream}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M10 10 L6 14 L10 18"
+        stroke={SHADE.cream}
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
   </button>
 );
 
@@ -477,18 +520,55 @@ const BlockCanvas = ({ children, label }: { children?: ReactNode; label: string 
   </div>
 );
 
+// ─── Editable code drawer ──────────────────────────────────────────────
+//
+// READ mode: shows the recipe-compiled GLSL, highlighted, copyable.
+// EDIT mode: a textarea is overlaid on the highlight. The user types
+// freely, then presses Compile / Translate / Discard. The drawer owns:
+//   - editSource             — the user's working draft of the GLSL.
+//   - editStatus             — READY | EDITED | COMPILED | COMPILE FAILED.
+//   - translateStatus        — idle | loading | ok | error.
+// `onCompile(userSource)` runs the user's source through a transient
+// renderer (allocated on first compile) and returns errors / ok.
+// `onTranslate(currentEditedGlsl)` ships the source + last-good recipe
+// to Claude and applies the returned Recipe.
+
+type CompileStatus =
+  | { kind: 'ready' }
+  | { kind: 'edited' }
+  | { kind: 'compiled' }
+  | { kind: 'translated' }
+  | { kind: 'failed'; errors: GLSLError[] };
+
 const CodeDrawer = ({
-  expanded, onToggle, glsl, height = 240, onAskClaude, askClaudeBtnRef, askClaudeActive,
+  expanded, onToggle, glsl, height = 240,
+  editMode, onEditModeChange,
+  editSource, onEditSourceChange,
+  compileStatus,
+  translateStatus,
+  onCompile, onTranslate, onDiscard,
 }: {
   expanded: boolean;
   onToggle: () => void;
+  /** Recipe-compiled GLSL (preamble + body). Source of truth in READ mode. */
   glsl: string;
   height?: number;
-  onAskClaude?: () => void;
-  askClaudeBtnRef?: React.RefObject<HTMLButtonElement | null>;
-  askClaudeActive?: boolean;
+  editMode: boolean;
+  onEditModeChange: (next: boolean) => void;
+  /** Draft text the user is editing. Only meaningful when editMode. */
+  editSource: string;
+  onEditSourceChange: (next: string) => void;
+  compileStatus: CompileStatus;
+  translateStatus: TranslateState;
+  onCompile: () => void;
+  onTranslate: () => void;
+  onDiscard: () => void;
 }) => {
-  const lineCount = glsl.split('\n').length;
+  const displaySource = editMode ? editSource : glsl;
+  const lineCount = displaySource.split('\n').length;
+  const canTranslate = compileStatus.kind === 'compiled' && translateStatus.kind !== 'loading';
+  const isDirty = compileStatus.kind === 'edited';
+
   return (
     <div
       style={{
@@ -516,43 +596,41 @@ const CodeDrawer = ({
             color: SHADE.cream, letterSpacing: '0.22em', textTransform: 'uppercase',
           }}
         >
-          Generated GLSL
+          {editMode ? 'Edit GLSL' : 'Generated GLSL'}
         </span>
         <span style={{ font: `500 10.5px ${TYPE.bodyMono}`, color: 'rgba(254,231,199,0.55)', letterSpacing: '0.06em' }}>
-          · auto-compile · {lineCount} lines
+          · {editMode ? 'editable' : 'auto-compile'} · {lineCount} lines
         </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <CompileChip status={compileStatus} />
           <button
-            ref={askClaudeBtnRef}
             onClick={(e) => {
               e.stopPropagation();
-              onAskClaude?.();
+              // Toggling INTO edit mode also expands the drawer — the user
+              // can't edit what they can't see.
+              if (!editMode && !expanded) onToggle();
+              onEditModeChange(!editMode);
             }}
-            title="Ask Claude"
-            aria-label="Ask Claude"
-            data-testid="ask-claude-button"
+            title={editMode ? 'Done editing — return to read mode' : 'Edit GLSL inline'}
+            aria-label={editMode ? 'Stop editing' : 'Edit GLSL'}
+            data-testid="code-drawer-edit-toggle"
             style={{
               width: 28, height: 26, borderRadius: 3,
-              background: askClaudeActive ? 'rgba(252,180,39,0.18)' : 'transparent',
-              color: askClaudeActive ? SHADE.gold : SHADE.cream,
-              border: `1px solid ${askClaudeActive ? 'rgba(252,180,39,0.55)' : 'rgba(254,231,199,0.20)'}`,
+              background: editMode ? 'rgba(252,180,39,0.18)' : 'transparent',
+              color: editMode ? SHADE.gold : SHADE.cream,
+              border: `1px solid ${editMode ? 'rgba(252,180,39,0.55)' : 'rgba(254,231,199,0.20)'}`,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: 0,
             }}
           >
-            <Icon
-              name="ai-spark"
-              size={16}
-              color={askClaudeActive ? SHADE.gold : SHADE.cream}
-              cream={askClaudeActive ? SHADE.gold : SHADE.cream}
-            />
+            <PencilIcon size={14} color={editMode ? SHADE.gold : SHADE.cream} />
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                void navigator.clipboard.writeText(glsl);
+                void navigator.clipboard.writeText(displaySource);
               }
             }}
             style={{
@@ -605,13 +683,139 @@ const CodeDrawer = ({
             {Array.from({ length: lineCount }, (_, i) => <div key={i}>{i + 1}</div>)}
           </div>
           <pre style={{ margin: 0, color: SHADE.cream, whiteSpace: 'pre', paddingRight: 14, minWidth: 0, flex: 1 }}>
-            <GlslHighlight source={glsl} />
+            <GlslHighlight
+              source={displaySource}
+              editable={editMode}
+              onSourceChange={onEditSourceChange}
+            />
           </pre>
+        </div>
+      )}
+      {expanded && editMode && (
+        <div
+          style={{
+            flex: '0 0 auto',
+            borderTop: `1px solid ${SHADE.border}`,
+            background: SHADE.surface4,
+            color: SHADE.cream,
+            padding: '10px 14px',
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}
+        >
+          <button
+            onClick={onCompile}
+            data-testid="code-drawer-compile"
+            disabled={!isDirty && compileStatus.kind !== 'failed'}
+            style={{
+              ...drawerActionStyle,
+              opacity: !isDirty && compileStatus.kind !== 'failed' ? 0.55 : 1,
+              cursor: !isDirty && compileStatus.kind !== 'failed' ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Compile
+          </button>
+          <button
+            onClick={onTranslate}
+            data-testid="code-drawer-translate"
+            disabled={!canTranslate}
+            style={{
+              ...drawerActionStyle,
+              background: canTranslate ? SHADE.gold : 'transparent',
+              color: canTranslate ? '#1a1208' : SHADE.cream,
+              borderColor: canTranslate ? SHADE.goldDeep : 'rgba(254,231,199,0.20)',
+              opacity: canTranslate ? 1 : 0.55,
+              cursor: canTranslate ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Translate to cards
+          </button>
+          <button
+            onClick={onDiscard}
+            data-testid="code-drawer-discard"
+            style={drawerActionStyle}
+          >
+            Discard edits
+          </button>
+          <TranslateStatus state={translateStatus} />
+          <span style={{ marginLeft: 'auto', font: `500 10px ${TYPE.bodyMono}`, color: 'rgba(254,231,199,0.45)' }}>
+            edit → compile → translate · failures keep the last-good recipe
+          </span>
         </div>
       )}
     </div>
   );
 };
+
+// CompileChip — the small inline status pill that rides along in the
+// drawer header. Goes READY → EDITED → COMPILED → TRANSLATED (or
+// COMPILE FAILED: N). Colour-coded to make state legible at a glance.
+const CompileChip = ({ status }: { status: CompileStatus }) => {
+  let label = 'READY';
+  let bg = 'rgba(254,231,199,0.10)';
+  let border = 'rgba(254,231,199,0.25)';
+  let color: string = SHADE.cream;
+  let testid = 'compile-chip-ready';
+  if (status.kind === 'edited') {
+    label = 'EDITED';
+    bg = 'rgba(252,180,39,0.18)';
+    border = 'rgba(252,180,39,0.55)';
+    color = SHADE.gold;
+    testid = 'compile-chip-edited';
+  } else if (status.kind === 'compiled') {
+    label = 'COMPILED ✓';
+    bg = 'rgba(111,127,26,0.20)';
+    border = 'rgba(111,127,26,0.55)';
+    color = '#c7d96b';
+    testid = 'compile-chip-compiled';
+  } else if (status.kind === 'translated') {
+    label = 'TRANSLATED';
+    bg = 'rgba(111,127,26,0.20)';
+    border = 'rgba(111,127,26,0.55)';
+    color = '#c7d96b';
+    testid = 'compile-chip-translated';
+  } else if (status.kind === 'failed') {
+    label = `COMPILE FAILED: ${status.errors.length} error${status.errors.length === 1 ? '' : 's'}`;
+    bg = 'rgba(181, 54, 94, 0.18)';
+    border = 'rgba(181, 54, 94, 0.55)';
+    color = '#FFB7C5';
+    testid = 'compile-chip-failed';
+  }
+  const title = status.kind === 'failed'
+    ? status.errors.slice(0, 4).map((e) => `L${e.line}: ${e.message}`).join('\n')
+    : undefined;
+  return (
+    <span
+      data-testid={testid}
+      title={title}
+      style={{
+        padding: '3px 8px', borderRadius: 3,
+        background: bg, border: `1px solid ${border}`, color,
+        font: `700 9.5px ${TYPE.bodyMono}`, letterSpacing: '0.08em',
+      }}
+    >
+      {label}
+    </span>
+  );
+};
+
+const drawerActionStyle: CSSProperties = {
+  background: 'transparent',
+  color: SHADE.cream,
+  border: '1px solid rgba(254,231,199,0.20)',
+  borderRadius: 3,
+  padding: '6px 12px',
+  font: `600 11px ${TYPE.body}`,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  cursor: 'pointer',
+};
+
+const PencilIcon = ({ size = 14, color = '#fff' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 21 L8 20 L21 7 L17 3 L4 16 Z" />
+    <path d="M14 6 L18 10" />
+  </svg>
+);
 
 const PreviewPanel = ({
   blocks = 0, tempo = 120, onFullscreen,
@@ -713,82 +917,400 @@ const FullscreenChromeBtn = ({ children, title, onClick }: { children: ReactNode
   </button>
 );
 
-const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: string }) => (
-  <div
-    style={{
-      position: 'absolute', inset: 0,
-      background: 'rgba(15, 18, 26, 0.45)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 24, zIndex: 20,
-    }}
-    onClick={onClose}
-  >
+// Fullscreen preview with real screenshot / record / pan-zoom wiring.
+// Pan-zoom is applied as a CSS transform on the wrapper around RecipeCanvas
+// — never on the canvas element itself, because that would tickle the
+// ResizeObserver and resize the WebGL drawing buffer. Pointer events on the
+// canvas still propagate to RecipeCanvas's mousemove handler, so u_mouse
+// continues to track the cursor while the user pans.
+const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: string }) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const canvasOuterRef = useRef<HTMLDivElement>(null);
+  const [transform, setTransform] = useState({ tx: 0, ty: 0, scale: 1 });
+  const [recording, setRecording] = useState(false);
+  const [recElapsedMs, setRecElapsedMs] = useState(0);
+  const [flash, setFlash] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recStartRef = useRef(0);
+  const recTickRef = useRef<number | null>(null);
+  // Pan state: middle-button OR space+drag.
+  const spaceDownRef = useRef(false);
+  const panningRef = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
+
+  // Find the underlying WebGL canvas inside our wrapper. Used by screenshot
+  // and record — both need the raw HTMLCanvasElement, not the wrapping div.
+  const getCanvas = (): HTMLCanvasElement | null => {
+    const root = canvasOuterRef.current;
+    if (!root) return null;
+    return root.querySelector('canvas');
+  };
+
+  // Quick visible flash overlay after a screenshot fires.
+  const triggerFlash = () => {
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 160);
+  };
+
+  const handleScreenshot = useCallback(() => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shaddy-${tsTag()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      triggerFlash();
+    }, 'image/png');
+  }, []);
+
+  const handleStartRecord = useCallback(() => {
+    const canvas = getCanvas();
+    if (!canvas || typeof canvas.captureStream !== 'function') return;
+    const stream = canvas.captureStream(60);
+    // Prefer VP9 for size, fall back to default webm encoder.
+    const opts: MediaRecorderOptions = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? { mimeType: 'video/webm;codecs=vp9' }
+      : MediaRecorder.isTypeSupported('video/webm')
+        ? { mimeType: 'video/webm' }
+        : {};
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream, opts);
+    } catch {
+      return;
+    }
+    chunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shaddy-${tsTag()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      for (const t of stream.getTracks()) t.stop();
+    };
+    recorder.start();
+    recorderRef.current = recorder;
+    recStartRef.current = performance.now();
+    setRecElapsedMs(0);
+    setRecording(true);
+    const tick = () => {
+      setRecElapsedMs(performance.now() - recStartRef.current);
+      recTickRef.current = window.setTimeout(tick, 250);
+    };
+    recTickRef.current = window.setTimeout(tick, 250);
+  }, []);
+
+  const handleStopRecord = useCallback(() => {
+    const r = recorderRef.current;
+    if (r && r.state !== 'inactive') r.stop();
+    recorderRef.current = null;
+    if (recTickRef.current !== null) {
+      clearTimeout(recTickRef.current);
+      recTickRef.current = null;
+    }
+    setRecording(false);
+  }, []);
+
+  const handleToggleRecord = useCallback(() => {
+    if (recording) handleStopRecord();
+    else handleStartRecord();
+  }, [recording, handleStartRecord, handleStopRecord]);
+
+  // Cleanup on unmount — ensures a record-in-progress finalises and
+  // downloads if the user hits Escape mid-take.
+  useEffect(() => () => {
+    const r = recorderRef.current;
+    if (r && r.state !== 'inactive') r.stop();
+    if (recTickRef.current !== null) clearTimeout(recTickRef.current);
+  }, []);
+
+  const reset = useCallback(() => setTransform({ tx: 0, ty: 0, scale: 1 }), []);
+
+  // Keyboard: R resets, space tracks for pan-via-space-drag. Escape close
+  // is handled by DesktopApp's global handler — we only register R/space.
+  useEffect(() => {
+    const isTextTarget = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isTextTarget(e.target)) return;
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        reset();
+        return;
+      }
+      if (e.key === ' ') {
+        spaceDownRef.current = true;
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') spaceDownRef.current = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [reset]);
+
+  // Wheel zoom around the cursor. Attached as non-passive so we can call
+  // preventDefault to stop the page from scrolling sideways under us.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      setTransform((cur) => {
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const factor = dir > 0 ? 1.1 : 1 / 1.1;
+        const nextScale = clamp(cur.scale * factor, 0.25, 8);
+        const real = nextScale / cur.scale;
+        // Zoom around the cursor: keep the world point under the cursor
+        // fixed by adjusting tx/ty proportionally.
+        const tx = cx - (cx - cur.tx) * real;
+        const ty = cy - (cy - cur.ty) * real;
+        return { tx, ty, scale: nextScale };
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel as EventListener);
+  }, []);
+
+  // Pan: middle-mouse OR space+left. Pointer events on the wrapper here
+  // are deliberately distinct from the canvas's own pointermove handler —
+  // we install on the wrapper so the inner canvas continues to drive
+  // u_mouse unaffected.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const middle = e.button === 1;
+    const spaceLeft = e.button === 0 && spaceDownRef.current;
+    if (!middle && !spaceLeft) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panningRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      tx: transform.tx, ty: transform.ty,
+    };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = panningRef.current;
+    if (!p) return;
+    const dx = e.clientX - p.startX;
+    const dy = e.clientY - p.startY;
+    setTransform((cur) => ({ ...cur, tx: p.tx + dx, ty: p.ty + dy }));
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (panningRef.current) {
+      try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+      panningRef.current = null;
+    }
+  };
+
+  const recSeconds = Math.floor(recElapsedMs / 1000);
+  const recLabel = `${Math.floor(recSeconds / 60)}:${String(recSeconds % 60).padStart(2, '0')}`;
+
+  return (
     <div
-      onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'relative',
-        width: '90%', height: '90%',
-        background: '#000',
-        border: `1px solid ${SHADE.inkLine}`,
-        borderRadius: 3, overflow: 'hidden',
+        position: 'absolute', inset: 0,
+        background: 'rgba(15, 18, 26, 0.45)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24, zIndex: 20,
       }}
+      onClick={onClose}
     >
-      <RecipeCanvas style={{ position: 'absolute', inset: 0 }} />
-      <div style={{ position: 'absolute', left: 14, top: 14, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <TogglePill active>1920 × 1080</TogglePill>
-        <TogglePill active>60 fps</TogglePill>
-        <TogglePill>safe area</TogglePill>
-        <TogglePill>grid</TogglePill>
-      </div>
-      <div style={{ position: 'absolute', right: 14, top: 14, display: 'flex', gap: 6 }}>
-        <FullscreenChromeBtn title="Exit fullscreen" onClick={onClose}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 4H4V9 M15 4H20V9 M9 20H4V15 M15 20H20V15" />
-          </svg>
-        </FullscreenChromeBtn>
-      </div>
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          padding: 18,
-          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)',
-          display: 'flex', alignItems: 'center', gap: 14,
+          position: 'relative',
+          width: '90%', height: '90%',
+          background: '#000',
+          border: `1px solid ${SHADE.inkLine}`,
+          borderRadius: 3, overflow: 'hidden',
         }}
       >
-        <button
+        {/* Pan/zoom container — owns the wheel listener and the pointer
+            capture for middle/space drag. The transform sits on
+            canvasOuterRef so the canvas's CSS size never changes (which
+            would trigger the renderer's ResizeObserver and resize the
+            GL buffer, wrecking the zoom). */}
+        <div
+          ref={wrapperRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
           style={{
-            width: 46, height: 46, borderRadius: 3,
-            background: SHADE.gold,
-            border: `1px solid ${SHADE.goldDeep}`,
-            color: '#1a1208', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'absolute', inset: 0,
+            cursor: panningRef.current ? 'grabbing' : 'default',
+            overflow: 'hidden',
           }}
         >
-          <Icon name="play" size={16} color="#1a1208" />
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ font: `700 14px ${TYPE.body}`, color: '#fff' }}>{title}</div>
-          <div style={{ font: `500 11px ${TYPE.bodyMono}`, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
-            120 bpm · 60 fps
+          <div
+            ref={canvasOuterRef}
+            style={{
+              position: 'absolute', inset: 0,
+              transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
+              transformOrigin: '50% 50%',
+              willChange: 'transform',
+            }}
+          >
+            <RecipeCanvas style={{ position: 'absolute', inset: 0 }} />
           </div>
         </div>
-        <button
+
+        {/* Screenshot flash overlay */}
+        {flash && (
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              background: '#fff',
+              opacity: 0.85,
+              pointerEvents: 'none',
+              animation: 'shaddyFlashFade 160ms ease-out forwards',
+            }}
+          />
+        )}
+        <style>{`
+          @keyframes shaddyFlashFade { from { opacity: 0.85; } to { opacity: 0; } }
+          @keyframes shaddyRecPulse { 0% { box-shadow: 0 0 0 0 rgba(229, 60, 60, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(229, 60, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 60, 60, 0); } }
+        `}</style>
+
+        <div style={{ position: 'absolute', left: 14, top: 14, display: 'flex', gap: 6, flexWrap: 'wrap', pointerEvents: 'none' }}>
+          <TogglePill active>1920 × 1080</TogglePill>
+          <TogglePill active>60 fps</TogglePill>
+          <TogglePill>safe area</TogglePill>
+          <TogglePill>grid</TogglePill>
+        </div>
+        <div style={{ position: 'absolute', right: 14, top: 14, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div
+            title={`${transform.scale.toFixed(2)}x  ·  R to reset`}
+            style={{
+              padding: '0 10px', height: 28, display: 'flex', alignItems: 'center',
+              borderRadius: 3,
+              background: 'rgba(0,0,0,0.45)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+              font: `600 11px ${TYPE.bodyMono}`,
+              letterSpacing: '0.08em',
+              backdropFilter: 'blur(6px)',
+            }}
+          >
+            {transform.scale.toFixed(2)}x
+          </div>
+          <FullscreenChromeBtn title="Reset zoom / 1:1  (R)" onClick={reset}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12 A9 9 0 1 0 6 5.5 M3 5 V11 H9" />
+            </svg>
+          </FullscreenChromeBtn>
+          <FullscreenChromeBtn title="Screenshot (PNG)" onClick={handleScreenshot}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7 H7 L9 5 H15 L17 7 H21 V19 H3 Z" />
+              <circle cx="12" cy="13" r="3.4" />
+            </svg>
+          </FullscreenChromeBtn>
+          <button
+            title={recording ? `Stop recording (${recLabel})` : 'Record WebM (60fps)'}
+            onClick={handleToggleRecord}
+            style={{
+              width: recording ? 78 : 32, height: 32, borderRadius: 3,
+              background: recording ? '#e53c3c' : 'rgba(0,0,0,0.45)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              backdropFilter: 'blur(6px)',
+              transition: 'width 160ms ease, background 160ms ease',
+              animation: recording ? 'shaddyRecPulse 1.4s ease-out infinite' : undefined,
+              font: `700 11px ${TYPE.bodyMono}`,
+              letterSpacing: '0.06em',
+              padding: 0,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="12" r={recording ? 6 : 7} />
+            </svg>
+            {recording && <span>{recLabel}</span>}
+          </button>
+          <FullscreenChromeBtn title="Exit fullscreen" onClick={onClose}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 4H4V9 M15 4H20V9 M9 20H4V15 M15 20H20V15" />
+            </svg>
+          </FullscreenChromeBtn>
+        </div>
+        <div
           style={{
-            background: 'rgba(255,255,255,0.08)', color: '#fff',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 3, padding: '9px 14px',
-            font: `600 11px ${TYPE.body}`,
-            letterSpacing: '0.10em', textTransform: 'uppercase',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7,
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            padding: 18,
+            background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)',
+            display: 'flex', alignItems: 'center', gap: 14,
+            pointerEvents: 'none',
           }}
         >
-          <Icon name="share" size={12} color="#fff" /> Export MP4
-        </button>
+          <button
+            style={{
+              width: 46, height: 46, borderRadius: 3,
+              background: SHADE.gold,
+              border: `1px solid ${SHADE.goldDeep}`,
+              color: '#1a1208', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'auto',
+            }}
+          >
+            <Icon name="play" size={16} color="#1a1208" />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ font: `700 14px ${TYPE.body}`, color: '#fff' }}>{title}</div>
+            <div style={{ font: `500 11px ${TYPE.bodyMono}`, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+              120 bpm · 60 fps · scroll to zoom · middle-drag or space-drag to pan · R reset
+            </div>
+          </div>
+          <button
+            style={{
+              background: 'rgba(255,255,255,0.08)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 3, padding: '9px 14px',
+              font: `600 11px ${TYPE.body}`,
+              letterSpacing: '0.10em', textTransform: 'uppercase',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7,
+              pointerEvents: 'auto',
+            }}
+          >
+            <Icon name="share" size={12} color="#fff" /> Export MP4
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
+function clamp(x: number, lo: number, hi: number): number {
+  return x < lo ? lo : x > hi ? hi : x;
+}
+
+function tsTag(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
 
 const EmptyHero = () => (
   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -853,8 +1375,16 @@ export const DesktopApp = () => {
   // when size === 1. Plain clicks replace; Shift / Cmd / Ctrl clicks toggle.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [editorIdx, setEditorIdx] = useState<number | null>(null);
-  const [askClaudeOpen, setAskClaudeOpen] = useState(false);
-  const askClaudeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // ─── Editable code drawer state ────────────────────────────────────
+  // The drawer owns three pieces of state: editMode (toggle), editSource
+  // (the user's draft GLSL), and compileStatus/translateStatus (chip).
+  // editSource only diverges from the recipe-derived GLSL while editMode is
+  // on; toggling off resets it.
+  const [editMode, setEditMode] = useState(false);
+  const [editSource, setEditSource] = useState<string>('');
+  const [compileStatus, setCompileStatus] = useState<CompileStatus>({ kind: 'ready' });
+  const [translateStatus, setTranslateStatus] = useState<TranslateState>({ kind: 'idle' });
 
   // Selection helpers shared across keyboard, mouse, and bulk-action code paths.
   const replaceSelection = useCallback((cardId: string | null) => {
@@ -956,26 +1486,125 @@ export const DesktopApp = () => {
     [compiled.glsl],
   );
 
-  // Ask-Claude: the popover hands back a full wrapped GLSL source. Strip
-  // the preamble (matches reparse.ts's expectation — it operates on the
-  // body only) and route through the same reverse parser the CodeView
-  // uses. If markers were preserved, this turns the rewrite into either
-  // a no-op or a card→wildcard transition for whichever cards diverged.
-  const compiledRef = useRef(compiled);
+  // Mirror the live recipe so the translate flow can hand Claude the
+  // last-good Recipe alongside the edited GLSL.
   const recipeRef = useRef(recipe);
-  useEffect(() => {
-    compiledRef.current = compiled;
-    recipeRef.current = recipe;
-  }, [compiled, recipe]);
+  useEffect(() => { recipeRef.current = recipe; }, [recipe]);
 
-  const handleAskClaudeReplace = useCallback((newWrappedGlsl: string) => {
-    const lines = newWrappedGlsl.split('\n');
-    const body = lines.slice(USER_LINE_OFFSET).join('\n');
-    const result = reparse(recipeRef.current, compiledRef.current, body);
-    if (!result.syntaxPending) {
-      setRecipe(result.recipe);
+  // ─── Compile validator (transient offscreen renderer) ─────────────
+  // The on-screen RecipeCanvas owns its own renderer and we can't touch
+  // it (boundary rule), so we lazily allocate a parallel "validator"
+  // renderer the first time Compile is pressed. It mounts onto an
+  // offscreen 1×1 div, never renders anything visible, and just gets its
+  // compile() called to check the user's edited GLSL.
+  const validatorRef = useRef<RendererAPI | null>(null);
+  const validatorHostRef = useRef<HTMLDivElement | null>(null);
+  const ensureValidator = useCallback((): RendererAPI | null => {
+    if (validatorRef.current) return validatorRef.current;
+    if (typeof document === 'undefined') return null;
+    try {
+      const host = document.createElement('div');
+      host.style.position = 'absolute';
+      host.style.width = '1px';
+      host.style.height = '1px';
+      host.style.opacity = '0';
+      host.style.pointerEvents = 'none';
+      host.style.left = '-9999px';
+      host.style.top = '-9999px';
+      document.body.appendChild(host);
+      const r = createRenderer();
+      r.mount(host);
+      r.resize(1, 1);
+      validatorRef.current = r;
+      validatorHostRef.current = host;
+      return r;
+    } catch {
+      // No WebGL context (test/CI/headless) — caller treats null as
+      // "can't compile; assume ok" and lets translate proceed.
+      return null;
     }
-  }, [setRecipe]);
+  }, []);
+  useEffect(() => () => {
+    // Tear down on unmount so we don't leak a WebGL context.
+    if (validatorHostRef.current) {
+      validatorHostRef.current.remove();
+      validatorHostRef.current = null;
+    }
+    validatorRef.current = null;
+  }, []);
+
+  // Entering edit mode → seed the draft with the current recipe's GLSL
+  // and reset chip state. Leaving edit mode (regardless of how) clears
+  // the draft so re-entering picks up the latest recipe.
+  useEffect(() => {
+    if (editMode) {
+      setEditSource(wrappedGlsl);
+      setCompileStatus({ kind: 'ready' });
+      setTranslateStatus({ kind: 'idle' });
+    } else {
+      setEditSource('');
+    }
+    // Intentionally one-shot per editMode flip — subsequent recipe changes
+    // while editing must NOT clobber the user's in-progress edits, so the
+    // dep on `wrappedGlsl` is deliberately omitted.
+  }, [editMode]);
+
+  // The user typed into the textarea — mark dirty. We keep the previous
+  // failure visible (chip stays red on `failed`) until they actually press
+  // Compile again, which feels closer to "I see what I broke" than an
+  // immediate jump back to EDITED.
+  const handleEditSourceChange = useCallback((next: string) => {
+    setEditSource(next);
+    setCompileStatus((cur) => (cur.kind === 'failed' ? cur : { kind: 'edited' }));
+    setTranslateStatus({ kind: 'idle' });
+  }, []);
+
+  // Compile button → strip the preamble (renderer adds it itself), run
+  // through the validator renderer, surface ok / error count.
+  const handleCompile = useCallback(() => {
+    const body = editSource.split('\n').slice(USER_LINE_OFFSET).join('\n');
+    const r = ensureValidator();
+    if (!r) {
+      // No WebGL — best-effort: treat as compiled so the user can still
+      // try Translate. Better UX than blocking the flow in a non-GL env.
+      setCompileStatus({ kind: 'compiled' });
+      return;
+    }
+    const result = r.compile(body);
+    if (result.ok) {
+      setCompileStatus({ kind: 'compiled' });
+    } else {
+      setCompileStatus({ kind: 'failed', errors: result.errors });
+    }
+  }, [editSource, ensureValidator]);
+
+  // Translate button → ship the edited GLSL + last-good recipe to Claude.
+  // On success we apply the returned Recipe through cloneRecipeWithFreshIds
+  // so any "<auto>" placeholder ids get replaced, and the chip flips to
+  // TRANSLATED. On failure we keep the existing recipe untouched.
+  const handleTranslate = useCallback(async () => {
+    if (compileStatus.kind !== 'compiled') return;
+    setTranslateStatus({ kind: 'loading' });
+    try {
+      const newRecipe = await translateGlslToRecipe(editSource, recipeRef.current);
+      setRecipe(cloneRecipeWithFreshIds(newRecipe));
+      setTranslateStatus({ kind: 'ok' });
+      setCompileStatus({ kind: 'translated' });
+      // Leave edit mode — the drawer now shows the new recipe's GLSL,
+      // which may differ from what the user typed if Claude collapsed or
+      // expanded any cards.
+      setEditMode(false);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setTranslateStatus({ kind: 'error', message });
+    }
+  }, [compileStatus, editSource, setRecipe]);
+
+  const handleDiscardEdits = useCallback(() => {
+    setEditSource(wrappedGlsl);
+    setCompileStatus({ kind: 'ready' });
+    setTranslateStatus({ kind: 'idle' });
+  }, [wrappedGlsl]);
 
   // Prune selectedIds for cards that no longer exist (after removal / undo /
   // recipe swap) and clamp the editor index. Done in one effect — both
@@ -1312,16 +1941,15 @@ export const DesktopApp = () => {
               onToggle={() => setDrawerExpanded((x) => !x)}
               glsl={wrappedGlsl}
               height={300}
-              onAskClaude={() => setAskClaudeOpen((o) => !o)}
-              askClaudeBtnRef={askClaudeBtnRef}
-              askClaudeActive={askClaudeOpen}
-            />
-            <AskClaude
-              open={askClaudeOpen}
-              glsl={wrappedGlsl}
-              onClose={() => setAskClaudeOpen(false)}
-              onReplace={handleAskClaudeReplace}
-              anchorRef={askClaudeBtnRef}
+              editMode={editMode}
+              onEditModeChange={setEditMode}
+              editSource={editSource}
+              onEditSourceChange={handleEditSourceChange}
+              compileStatus={compileStatus}
+              translateStatus={translateStatus}
+              onCompile={handleCompile}
+              onTranslate={() => { void handleTranslate(); }}
+              onDiscard={handleDiscardEdits}
             />
           </div>
         </div>

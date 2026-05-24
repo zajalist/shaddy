@@ -293,11 +293,69 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   'card-julia': ({ c, cream }) => (
     <>
-      {/* dragon-curve-ish blobs */}
-      <path d="M5 8 Q9 4 13 7 Q15 11 11 13 Q7 14 5 12 Q3 10 5 8 Z" fill={c} />
-      <path d="M11 13 Q14 12 17 14 Q19 17 16 19 Q12 20 11 17 Q10 14 11 13 Z" fill={cream} opacity="0.8" />
-      <circle cx="9" cy="10" r="1.1" fill={cream} />
-      <circle cx="15" cy="16" r="0.9" fill={c} />
+      {/* Julia set — signature pinched-lobe "dust" silhouette with a
+          mirrored counter-lobe. Reads as a fractal pinch, not a blob. */}
+      <path d="M12 3.4 Q15 7 16.6 9.8 Q19 11.2 19.6 12 Q19 12.8 16.6 14.2 Q15 17 12 20.6 Q9 17 7.4 14.2 Q5 12.8 4.4 12 Q5 11.2 7.4 9.8 Q9 7 12 3.4 Z"
+        fill={c} />
+      {/* inner pinched mirror lobe for the cream highlight */}
+      <path d="M12 7 Q13.4 9.4 14.4 11 Q15.6 11.6 16 12 Q15.6 12.4 14.4 13 Q13.4 14.6 12 17 Q10.6 14.6 9.6 13 Q8.4 12.4 8 12 Q8.4 11.6 9.6 11 Q10.6 9.4 12 7 Z"
+        fill={cream} opacity="0.85" />
+      {/* two "dust" satellite specks — characteristic of Julia sets */}
+      <circle cx="3.6" cy="12" r="0.9" fill={c} opacity="0.7" />
+      <circle cx="20.4" cy="12" r="0.9" fill={c} opacity="0.7" />
+    </>
+  ),
+
+  // Mandelbrot — instantly-recognisable cardioid + main bulb silhouette.
+  // Reads at 14px because the silhouette is the brand of the set.
+  'card-mandelbrot': ({ c, cream }) => (
+    <>
+      {/* large cardioid body */}
+      <path d="M15.4 12 Q15.4 17.4 11.2 18.6 Q5.6 19.4 4 14.2 Q3 9 8 6.4 Q12 4.6 14.4 7.6 Q16 9.2 15.4 12 Z"
+        fill={c} />
+      {/* main bulb on the right */}
+      <circle cx="18" cy="12" r="2.6" fill={c} />
+      {/* small upper-side bulb */}
+      <circle cx="9.6" cy="5" r="1.3" fill={c} opacity="0.85" />
+      {/* highlight — main cardioid cusp shape inverted */}
+      <path d="M12 9 Q13.6 11 12.8 13 Q11.4 14 10 13 Q9 11.4 10.4 9.6 Q11.2 8.6 12 9 Z"
+        fill={cream} opacity="0.7" />
+      {/* tiny satellite mini-mandelbrot far left */}
+      <circle cx="3.6" cy="12" r="0.8" fill={c} opacity="0.7" />
+    </>
+  ),
+
+  // Mandelbulb (2D slice) — riff on the bulb idea with radial lobes to
+  // signal the 3D-ish set. Five symmetrical petal-bulbs around a core.
+  'card-mandelbulb-2d': ({ c, cream }) => (
+    <>
+      {/* core */}
+      <circle cx="12" cy="12" r="3.4" fill={c} />
+      {[0, 72, 144, 216, 288].map((a, i) => {
+        const r = (a * Math.PI) / 180;
+        const x = 12 + Math.cos(r) * 6.2;
+        const y = 12 + Math.sin(r) * 6.2;
+        return <circle key={i} cx={x} cy={y} r="2.4" fill={c} opacity={i % 2 ? 0.7 : 0.9} />;
+      })}
+      {/* cream center highlight */}
+      <circle cx="10.8" cy="10.8" r="1.4" fill={cream} opacity="0.85" />
+    </>
+  ),
+
+  // Burning Ship — recognisable "ship hull" silhouette. Triangular sail
+  // shape with a flat underside and reflection.
+  'card-burning-ship': ({ c, cream }) => (
+    <>
+      {/* hull (triangle) */}
+      <path d="M4 14 L20 14 L12 4 Z" fill={c} />
+      {/* mast detail */}
+      <rect x="11.4" y="6" width="1.2" height="6" fill={cream} opacity="0.8" />
+      {/* water reflection band */}
+      <rect x="3" y="15.4" width="18" height="1.6" rx="0.3" fill={c} opacity="0.5" />
+      {/* "burning" flicker dots */}
+      <circle cx="6.4" cy="18.4" r="0.9" fill={c} opacity="0.6" />
+      <circle cx="11.6" cy="19" r="1.1" fill={cream} opacity="0.7" />
+      <circle cx="17" cy="18.4" r="0.9" fill={c} opacity="0.6" />
     </>
   ),
 
@@ -335,8 +393,15 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   'card-domain-warp': ({ c, cream }) => (
     <>
-      <path d="M3 7 Q8 3 12 7 Q16 11 21 7 V11 Q16 15 12 11 Q8 7 3 11 Z" fill={c} />
-      <path d="M3 13 Q8 9 12 13 Q16 17 21 13 V17 Q16 21 12 17 Q8 13 3 17 Z" fill={cream} opacity="0.7" />
+      {/* warped checkerboard — straight grid bent by a wavy distortion.
+          The 2x2 board reads first; the bend reads second. */}
+      <path d="M3.4 6.4 Q8 4 12 6.8 Q16 9.6 20.6 6.4 V12 Q16 15 12 12 Q8 9.6 3.4 12 Z" fill={c} />
+      <path d="M3.4 12 Q8 9.6 12 12 Q16 15 20.6 12 V18 Q16 20.4 12 17.6 Q8 14.8 3.4 17.6 Z" fill={cream} opacity="0.85" />
+      {/* counter-quadrant cells for the checker feel */}
+      <path d="M3.4 6.4 Q5.8 5.2 8 6 V10 Q5.8 11 3.4 10.6 Z" fill={cream} opacity="0.55" />
+      <path d="M16 6.4 Q18.4 5.2 20.6 6.4 V10.4 Q18.4 11.2 16 10 Z" fill={cream} opacity="0.55" />
+      <path d="M3.4 12 Q5.8 11 8 12 V16.4 Q5.8 17.8 3.4 17.6 Z" fill={c} opacity="0.6" />
+      <path d="M16 12 Q18.4 11 20.6 12 V17.6 Q18.4 19.4 16 17.6 Z" fill={c} opacity="0.6" />
     </>
   ),
 
@@ -405,11 +470,16 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   'card-noise-warp': ({ c, cream }) => (
     <>
-      <path d="M4 7 Q8 4 12 7 Q16 10 20 7 V11 Q16 14 12 11 Q8 8 4 11 Z" fill={c} />
-      <circle cx="7" cy="15" r="1.4" fill={cream} />
-      <circle cx="12" cy="16.4" r="1.1" fill={c} opacity="0.65" />
-      <circle cx="16" cy="14.8" r="1.2" fill={cream} opacity="0.7" />
-      <circle cx="10" cy="18.6" r="0.9" fill={c} opacity="0.5" />
+      {/* Three straight-then-jittered bars — the metaphor: noise pushes
+          straight lines into wobbly ones. Clearer than the prior blob. */}
+      <rect x="3" y="5" width="8" height="2.2" rx="1" fill={c} />
+      <path d="M11.6 5 Q14 7.2 16 5.6 Q18 4.4 21 6 L21 7.4 Q18 5.8 16 7 Q14 8.6 11.6 7 Z" fill={c} />
+
+      <rect x="3" y="10.8" width="6" height="2.2" rx="1" fill={cream} opacity="0.9" />
+      <path d="M9.4 10.8 Q12 13.4 14.4 11.4 Q16.8 9.8 20.4 11.6 L20.4 13 Q16.8 11.2 14.4 12.8 Q12 14.8 9.4 13 Z" fill={cream} opacity="0.9" />
+
+      <rect x="3" y="16.6" width="10" height="2.2" rx="1" fill={c} opacity="0.7" />
+      <path d="M13.4 16.6 Q15.4 18.6 17.4 17 Q19 15.8 21 17 L21 18.4 Q19 17.2 17.4 18.4 Q15.4 20 13.4 18.4 Z" fill={c} opacity="0.7" />
     </>
   ),
 
@@ -852,9 +922,14 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   'card-vesica': ({ c, cream }) => (
     <>
-      <circle cx="9" cy="12" r="6.4" fill={c} opacity="0.55" />
-      <circle cx="15" cy="12" r="6.4" fill={c} opacity="0.55" />
-      <path d="M12 6 Q15 12 12 18 Q9 12 12 6 Z" fill={cream} />
+      {/* Vesica piscis — two overlapping circles outlined, with a SHARP
+          lens-shaped intersection in cream. Outlines make it obvious. */}
+      <circle cx="8.6" cy="12" r="6.4" fill={c} opacity="0.32" />
+      <circle cx="15.4" cy="12" r="6.4" fill={c} opacity="0.32" />
+      <circle cx="8.6" cy="12" r="6.4" fill="none" stroke={c} strokeWidth="1.6" />
+      <circle cx="15.4" cy="12" r="6.4" fill="none" stroke={c} strokeWidth="1.6" />
+      {/* the lens — the actual vesica region, drawn solid */}
+      <path d="M12 6 Q15 9 15 12 Q15 15 12 18 Q9 15 9 12 Q9 9 12 6 Z" fill={cream} />
     </>
   ),
 
@@ -868,67 +943,134 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   'card-trapezoid': ({ c, cream }) => (
     <>
-      <path d="M5 18 L19 18 L16 6.4 L8 6.4 Z" fill={c} />
-      <path d="M9 9 L15 9 L14 14 L10 14 Z" fill={cream} opacity="0.6" />
+      {/* Trapezoid — narrower TOP, wider BOTTOM (the textbook orientation
+          most people draw). Dashed baseline emphasises the parallel sides. */}
+      <path d="M3.4 18.4 L20.6 18.4 L17 5.6 L7 5.6 Z" fill={c} />
+      <path d="M3.4 18.4 L20.6 18.4" stroke={cream} strokeWidth="1.4" strokeDasharray="1.8 1.4" opacity="0.7" />
+      <path d="M7 5.6 L17 5.6" stroke={cream} strokeWidth="1.4" strokeDasharray="1.8 1.4" opacity="0.7" />
+      <path d="M8.6 8.4 L15.4 8.4 L14 13.4 L10 13.4 Z" fill={cream} opacity="0.55" />
     </>
   ),
 
   'card-parallelogram': ({ c, cream }) => (
     <>
-      <path d="M6 6.6 L20 6.6 L18 17.4 L4 17.4 Z" fill={c} />
-      <path d="M8 9 L17 9 L16 14 L7 14 Z" fill={cream} opacity="0.6" />
+      {/* Parallelogram — strong tilt, with hash marks on opposite sides to
+          signal "two pairs of parallel sides". Reads as math, not just a shape. */}
+      <path d="M7 5.6 L20.6 5.6 L17 18.4 L3.4 18.4 Z" fill={c} />
+      {/* hash marks on the parallel top + bottom */}
+      <path d="M12.4 5.4 L13.4 5.4 M13.6 5.4 L14.6 5.4" stroke={cream} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M9.4 18.6 L10.4 18.6 M10.6 18.6 L11.6 18.6" stroke={cream} strokeWidth="1.2" strokeLinecap="round" />
+      {/* hash marks on the parallel sides (different count) */}
+      <path d="M5.2 11.4 L6 11.6" stroke={cream} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M18 12.4 L18.8 12.6" stroke={cream} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8.5 8.6 L16.6 8.6 L15.2 13.6 L7.2 13.6 Z" fill={cream} opacity="0.45" />
     </>
   ),
 
   'card-horseshoe': ({ c, cream }) => (
     <>
-      <path d="M5.4 19 L5.4 12 A6.6 6.6 0 0 1 18.6 12 L18.6 19 L15.6 19 L15.6 12 A3.6 3.6 0 0 0 8.4 12 L8.4 19 Z" fill={c} />
-      <circle cx="7" cy="17.6" r="0.9" fill={cream} opacity="0.7" />
-      <circle cx="17" cy="17.6" r="0.9" fill={cream} opacity="0.7" />
+      {/* Horseshoe — open at TOP (classic luck orientation). Thick U with
+          inner cutout, plus nail holes around the edge for the "horseshoe"
+          read instead of generic-arch. */}
+      <path d="M4.6 5 L4.6 13.4 A7.4 7.4 0 0 0 19.4 13.4 L19.4 5 L16 5 L16 13.4 A4 4 0 0 1 8 13.4 L8 5 Z"
+        fill={c} />
+      {/* nail holes — 4 along each leg */}
+      <circle cx="6.3" cy="7"  r="0.65" fill={cream} />
+      <circle cx="6.3" cy="9.6" r="0.65" fill={cream} />
+      <circle cx="6.3" cy="12.2" r="0.65" fill={cream} />
+      <circle cx="17.7" cy="7"  r="0.65" fill={cream} />
+      <circle cx="17.7" cy="9.6" r="0.65" fill={cream} />
+      <circle cx="17.7" cy="12.2" r="0.65" fill={cream} />
+      {/* highlight band at the bottom curve */}
+      <path d="M8.6 16.4 A4.6 4.6 0 0 0 15.4 16.4" fill="none" stroke={cream} strokeWidth="1.1" opacity="0.6" strokeLinecap="round" />
     </>
   ),
 
   // ─────────────────────────── TONEMAPPING ─────────────────────────────────
 
+  // ACES — bright HDR burst on the LEFT, clean balanced gradient on the
+  // RIGHT, chunky arrow between them. The "tonemap" verb made literal.
   'card-aces-tonemap': ({ c, cream }) => (
     <>
-      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={c} opacity="0.22" />
-      <path d="M4 20 Q9 19 12 14 Q15 9 20 6" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M4 20 L20 4" stroke={cream} strokeWidth="1.1" strokeDasharray="1.8 1.4" opacity="0.6" />
-      <circle cx="4" cy="20" r="1.2" fill={cream} />
-      <circle cx="20" cy="6" r="1.2" fill={cream} />
+      {/* LEFT: blown-out HDR — bright cream burst with rays */}
+      <rect x="2.4" y="4.6" width="7.4" height="14.8" rx="1.6" fill={c} />
+      <circle cx="6.1" cy="12" r="2.4" fill={cream} />
+      {[-50, -20, 10, 40, 70].map((a, i) => {
+        const r = (a * Math.PI) / 180;
+        return <line key={i}
+          x1={6.1 + Math.cos(r) * 3} y1={12 + Math.sin(r) * 3}
+          x2={6.1 + Math.cos(r) * 5} y2={12 + Math.sin(r) * 5}
+          stroke={cream} strokeWidth="1" strokeLinecap="round" opacity={0.85} />;
+      })}
+      {/* ARROW between them */}
+      <path d="M10.4 12 L13.2 12 M12.4 10.4 L13.6 12 L12.4 13.6"
+        fill="none" stroke={c} strokeWidth="1.8"
+        strokeLinecap="round" strokeLinejoin="round" />
+      {/* RIGHT: clean balanced gradient — dark→light bands */}
+      <rect x="14.2" y="4.6" width="7.4" height="14.8" rx="1.6" fill={c} opacity="0.85" />
+      <rect x="14.2" y="4.6" width="7.4" height="4.9" rx="1.6" fill="#000" opacity="0.55" />
+      <rect x="14.2" y="9.4" width="7.4" height="4.9" fill={c} opacity="0.6" />
+      <rect x="14.2" y="14.6" width="7.4" height="4.8" rx="1.6" fill={cream} opacity="0.75" />
     </>
   ),
 
+  // Filmic — film-strip with sprocket holes top/bottom and a contrast-y
+  // light/dark exposure inside one of the frames.
   'card-filmic-tonemap': ({ c, cream }) => (
     <>
-      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={c} opacity="0.22" />
-      <path d="M4 20 Q7 19.5 9 17 Q12 11 15 8 Q18 5.6 20 5" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" />
-      {/* film perforations */}
-      <rect x="2.4" y="6" width="1.4" height="1.4" rx="0.3" fill={cream} />
-      <rect x="2.4" y="11" width="1.4" height="1.4" rx="0.3" fill={cream} />
-      <rect x="2.4" y="16" width="1.4" height="1.4" rx="0.3" fill={cream} />
-      <rect x="20.2" y="6" width="1.4" height="1.4" rx="0.3" fill={cream} />
-      <rect x="20.2" y="11" width="1.4" height="1.4" rx="0.3" fill={cream} />
-      <rect x="20.2" y="16" width="1.4" height="1.4" rx="0.3" fill={cream} />
+      {/* film strip body */}
+      <rect x="2.4" y="5.4" width="19.2" height="13.2" rx="1.2" fill={c} />
+      {/* top + bottom sprocket bars */}
+      <rect x="2.4" y="5.4" width="19.2" height="2.2" fill="#000" opacity="0.55" />
+      <rect x="2.4" y="16.4" width="19.2" height="2.2" fill="#000" opacity="0.55" />
+      {/* sprocket holes top */}
+      {[4, 8, 12, 16, 20].map((x, i) => (
+        <rect key={`t${i}`} x={x - 0.7} y="5.9" width="1.4" height="1.2" rx="0.2" fill={cream} />
+      ))}
+      {/* sprocket holes bottom */}
+      {[4, 8, 12, 16, 20].map((x, i) => (
+        <rect key={`b${i}`} x={x - 0.7} y="16.9" width="1.4" height="1.2" rx="0.2" fill={cream} />
+      ))}
+      {/* two frame dividers */}
+      <line x1="8.7" y1="7.6" x2="8.7" y2="16.4" stroke="#000" strokeWidth="0.7" opacity="0.4" />
+      <line x1="15.3" y1="7.6" x2="15.3" y2="16.4" stroke="#000" strokeWidth="0.7" opacity="0.4" />
+      {/* center frame — exposed bright bulb to evoke "film captures light" */}
+      <circle cx="12" cy="12" r="2.4" fill={cream} />
+      <circle cx="11.4" cy="11.4" r="0.9" fill={c} opacity="0.6" />
     </>
   ),
 
+  // Linear → sRGB — explicit text labels separated by an arrow. This
+  // card's identity literally IS "convert L to γ" so spell it out.
   'card-linear-to-srgb': ({ c, cream }) => (
     <>
-      <rect x="3.4" y="3.4" width="8.6" height="17.2" rx="2.4" fill={c} opacity="0.45" />
-      <rect x="12" y="3.4" width="8.6" height="17.2" rx="2.4" fill={c} />
-      <text x="7.3" y="14" fill={cream} fontSize="5" fontFamily="ui-monospace, monospace" fontWeight="700">L</text>
-      <text x="15.4" y="14" fill={cream} fontSize="5" fontFamily="ui-monospace, monospace" fontWeight="700">γ</text>
+      {/* LEFT chip — linear */}
+      <rect x="2.4" y="6.6" width="7.6" height="10.8" rx="1.8" fill={c} opacity="0.45" />
+      <text x="3.8" y="14.2" fill={cream} fontSize="6.5" fontFamily="ui-monospace, monospace" fontWeight="700">lin</text>
+      {/* ARROW */}
+      <path d="M10.8 12 L13.4 12 M12.6 10.4 L14 12 L12.6 13.6"
+        fill="none" stroke={c} strokeWidth="1.8"
+        strokeLinecap="round" strokeLinejoin="round" />
+      {/* RIGHT chip — sRGB */}
+      <rect x="14" y="6.6" width="7.6" height="10.8" rx="1.8" fill={c} />
+      <text x="14.7" y="14.2" fill={cream} fontSize="6" fontFamily="ui-monospace, monospace" fontWeight="700">sRGB</text>
     </>
   ),
 
+  // Reinhard — characteristic "x/(1+x)" asymptotic curve approaching but
+  // never reaching the top edge. Dashed ceiling line drives the read.
   'card-reinhard-tonemap': ({ c, cream }) => (
     <>
-      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={c} opacity="0.22" />
-      <path d="M4 20 Q10 18 14 12 Q17 7 20 7" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="20" cy="7" r="1.2" fill={cream} />
-      <path d="M4 7 L20 7" stroke={cream} strokeWidth="0.9" strokeDasharray="1.4 1.4" opacity="0.55" />
+      <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={c} opacity="0.18" />
+      {/* dashed ceiling at the asymptote */}
+      <path d="M4 5.4 L20 5.4" stroke={cream} strokeWidth="1.2" strokeDasharray="1.6 1.4" opacity="0.7" />
+      {/* the curve — steep then flattens, never touching the ceiling */}
+      <path d="M4 20.2 Q9 18 12 12 Q15 7 20 6.2"
+        fill="none" stroke={c} strokeWidth="2.6" strokeLinecap="round" />
+      {/* tiny gap arrow showing it never reaches */}
+      <path d="M20 6.2 L20 5.6" stroke={c} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+      <circle cx="20" cy="6.2" r="1.2" fill={cream} />
+      <circle cx="4" cy="20.2" r="1.2" fill={cream} />
     </>
   ),
 
@@ -971,21 +1113,36 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
 
   // ─────────────────── DISTORTIONS / TECHNIQUES ────────────────────────────
 
+  // Onion — cutaway view! Concentric rings on one side, "peeled back" on
+  // the other to reveal the layers. Reads as actual onion + layering op.
   'card-onion': ({ c, cream }) => (
     <>
-      <circle cx="12" cy="12" r="8.4" fill={c} />
-      <circle cx="12" cy="12" r="6.4" fill={cream} />
-      <circle cx="12" cy="12" r="4.4" fill={c} opacity="0.85" />
-      <circle cx="12" cy="12" r="2.4" fill={cream} />
-      <circle cx="12" cy="12" r="0.8" fill={c} />
+      {/* outer hemisphere */}
+      <path d="M12 3.6 A8.4 8.4 0 0 1 12 20.4 Z" fill={c} />
+      {/* layered rings on the cutaway side */}
+      <path d="M12 6 A6 6 0 0 1 12 18 Z" fill={cream} opacity="0.85" />
+      <path d="M12 8.4 A3.6 3.6 0 0 1 12 15.6 Z" fill={c} />
+      <path d="M12 10.6 A1.4 1.4 0 0 1 12 13.4 Z" fill={cream} />
+      {/* full outline circle for the "onion" silhouette */}
+      <circle cx="12" cy="12" r="8.4" fill="none" stroke={c} strokeWidth="1.4" />
+      <circle cx="12" cy="12" r="6" fill="none" stroke={c} strokeWidth="1" opacity="0.5" />
+      <circle cx="12" cy="12" r="3.6" fill="none" stroke={c} strokeWidth="1" opacity="0.5" />
     </>
   ),
 
+  // Smooth intersection — two overlapping circles with the SMOOTH overlap
+  // region filled in. A subtle gradient-like highlight on the overlap sells
+  // "smooth" vs hard-edged. Mathy yet readable.
   'card-smooth-intersection': ({ c, cream }) => (
     <>
-      <circle cx="9" cy="12" r="6.4" fill={c} opacity="0.55" />
-      <circle cx="15" cy="12" r="6.4" fill={c} opacity="0.55" />
-      <path d="M12 6.2 Q15.2 9 15.2 12 Q15.2 15 12 17.8 Q8.8 15 8.8 12 Q8.8 9 12 6.2 Z" fill={cream} />
+      <circle cx="9" cy="12" r="6.4" fill="none" stroke={c} strokeWidth="1.6" />
+      <circle cx="15" cy="12" r="6.4" fill="none" stroke={c} strokeWidth="1.6" />
+      {/* the SMOOTHED intersection — softer pill shape, not a sharp lens */}
+      <path d="M12 7 Q14.2 9.6 14.4 12 Q14.2 14.4 12 17 Q9.8 14.4 9.6 12 Q9.8 9.6 12 7 Z"
+        fill={c} />
+      {/* highlight to suggest smoothness */}
+      <path d="M11.4 8.4 Q12.4 10 12.6 12 Q12.4 13.6 11.4 14.6 Q10.6 13.4 10.4 12 Q10.6 10.4 11.4 8.4 Z"
+        fill={cream} opacity="0.6" />
     </>
   ),
 
@@ -1034,6 +1191,39 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4" fill={c} opacity="0.22" />
       <path d="M4 20 Q10 20 11.6 14 Q13.2 8 19 4 L20 4" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" />
       <circle cx="12" cy="11" r="1.6" fill={cream} />
+    </>
+  ),
+
+  // ────────────────────── MOUSE-INTERACTIVE CARDS ──────────────────────
+
+  'card-mouse-glow': ({ c, cream }) => (
+    <>
+      {/* radial halo, then the cursor arrow nudged into the upper-left
+          so the glow reads as "follows the pointer". */}
+      <circle cx="13" cy="13" r="9" fill={c} opacity="0.22" />
+      <circle cx="13" cy="13" r="6" fill={c} opacity="0.45" />
+      <circle cx="13" cy="13" r="3" fill={cream} />
+      <path d="M5 4 L5 14 L8.4 11.4 L10.4 15.6 L12.2 14.8 L10.2 10.6 L14.2 10.6 Z" fill={c} stroke={cream} strokeWidth="0.8" strokeLinejoin="round" />
+    </>
+  ),
+
+  'card-mouse-repel': ({ c, cream }) => (
+    <>
+      {/* central cursor + four arrows blasting outward at 45° */}
+      <circle cx="12" cy="12" r="2.2" fill={cream} />
+      <path d="M12 12 L4 4 M4 4 L7 4 M4 4 L4 7" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12 L20 4 M20 4 L17 4 M20 4 L20 7" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12 L4 20 M4 20 L7 20 M4 20 L4 17" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12 L20 20 M20 20 L17 20 M20 20 L20 17" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+
+  'card-mouse-paint-d': ({ c, cream }) => (
+    <>
+      {/* paint blob with cursor on top — "highlight wherever the pointer is" */}
+      <path d="M5 16 Q4 10 9 9 Q11 5 15 7 Q19 6 19 11 Q21 14 17 16 Q15 20 11 18 Q7 20 5 16 Z" fill={c} opacity="0.85" />
+      <circle cx="12" cy="12" r="2.2" fill={cream} opacity="0.7" />
+      <path d="M13 11 L13 19 L15 17.2 L16.2 19.6 L17.4 19 L16.2 16.6 L18.6 16.6 Z" fill={cream} stroke={c} strokeWidth="0.8" strokeLinejoin="round" />
     </>
   ),
 };

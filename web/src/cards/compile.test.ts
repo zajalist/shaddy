@@ -275,6 +275,90 @@ describe('composition (alpha + blend)', () => {
   });
 });
 
+describe('3D compile', () => {
+  it('empty 3D recipe compiles to a far-plane scene (raymarcher misses, sky shows)', () => {
+    const out = compile({ mode: '3d', canvasAspect: 'square', cards: [] });
+    // No cards → no uniforms, no spans.
+    expect(out.spans).toEqual([]);
+    expect(out.uniforms).toEqual([]);
+    // Scene has the raymarch boilerplate + a far-plane default + sky colour.
+    expect(out.glsl).toContain('float sdScene(vec3 p)');
+    expect(out.glsl).toContain('float d = 1e9;');
+    expect(out.glsl).toContain('void main() {');
+    expect(out.glsl).toContain('vec3 col = vec3(0.15, 0.18, 0.25);');
+    expect(out.glsl).toContain('fragColor = vec4(col, 1.0);');
+    expect(out.glsl).toContain(END_MARKER);
+  });
+
+  it('single sphere_3d compiles + emits a non-trivial raymarched scene', () => {
+    const out = compile({
+      mode: '3d',
+      canvasAspect: 'square',
+      cards: [{
+        kind: 'typed', id: 's0', type: 'sphere_3d', enabled: true,
+        params: {
+          r:  { value: 0.6, animation: null },
+          cx: { value: 0,   animation: null },
+          cy: { value: 0.6, animation: null },
+          cz: { value: 0,   animation: null },
+        },
+      }],
+    });
+    // Sphere uniforms emitted.
+    expect(out.glsl).toContain('uniform float u_card0_r;');
+    expect(out.glsl).toContain('uniform float u_card0_cx;');
+    expect(out.glsl).toContain('uniform float u_card0_cy;');
+    expect(out.glsl).toContain('uniform float u_card0_cz;');
+    // Sphere SDF contribution wired into sdScene via sdSmoothMin.
+    expect(out.glsl).toContain('sdSmoothMin(d, length(p - vec3(u_card0_cx, u_card0_cy, u_card0_cz)) - u_card0_r, k);');
+    // Raymarch helpers present.
+    expect(out.glsl).toContain('float sdSmoothMin(float a, float b, float k)');
+    expect(out.glsl).toContain('vec3 sceneNormal3(vec3 p)');
+    expect(out.glsl).toContain('float softShadow3(vec3 ro, vec3 rd, float mint, float maxt, float w)');
+    // Span covers the sphere card.
+    expect(out.spans).toHaveLength(1);
+    expect(out.spans[0]?.cardId).toBe('s0');
+  });
+
+  it('two spheres + smooth_union_3d produces a smoothMin call with k > 0', () => {
+    const out = compile({
+      mode: '3d',
+      canvasAspect: 'square',
+      cards: [
+        {
+          kind: 'typed', id: 's0', type: 'sphere_3d', enabled: true,
+          params: {
+            r:  { value: 0.5, animation: null },
+            cx: { value: -0.4, animation: null },
+            cy: { value: 0.6, animation: null },
+            cz: { value: 0, animation: null },
+          },
+        },
+        {
+          kind: 'typed', id: 'k0', type: 'smooth_union_3d', enabled: true,
+          params: { k: { value: 0.3, animation: null } },
+        },
+        {
+          kind: 'typed', id: 's1', type: 'sphere_3d', enabled: true,
+          params: {
+            r:  { value: 0.5, animation: null },
+            cx: { value: 0.4, animation: null },
+            cy: { value: 0.6, animation: null },
+            cz: { value: 0, animation: null },
+          },
+        },
+      ],
+    });
+    // Smoothness card updates `k` before the second sphere's union.
+    expect(out.glsl).toContain('k = u_card1_k;');
+    // Both sphere unions are emitted via sdSmoothMin.
+    const smoothMinCalls = out.glsl.match(/sdSmoothMin\(d, /g) ?? [];
+    expect(smoothMinCalls.length).toBe(2);
+    // 3 spans — sphere, smoothness, sphere.
+    expect(out.spans).toHaveLength(3);
+  });
+});
+
 describe('validateRecipe', () => {
   it('returns empty when all cards are known', () => {
     expect(validateRecipe(RECIPE_RGV)).toEqual([]);

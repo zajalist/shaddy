@@ -255,9 +255,14 @@ export const Block = ({
   const stroke = pulseActive ? SHADE.ember : baseStroke;
   const strokeWidth = selected || pulseActive ? 1.6 : 1;
 
+  // CSS width = BLOCK_W only. The tab (right protrusion) is part of the SVG
+  // path which has overflow:visible, so it bleeds past the container's CSS
+  // box into the next block's notch area. Result: adjacent blocks visually
+  // INTERLOCK like puzzle pieces instead of sitting in their own bounding
+  // boxes with the tab floating in dead space between them.
   const containerStyle: CSSProperties = {
     position: 'relative',
-    width: totalW, height: BLOCK_H,
+    width: BLOCK_W, height: BLOCK_H,
     flex: '0 0 auto',
     cursor: draggable ? 'grab' : 'pointer',
     transform: dragging ? 'scale(1.04)' : 'none',

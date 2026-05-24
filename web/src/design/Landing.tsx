@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { SHADE, TYPE, blockById } from './tokens';
 import { Icon, ShadeLogo } from './icons';
+import { SignInButton } from '@/auth';
 import { Starfield } from './Starfield';
 import { ShadeCanvas } from './ShadeCanvas';
 import { RDHero } from './RDHero';
@@ -216,38 +217,12 @@ const LandingNav = () => {
             <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
           </span>
         </a>
-        <button
-          type="button"
-          className="auth-pill"
-          onClick={() => { alert('Auth coming soon'); }}
-          style={{
-            background: 'transparent', color: SHADE.cream,
-            border: `1px solid ${SHADE.gold}`,
-            borderRadius: 999,
-            padding: '6px 14px',
-            font: `600 11px ${TYPE.body}`,
-            letterSpacing: '0.10em', textTransform: 'uppercase',
-            cursor: 'pointer',
-          }}
-        >
-          Log in
-        </button>
-        <button
-          type="button"
-          className="auth-pill"
-          onClick={() => { alert('Auth coming soon'); }}
-          style={{
-            background: SHADE.gold, color: '#1a1208',
-            border: `1px solid ${SHADE.goldDeep}`,
-            borderRadius: 999,
-            padding: '6px 14px',
-            font: `700 11px ${TYPE.body}`,
-            letterSpacing: '0.10em', textTransform: 'uppercase',
-            cursor: 'pointer',
-          }}
-        >
-          Sign up
-        </button>
+        {/* Real auth button — talks to the OIDC server configured in
+            `web/src/auth/config.ts`. Renders a "Sign in" pill when signed
+            out and a small avatar/username badge with a dropdown signout
+            when signed in. Will fail with a clear error in the console
+            until the user fills in their issuer URL + client id. */}
+        <SignInButton />
         <a
           href="/design"
           aria-label="Open composer"

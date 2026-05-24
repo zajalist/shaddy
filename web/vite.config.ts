@@ -32,9 +32,18 @@ const claudeAskPlugin = (): Plugin => ({
         });
         req.on('end', () => {
           let prompt: unknown;
+          let mode: unknown;
           try {
-            const parsed = JSON.parse(body) as { prompt?: unknown };
+            // The plugin accepts two shapes, both keyed off `prompt`:
+            //   { prompt }                         — legacy "rewrite GLSL"
+            //   { prompt, mode: 'translate' }      — translate GLSL → Recipe
+            // The mode flag is informational (logged below) — the actual
+            // behaviour is identical: shell out to `claude -p`, return
+            // stdout. The CLIENT distinguishes by what it expects back
+            // (free GLSL text vs. JSON Recipe).
+            const parsed = JSON.parse(body) as { prompt?: unknown; mode?: unknown };
             prompt = parsed.prompt;
+            mode = parsed.mode;
           } catch {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: 'invalid json' }));
@@ -44,6 +53,11 @@ const claudeAskPlugin = (): Plugin => ({
             res.statusCode = 400;
             res.end(JSON.stringify({ error: 'bad prompt' }));
             return;
+          }
+          // Surface the mode in dev console so we can tell which flow is
+          // running when watching the terminal during a long translate.
+          if (typeof mode === 'string') {
+            console.log('[shaddy-claude-ask] mode=' + mode + ' prompt=' + String(prompt.length) + 'B');
           }
 
           // `claude -p "<prompt>"` runs Claude Code non-interactively and

@@ -350,51 +350,78 @@ const ICON_PATHS: Record<string, IconRenderer> = {
   ),
 
   // ─── TOPBAR — minimal cartoony icon-only buttons ───────────────────────
-  // "Photo → blocks" — chunky camera with a big round lens and a tilted
-  // top-strip flash. Same flat-multicolor idiom as the b-* block icons.
+  // "Photo → blocks" — chunky camera body with a DOMINANT round lens that
+  // reads as PHOTO even at 14px. Lens fills ~60% of the canvas; tiny flash
+  // dot top-right and a film-strip motif along the bottom edge sell it.
   'tb-photo': ({ c, cream }) => (
     <>
-      {/* tilted flash strip on top — gives it a snapshot-y feel */}
-      <g transform="rotate(-6 12 5.4)">
-        <rect x="6.6" y="3.6" width="10.8" height="2.6" rx="1" fill={c} />
-        <rect x="7.8" y="4.2" width="3.2"  height="1"   rx="0.5" fill={cream} opacity="0.7" />
-      </g>
-      {/* drop shadow */}
-      <rect x="2.8" y="6.6" width="18.6" height="13.4" rx="2.6" fill={SHADOW} />
-      {/* body */}
-      <rect x="2.4" y="6.2" width="18.6" height="13.4" rx="2.6" fill={c} />
-      {/* highlight strip across the top of the body */}
-      <rect x="2.4" y="6.2" width="18.6" height="3" rx="2.6" fill={cream} opacity="0.18" />
-      {/* lens outer ring */}
-      <circle cx="11.7" cy="13.2" r="4.6" fill={cream} />
-      {/* lens inner */}
-      <circle cx="11.7" cy="13.2" r="2.8" fill={c} />
-      {/* lens glint */}
-      <circle cx="10.4" cy="11.9" r="0.9" fill={cream} opacity="0.85" />
-      {/* tiny viewfinder dot top-right */}
-      <circle cx="18.4" cy="9.4" r="0.9" fill={cream} />
+      {/* drop shadow for camera body */}
+      <rect x="2.6" y="5.8" width="19" height="14" rx="3" fill={SHADOW} />
+      {/* small viewfinder hump on top, slightly off-center for charisma */}
+      <rect x="7.6" y="3.2" width="6.4" height="3" rx="0.9" fill={c} transform="rotate(-3 10.8 4.7)" />
+      {/* main body — chunky rounded rectangle */}
+      <rect x="2.2" y="5.4" width="19" height="14" rx="3" fill={c} />
+      {/* highlight slab across the top for material depth */}
+      <rect x="2.2" y="5.4" width="19" height="3" rx="3" fill={cream} opacity="0.22" />
+
+      {/* LENS — dominant element. Outer cream ring, dark inner well, crescent glint */}
+      <circle cx="11.6" cy="13" r="5.4" fill={SHADOW} />
+      <circle cx="11.6" cy="13" r="5.4" fill={cream} />
+      <circle cx="11.6" cy="13" r="3.8" fill={c} />
+      {/* dark inner pupil so the lens reads as "glass" */}
+      <circle cx="11.6" cy="13" r="2.4" fill="#000" opacity="0.55" />
+      {/* crescent highlight on the lens — the readable "shine" */}
+      <path d="M9.2 11 A3.6 3.6 0 0 1 12.6 9.8 A3 3 0 0 0 9.2 11 Z" fill={cream} opacity="0.85" />
+
+      {/* tiny chunky FLASH dot in the upper-right corner */}
+      <rect x="17.4" y="7.6" width="2.4" height="2.4" rx="0.6" fill={cream} />
+      <rect x="17.7" y="7.9" width="1"   height="1"   rx="0.3" fill={c} opacity="0.6" />
+
+      {/* FILM STRIP motif along the bottom edge — 4 tiny dark squares */}
+      <rect x="3.6"  y="17.4" width="1.8" height="1.6" rx="0.3" fill="#000" opacity="0.55" />
+      <rect x="6.2"  y="17.4" width="1.8" height="1.6" rx="0.3" fill="#000" opacity="0.55" />
+      <rect x="15.2" y="17.4" width="1.8" height="1.6" rx="0.3" fill="#000" opacity="0.55" />
+      <rect x="17.8" y="17.4" width="1.8" height="1.6" rx="0.3" fill="#000" opacity="0.55" />
     </>
   ),
 
-  // "Paste GLSL" — clipboard with a strip of code lines coming out the
-  // bottom, with a </> motif as the most-prominent line.
+  // "Paste GLSL" — chunky clipboard with a DOMINANT </> glyph at its center
+  // and two wavy "code lines" below. The </> is what users read first, so it
+  // sells the "paste CODE" intent immediately even at 14px.
   'tb-paste': ({ c, cream }) => (
     <>
-      {/* clipboard body shadow */}
-      <rect x="4.6" y="4.6" width="14.6" height="14.8" rx="2.4" fill={SHADOW} />
+      {/* drop shadow */}
+      <rect x="4.6" y="4.8" width="15" height="15.4" rx="2.4" fill={SHADOW} />
       {/* clipboard body */}
-      <rect x="4.2" y="4.2" width="14.6" height="14.8" rx="2.4" fill={c} />
-      {/* clipboard clip at top */}
-      <rect x="8.4" y="2.6" width="6.4" height="3.2" rx="1.1" fill={c} />
-      <rect x="9.4" y="3.4" width="4.4" height="1.4" rx="0.6" fill={cream} opacity="0.55" />
-      {/* "code lines" peeking out — staggered to the right */}
-      <rect x="6.4" y="8.6"  width="7.6"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
-      <rect x="6.4" y="11.4" width="5.4"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
-      <rect x="6.4" y="14.2" width="9.0"  height="1.7" rx="0.8" fill={cream} opacity="0.55" />
-      {/* </> chevrons spelled out near the bottom for the code motif */}
-      <path d="M9 17.6 L7.4 19.0 L9 20.4" fill="none" stroke={cream} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M15.4 17.6 L17 19.0 L15.4 20.4" fill="none" stroke={cream} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.4 16.8 L10.6 21.2" stroke={cream} strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+      <rect x="4.2" y="4.2" width="15" height="15.4" rx="2.4" fill={c} />
+      {/* highlight slab top */}
+      <rect x="4.2" y="4.2" width="15" height="3.4" rx="2.4" fill={cream} opacity="0.2" />
+
+      {/* fat clip strip at the top — chunky and centered */}
+      <rect x="7.8" y="2.4" width="7.6" height="3.8" rx="1.2" fill={c} />
+      <rect x="8.4" y="3"   width="6.4" height="1.4" rx="0.6" fill={cream} opacity="0.6" />
+
+      {/* DOMINANT </> glyph in the middle — chunky chevrons + slash */}
+      {/* left chevron < */}
+      <path d="M9.4 9.6 L6.6 12.4 L9.4 15.2"
+        fill="none" stroke={cream} strokeWidth="2.2"
+        strokeLinecap="round" strokeLinejoin="round" />
+      {/* right chevron > */}
+      <path d="M14 9.6 L16.8 12.4 L14 15.2"
+        fill="none" stroke={cream} strokeWidth="2.2"
+        strokeLinecap="round" strokeLinejoin="round" />
+      {/* slash through the middle */}
+      <path d="M13 8.6 L10.4 16.2"
+        stroke={cream} strokeWidth="2"
+        strokeLinecap="round" />
+
+      {/* two wavy "code lines" below the </> glyph */}
+      <path d="M6.4 17.4 Q9 16.8 11.6 17.4 T16.8 17.4"
+        fill="none" stroke={cream} strokeWidth="1.2"
+        strokeLinecap="round" opacity="0.6" />
+      <path d="M6.4 18.8 Q9 18.2 11.6 18.8 T14.8 18.8"
+        fill="none" stroke={cream} strokeWidth="1.2"
+        strokeLinecap="round" opacity="0.45" />
     </>
   ),
 

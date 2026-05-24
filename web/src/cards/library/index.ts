@@ -161,6 +161,20 @@ import { SPHERE_AO } from './sphere-ao';
 import { TINT } from './tint';
 import { VHS_GLITCH } from './vhs-glitch';
 
+// ── mouse-interactive cards ──
+import { MOUSE_GLOW } from './mouse-glow';
+import { MOUSE_PAINT_D } from './mouse-paint-d';
+import { MOUSE_REPEL } from './mouse-repel';
+
+// ── 3D — raymarched SDF scene contributions (mode: '3d') ──
+import { BOX_3D } from './box-3d';
+import { GROUND_3D } from './ground-3d';
+import { MATERIAL_COLOR_3D } from './material-color-3d';
+import { REPEAT_3D } from './repeat-3d';
+import { SMOOTH_UNION_3D } from './smooth-union-3d';
+import { SPHERE_3D } from './sphere-3d';
+import { TORUS_3D } from './torus-3d';
+
 export {
   // marker cards (no GLSL contribution)
   PORTAL,
@@ -194,6 +208,10 @@ export {
   FILMIC_TONEMAP, FOG, FOG_EXP, FRESNEL, GAMMA, GOD_RAYS, HALFTONE, LINEAR_TO_SRGB,
   OVERLAY_NOISE, PULSE_BRIGHTNESS, PULSE_HUE, RADIAL_BLUR_FAKE, REINHARD_TONEMAP,
   RIM_LIGHT, SKETCH, SOFT_SHADOW, SPHERE_AO, TINT, VHS_GLITCH,
+  // mouse-interactive
+  MOUSE_GLOW, MOUSE_PAINT_D, MOUSE_REPEL,
+  // 3D — raymarched SDF scene contributions
+  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D,
 };
 
 export {
@@ -207,6 +225,7 @@ export {
   GLSL_HELPERS,
   HELPER_DEPS,
   HELPER_EMISSION_ORDER,
+  HELPERS_AFTER_SCENE,
   resolveHelperClosure,
 } from './helpers';
 
@@ -243,6 +262,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   RIPPLE, THRESHOLD_D, INVERT_D, POWER_CURVE, BANDS, CONTOUR, SIN_WAVE_D,
   ONION, ANTIALIASED_STEP, REMAP, CUBIC_SMOOTHSTEP, SIGMOID_CURVE,
   SMOOTH_MIN_D, SMOOTH_MIN_TO_CIRCLE, SMOOTH_INTERSECTION,
+  // Mouse-interactive distortions — react to live pointer position
+  MOUSE_REPEL, MOUSE_PAINT_D,
 
   // ─── COLORS ───
   // Generic
@@ -271,6 +292,15 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   CRT_CURVATURE, VHS_GLITCH,
   // Time-driven
   PULSE_BRIGHTNESS, PULSE_HUE,
+  // Mouse-interactive — read u_mouse, wired by RecipeCanvas in centred uv space
+  MOUSE_GLOW,
+
+  // ─── 3D — raymarched SDF scene contributions ───
+  // These have mode:'3d' and contribute via Card3DContribution.sdfExpr /
+  // domainExpr / smoothness / material. They're no-ops in a 2D recipe and
+  // 2D cards are no-ops in a 3D recipe — the compiler dispatches on
+  // Recipe.mode.
+  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

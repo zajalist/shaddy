@@ -484,7 +484,85 @@ function fuzzyScore(haystack: string, tokens: string[]): number {
   return score;
 }
 
+// The REAL 3D cards — these contribute to the raymarched SDF scene when the
+// recipe is in 3D mode. Inserting any of them auto-flips the recipe to 3D
+// (see cards/state.ts.insertTypedCard).
+const REAL_3D_IDS: readonly string[] = [
+  'sphere_3d',
+  'box_3d',
+  'torus_3d',
+  'ground_3d',
+  'repeat_3d',
+  'smooth_union_3d',
+  'material_color_3d',
+];
+
+// Hybrid cards — existing 2D cards that already produce a 3D-looking result.
+// Shown below the real cards on the 3D tab as "Hybrid (fake 3D)" — they're
+// 2D under the hood so inserting them does NOT flip the recipe.
+const HYBRID_3D_IDS: readonly string[] = [
+  'mandelbulb_2d',
+  'julia',
+  'sphere_ao',
+  'fresnel',
+  'domain_warp',
+  'rim_light',
+];
+
+type PaletteTab = '2d' | '3d';
+
+// Single tab button — matches the topbar NavLink idiom (animated underline,
+// dim → cream on active) but at a smaller size to fit the sidebar.
+const PaletteTabButton = ({
+  label, active, onClick,
+}: { label: string; active: boolean; onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    style={{
+      flex: 1,
+      position: 'relative',
+      padding: '11px 0 10px',
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      color: active ? SHADE.text : SHADE.textFaint,
+      font: `700 11px ${TYPE.body}`,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      transition: 'color 0.18s, background 0.18s',
+    }}
+    onMouseEnter={(e) => {
+      if (active) return;
+      e.currentTarget.style.background = SHADE.surface1;
+      e.currentTarget.style.color = SHADE.textDim;
+    }}
+    onMouseLeave={(e) => {
+      if (active) return;
+      e.currentTarget.style.background = 'transparent';
+      e.currentTarget.style.color = SHADE.textFaint;
+    }}
+    aria-pressed={active}
+  >
+    {label}
+    <span
+      aria-hidden
+      style={{
+        position: 'absolute', left: 10, right: 10, bottom: 0,
+        height: 3,
+        background: SHADE.gold,
+        transform: active ? 'scaleX(1)' : 'scaleX(0)',
+        transformOrigin: 'center',
+        transition: 'transform 0.22s cubic-bezier(0.16,1,0.3,1)',
+        display: 'block',
+        borderRadius: 1.5,
+      }}
+    />
+  </button>
+);
+
 export const Palette = ({ width = 240 }: { width?: number }) => {
+  const [tab, setTab] = useState<PaletteTab>('2d');
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const tokens = useMemo(() => (q.length === 0 ? [] : q.split(/\s+/).filter(Boolean)), [q]);
@@ -493,19 +571,37 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
   // see everything. Keyed by category id.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // When searching, produce a flat ranked list. When not, group by category
-  // → subgroup as usual.
+  // Active pool depends on the selected tab. 3D tab merges the REAL 3D card
+  // set with the hybrid "looks 3D in 2D maths" set so search hits both, but
+  // they're visually grouped under separate subgroup headers below.
+  const blocksById = useMemo(() => new Map(BLOCK_LIB.map((b) => [b.id, b])), []);
+  const real3dBlocks = useMemo(
+    () => REAL_3D_IDS.map((id) => blocksById.get(id)).filter((b): b is BlockDef => b != null),
+    [blocksById],
+  );
+  const hybrid3dBlocks = useMemo(
+    () => HYBRID_3D_IDS.map((id) => blocksById.get(id)).filter((b): b is BlockDef => b != null),
+    [blocksById],
+  );
+  const activeBlocks = useMemo(() => {
+    if (tab === '2d') return BLOCK_LIB;
+    return [...real3dBlocks, ...hybrid3dBlocks];
+  }, [tab, real3dBlocks, hybrid3dBlocks]);
+
+  // When searching, produce a flat ranked list against the active tab's pool.
+  // When not, the 2D tab groups by category → subgroup as usual; the 3D tab
+  // renders a single curated panel below.
   const ranked = useMemo(() => {
     if (tokens.length === 0) return null;
     const out: Array<{ block: BlockDef; score: number }> = [];
-    for (const b of BLOCK_LIB) {
+    for (const b of activeBlocks) {
       const hay = `${b.name.toLowerCase()} ${b.id.toLowerCase().replace(/_/g, ' ')}`;
       const s = fuzzyScore(hay, tokens);
       if (s >= 0) out.push({ block: b, score: s });
     }
     out.sort((a, b) => a.score - b.score);
     return out;
-  }, [tokens]);
+  }, [tokens, activeBlocks]);
 
   const grouped = useMemo(() => (
     (Object.keys(CATEGORIES) as Array<keyof typeof CATEGORIES>).map((k) => ({
@@ -527,6 +623,18 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
         overflow: 'hidden',
       }}
     >
+      {/* Top-level dimension tabs — sit above the search field, full width. */}
+      <div
+        style={{
+          display: 'flex',
+          borderBottom: `1px solid ${SHADE.border}`,
+          background: SHADE.bg,
+        }}
+      >
+        <PaletteTabButton label="2D" active={tab === '2d'} onClick={() => setTab('2d')} />
+        <PaletteTabButton label="3D" active={tab === '3d'} onClick={() => setTab('3d')} />
+      </div>
+
       <div style={{ padding: '14px 12px 10px' }}>
         <div
           style={{
@@ -602,8 +710,8 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
             </div>
           )
         )}
-        {/* Default hierarchical view — categories with subgroups */}
-        {ranked == null && grouped.map(({ k, buckets, count }) => {
+        {/* 2D default hierarchical view — categories with subgroups */}
+        {ranked == null && tab === '2d' && grouped.map(({ k, buckets, count }) => {
           const isCollapsed = collapsed[k] ?? false;
           return (
             <div key={k} style={{ marginBottom: 14 }}>
@@ -624,6 +732,70 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
             </div>
           );
         })}
+
+        {/* 3D tab — real raymarched SDF cards on top, the existing 2D
+            "looks 3D" cards still visible below for compatibility. */}
+        {ranked == null && tab === '3d' && (
+          <div style={{ padding: '4px 4px 0' }}>
+            <div
+              style={{
+                margin: '4px 4px 10px',
+                padding: '2px 0',
+                font: `700 11px ${TYPE.body}`,
+                color: SHADE.text,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              3D raymarching
+            </div>
+            <PaletteSubgroupHeader label="SDF scene cards" count={real3dBlocks.length} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 2 }}>
+              {real3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+            </div>
+
+            {hybrid3dBlocks.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <PaletteSubgroupHeader
+                  label="Hybrid cards that fake 3D"
+                  count={hybrid3dBlocks.length}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 2 }}>
+                  {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Soft-info panel — quiet, not loud. */}
+            <div
+              style={{
+                marginTop: 18,
+                padding: '11px 12px',
+                background: SHADE.surface1,
+                border: `1px dashed ${SHADE.border}`,
+                borderRadius: 4,
+                color: SHADE.textDim,
+                font: `500 11px ${TYPE.body}`,
+                lineHeight: 1.45,
+                letterSpacing: '0.01em',
+              }}
+            >
+              <div
+                style={{
+                  font: `700 9.5px ${TYPE.bodyMono}`,
+                  color: SHADE.textFaint,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  marginBottom: 4,
+                }}
+              >
+                Heads up
+              </div>
+              Inserting an SDF card auto-flips the recipe to 3D mode. Toggle back via
+              the mode pill in the Properties panel.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

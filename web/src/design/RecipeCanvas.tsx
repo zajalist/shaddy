@@ -5,6 +5,16 @@
 // integration/AppShell.tsx so the design/ route behaves identically — same
 // structuralKey split between recompile and setUniform, same uniform value
 // coercion.
+//
+// Also owns the live `u_mouse` wiring: pointer position is sampled in the
+// SAME centred / aspect-corrected coordinate space as `uv` inside compiled
+// card snippets, so cards like `mouse_glow` can simply write
+// `length(uv - u_mouse)` and get the screen-space distance to the cursor.
+// The mapping is `((px - W/2) / H, (py - H/2) / H)` with Y flipped so up is
+// positive (matches the way the compiler builds `uv` from `gl_FragCoord`).
+// Pushes are throttled via rAF — at most one setUniform call per frame —
+// and the uniform decays back to (0, 0) over ~300ms after the pointer
+// leaves the canvas so abruptly-still mouse shaders don't jerk.
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
@@ -21,6 +31,10 @@ export type RecipeCanvasProps = {
   style?: CSSProperties;
   className?: string;
 };
+
+// Decay time after pointer leaves — short enough to feel responsive,
+// long enough that nothing visibly snaps.
+const MOUSE_DECAY_MS = 300;
 
 export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -72,7 +86,69 @@ export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
       mql.addEventListener?.('change', onDprChange);
     }
 
+    // ─── live mouse → u_mouse (centred uv space) ────────────────────
+    // Target & current values are tracked separately so we can drive a
+    // simple easing decay when the pointer leaves — the rAF loop pulls
+    // `cur` toward `target` each frame and pushes via setUniform.
+    let targetX = 0, targetY = 0;
+    let curX = 0, curY = 0;
+    let active = false;
+    let lastLeaveAt = 0;
+    let raf: number | null = null;
+
+    const onMove = (e: PointerEvent) => {
+      const rect = host.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      // Match the compiler's MAIN_PRELUDE: uv = (frag/res)*2 - 1; uv.x *= W/H.
+      // Equivalently: uv.x = (px - W/2) / (H/2), uv.y = -(py - H/2) / (H/2),
+      // i.e. /(H/2) not /H — we need to match the *body* coords cards see.
+      const cx = (e.clientX - rect.left - rect.width / 2) / (rect.height / 2);
+      const cy = -(e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
+      targetX = cx;
+      targetY = cy;
+      active = true;
+    };
+    const onLeave = () => {
+      active = false;
+      lastLeaveAt = performance.now();
+      targetX = 0;
+      targetY = 0;
+    };
+    const onEnter = () => {
+      active = true;
+    };
+
+    host.addEventListener('pointermove', onMove);
+    host.addEventListener('pointerenter', onEnter);
+    host.addEventListener('pointerleave', onLeave);
+
+    const tick = () => {
+      const renderer = rendererRef.current;
+      if (renderer) {
+        if (active) {
+          // Snap to target while pointer is live — coordinate updates
+          // per-frame, never per pointermove (rAF throttle).
+          curX = targetX;
+          curY = targetY;
+        } else {
+          // Ease back to (0, 0) over MOUSE_DECAY_MS.
+          const t = Math.min(1, (performance.now() - lastLeaveAt) / MOUSE_DECAY_MS);
+          // Quintic ease-out for a soft settle.
+          const k = 1 - (1 - t) ** 5;
+          curX = curX + (targetX - curX) * k;
+          curY = curY + (targetY - curY) * k;
+        }
+        renderer.setUniform('u_mouse', { kind: 'vec2', value: [curX, curY] });
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
     return () => {
+      if (raf !== null) cancelAnimationFrame(raf);
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerenter', onEnter);
+      host.removeEventListener('pointerleave', onLeave);
       if (ro) ro.disconnect();
       if (mql) mql.removeEventListener?.('change', onDprChange);
       host.replaceChildren();

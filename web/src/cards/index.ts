@@ -22,6 +22,8 @@ export type {
   ReparseEvent,
   ReparseResult,
   BlendMode,
+  Card3DContribution,
+  ShaderTemplate,
 } from './types';
 
 export { BLEND_MODES } from './types';
