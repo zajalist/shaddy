@@ -9,16 +9,18 @@ import {
 } from './index';
 
 describe('CARD_LIBRARY', () => {
-  it('ships 15 typed cards covering all four categories', () => {
-    expect(CARD_LIBRARY_LIST.length).toBe(15);
+  it('ships a deep typed catalog covering all four categories', () => {
+    // Floor only — adding cards shouldn't break this test. Tighten if a card
+    // category gets accidentally pruned.
+    expect(CARD_LIBRARY_LIST.length).toBeGreaterThanOrEqual(80);
     const cats = new Set(CARD_LIBRARY_LIST.map((c) => c.category));
     expect(cats).toEqual(new Set(['shape', 'distortion', 'color', 'effect']));
   });
 
-  it('each category has at least 3 cards', () => {
+  it('each category has at least 10 cards', () => {
     const byCat: Record<string, number> = {};
     for (const c of CARD_LIBRARY_LIST) byCat[c.category] = (byCat[c.category] ?? 0) + 1;
-    for (const n of Object.values(byCat)) expect(n).toBeGreaterThanOrEqual(3);
+    for (const n of Object.values(byCat)) expect(n).toBeGreaterThanOrEqual(10);
   });
 
   it('has unique types', () => {
