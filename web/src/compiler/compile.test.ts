@@ -239,7 +239,9 @@ describe('compile — block walker', () => {
 describe('per-block sanity — every Phase 1 + 2 block compiles with default params', () => {
   it.each(['radial_gradient', 'stripes', 'noise_field', 'ring', 'voronoi', 'ripple',
     'swirl', 'repeat', 'palette', 'hue_cycle', 'triple_gradient',
-    'wave_warp', 'glow', 'vignette', 'grain'])(
+    'wave_warp', 'glow', 'vignette', 'grain',
+    'spiral', 'dots', 'checker', 'rotate', 'kaleidoscope', 'pixelate',
+    'invert', 'posterize', 'scanlines', 'brightness_contrast'])(
     '%s compiles with default params',
     (type) => {
       const def = BLOCK_LIBRARY[type]!;
