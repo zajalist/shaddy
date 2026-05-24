@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { BLOCK_LIBRARY } from './blocks';
 import { compile } from './compile';
-import type { Block, Recipe } from './types';
+import type { Block, ParamValue, Recipe } from './types';
 
 function emptyRecipe(): Recipe {
   return { version: 1, blocks: [], globalTempo: 120, canvasAspect: 'square' };
@@ -233,4 +234,25 @@ describe('compile — block walker', () => {
     if (out.ok) throw new Error('expected error');
     expect(out.error.code).toBe('param_type_mismatch');
   });
+});
+
+describe('per-block sanity — every Phase 1 + 2 block compiles with default params', () => {
+  it.each(['radial_gradient', 'stripes', 'noise_field', 'ring', 'voronoi', 'ripple',
+    'swirl', 'repeat', 'palette', 'hue_cycle', 'triple_gradient'])(
+    '%s compiles with default params',
+    (type) => {
+      const def = BLOCK_LIBRARY[type]!;
+      const params: Record<string, { value: ParamValue; animation: null }> = {};
+      for (const [k, p] of Object.entries(def.params)) {
+        params[k] = { value: p.default, animation: null };
+      }
+      const out = compile({
+        version: 1,
+        blocks: [{ id: 'b1', type, enabled: true, params }],
+        globalTempo: 120,
+        canvasAspect: 'square',
+      });
+      expect(out.ok).toBe(true);
+    },
+  );
 });
