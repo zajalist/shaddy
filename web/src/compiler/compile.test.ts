@@ -238,7 +238,8 @@ describe('compile — block walker', () => {
 
 describe('per-block sanity — every Phase 1 + 2 block compiles with default params', () => {
   it.each(['radial_gradient', 'stripes', 'noise_field', 'ring', 'voronoi', 'ripple',
-    'swirl', 'repeat', 'palette', 'hue_cycle', 'triple_gradient'])(
+    'swirl', 'repeat', 'palette', 'hue_cycle', 'triple_gradient',
+    'wave_warp', 'glow', 'vignette', 'grain'])(
     '%s compiles with default params',
     (type) => {
       const def = BLOCK_LIBRARY[type]!;
