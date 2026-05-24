@@ -26,7 +26,7 @@ const page: DocPage = {
   id: 'quick-start',
   title: 'Quick start',
   groupLabel: 'Getting started',
-  lede: 'Open the composer, drop three cards, see something. Five minutes.',
+  lede: 'Open the composer, drop three cards, see something. Five minutes, tops.',
   body: (
     <>
       <H2>1. Open the composer</H2>
@@ -87,9 +87,10 @@ const page: DocPage = {
       <CodeBlock language="json" source={RECIPE} />
 
       <P>
-        That's the loop — drop cards, tweak, edit code, share. Read the{' '}
-        <Term>Recipe model</Term> next for what's inside that JSON, or jump
-        to the <Term>Tutorials</Term> for guided walks.
+        That&apos;s the loop. Drop cards, tweak, peek at code, share. Read
+        the <Term>Recipe model</Term> next if you want to know what&apos;s
+        actually in that JSON. Jump to the <Term>Tutorials</Term> if
+        you&apos;d rather just build something.
       </P>
     </>
   ),

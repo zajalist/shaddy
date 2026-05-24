@@ -534,7 +534,7 @@ const Gallery = () => {
             maxWidth: 880,
           }}
         >
-          Gallery — built with Shaddy.
+          Things people made.<br />Click any of them.
         </h1>
         <p
           style={{
@@ -546,8 +546,9 @@ const Gallery = () => {
             maxWidth: 620,
           }}
         >
-          Hand-curated recipes. Every tile is a live shader running right
-          here in your browser — click it open and start tweaking.
+          Every thumbnail is a real shader running on your GPU right now,
+          not a screenshot. Click one and you land in the composer with
+          the cards already loaded. Rip them apart and see what changes.
         </p>
 
         {/* filter chips */}
@@ -655,7 +656,7 @@ const EmptyState = ({ onReset }: { onReset: () => void }) => (
         letterSpacing: TYPE.trackTight,
       }}
     >
-      Nothing matches those filters yet.
+      Nothing matches those filters.
     </h3>
     <p
       style={{
@@ -665,7 +666,7 @@ const EmptyState = ({ onReset }: { onReset: () => void }) => (
         color: SHADE.textDim,
       }}
     >
-      Try widening the mode or taxonomy filter.
+      Drop a filter and the recipes come back.
     </p>
     <button
       type="button"

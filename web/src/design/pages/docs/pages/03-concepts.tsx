@@ -8,7 +8,7 @@ const page: DocPage = {
   id: 'concepts',
   title: 'Concepts',
   groupLabel: 'Getting started',
-  lede: 'The five words you need: recipe, card, chain, blend, portal. Everything else builds on these.',
+  lede: 'Five words and you have the whole system: recipe, card, chain, blend, portal. Everything else hangs off these.',
   body: (
     <>
       <H2>Recipe</H2>

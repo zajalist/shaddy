@@ -83,7 +83,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'sunset-glow',
     title: 'Sunset Glow',
-    tag: 'Hero background for an indie travel app',
+    tag: 'Drop it behind your travel app hero',
     author: 'by Nadia Werth',
     featured: true,
     recipe: recipe2d([
@@ -96,7 +96,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'plasma-wave',
     title: 'Plasma Wave',
-    tag: 'Loading screen for a sci-fi game',
+    tag: 'Sci-fi loading screen, no copyright to worry about',
     author: 'by Tomás Lacanal',
     featured: true,
     recipe: recipe2d([
@@ -108,7 +108,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'voronoi-cells',
     title: 'Voronoi Cells',
-    tag: 'Music video intro — looping cellular',
+    tag: 'Music video intro — that one shot before the drop',
     author: 'by Iris Mendes',
     recipe: recipe2d([
       mk('voronoi_cells', { scale: 6, jitter: 0.9 }),
@@ -120,7 +120,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'glassy-sphere',
     title: 'Glassy Sphere',
-    tag: 'Product hero for a hardware site',
+    tag: 'The product hero shot you keep meaning to commission',
     author: 'by Marek Halsig',
     featured: true,
     recipe: recipe3d([
@@ -132,7 +132,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'forest-of-rods',
     title: 'Forest of Rods',
-    tag: 'Podcast cover loop — calm endless drift',
+    tag: 'Podcast cover that loops without anyone noticing',
     author: 'by Anya Kotani',
     recipe: recipe3d([
       mk('repeat_3d', { spacing_xz: 1.6 }),
@@ -144,7 +144,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'mandelbulb-echo',
     title: 'Mandelbulb Echo',
-    tag: 'Album art — cyberpunk fractal close-up',
+    tag: 'Album art a teenage you would have killed for',
     author: 'by Soren Vass',
     featured: true,
     recent: true,
@@ -157,7 +157,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'liquid-marble',
     title: 'Liquid Marble',
-    tag: 'Skincare landing page background',
+    tag: 'Skincare site background, calm and slightly expensive',
     author: 'by Priya Nair',
     recipe: recipe2d([
       mk('domain_warp', { scale: 2.4, warp: 1.6 }),
@@ -168,7 +168,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'hex-tiles',
     title: 'Hex Tiles',
-    tag: 'Mobile game menu pattern',
+    tag: 'Mobile game menu, but you cared about the menu',
     author: 'by Jules Boucher',
     recent: true,
     recipe: recipe2d([
@@ -180,7 +180,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'stellar-field',
     title: 'Stellar Field',
-    tag: 'Astronomy app splash screen',
+    tag: 'Astronomy app splash — works even on a 60Hz screen',
     author: 'by Cassia Renwick',
     recipe: recipe2d([
       mk('noise_field', { scale: 4 }),
@@ -192,7 +192,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'crt-boot',
     title: 'CRT Boot',
-    tag: 'Retro terminal intro — bootloader vibe',
+    tag: 'Bootloader vibes, optional scanlines, free crunch',
     author: 'by Dmitri Esper',
     featured: true,
     recipe: recipe2d([
@@ -206,7 +206,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'ascii-storm',
     title: 'Ascii Storm',
-    tag: 'Devlog header — neon ASCII texture',
+    tag: 'Devlog header for the project you keep promising to finish',
     author: 'by Hye-Jin Park',
     recent: true,
     recipe: recipe2d([
@@ -218,7 +218,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'pulsing-heart',
     title: 'Pulsing Heart',
-    tag: 'Charity site hero — cyberpunk romance',
+    tag: 'For the donate page that needs to feel alive',
     author: 'by Ivo Reinhardt',
     recipe: recipe2d([
       mk('heart', { size: 0.6 }),
@@ -230,7 +230,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'lava-rings',
     title: 'Lava Rings',
-    tag: 'Festival lineup poster background',
+    tag: 'Festival poster background that prints just fine',
     author: 'by Beatrice Cole',
     recent: true,
     recipe: recipe2d([
@@ -243,7 +243,7 @@ export const CURATED_RECIPES: CuratedRecipe[] = [
   {
     id: 'glacier-cells',
     title: 'Glacier Cells',
-    tag: 'Productivity app empty state',
+    tag: 'Empty state that nobody will mind staring at',
     author: 'by Linnea Söder',
     recipe: recipe2d([
       mk('voronoi_cells', { scale: 4 }),

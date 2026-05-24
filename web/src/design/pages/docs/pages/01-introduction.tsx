@@ -8,28 +8,27 @@ const page: DocPage = {
   id: 'introduction',
   title: 'Introduction',
   groupLabel: 'Getting started',
-  lede: 'Shaddy is a card-based composer for live GLSL fragment shaders — drop typed pieces together, see pixels, dive into the code when you need to.',
+  lede: 'A card-based composer for live GLSL fragment shaders. Snap typed pieces together, see pixels, drop into raw code when you outgrow the cards.',
   body: (
     <>
       <P>
         Shaddy treats a shader as a <Term>recipe</Term>: an ordered list of
-        small, typed cards that each contribute a snippet of GLSL to a single
-        fragment program. The composer maintains the recipe; the compiler
-        emits the program; the renderer ships pixels. The same recipe always
-        produces the same program — there is no hidden state between
-        sessions, and round-tripping through the reverse parser preserves
-        every card.
+        small typed cards, each contributing a snippet of GLSL to one
+        fragment program. The composer holds the recipe. The compiler emits
+        the program. The renderer ships pixels. Same recipe in, byte-identical
+        program out, every time. Round-trip through the reverse parser and
+        every card survives intact.
       </P>
 
       <P>
-        The card system is open in two directions. Outward — the typed
-        library currently ships <Strong>149 cards</Strong> spanning shapes,
-        distortions, colours, and effects across both a 2D fragment template
-        and a 3D raymarched template. Inward — anywhere the typed system
-        falls short the user can drop a <Term>wildcard</Term> card and write
-        raw GLSL that the compiler emits verbatim. The reverse parser
-        upgrades a wildcard back to a typed card the moment its shape matches
-        a known definition.
+        The card system opens in two directions. Outward, the typed library
+        ships <Strong>149 cards</Strong> across shapes, distortions, colours,
+        and effects, working in both the 2D fragment template and the 3D
+        raymarched template. Inward, anywhere the typed library falls short
+        you can drop a <Term>wildcard</Term> card and write raw GLSL the
+        compiler emits verbatim. Edit it back into the shape of a known
+        template and the reverse parser promotes it to a typed card on the
+        next tick.
       </P>
 
       <P>
@@ -52,29 +51,29 @@ const page: DocPage = {
       <UL>
         <LI>
           <Strong>Not a node graph.</Strong> Cards are a linear stack, not a
-          DAG. The mental model is "Photoshop layers for shaders" — each
-          card runs on top of the accumulator the previous card left behind.
+          DAG. Think Photoshop layers, but the layers are GLSL fragments and
+          each one runs on top of whatever the previous card left in the
+          accumulator.
         </LI>
         <LI>
-          <Strong>Not a shader playground that hides the GLSL.</Strong> The
-          code view is a first-class surface; you can edit it directly and
-          the recipe follows along.
+          <Strong>Not a playground that hides the GLSL.</Strong> The code
+          view is a first-class surface. Edit it directly and the cards
+          follow.
         </LI>
         <LI>
-          <Strong>Not a baked-pixel editor.</Strong> Everything is live —
-          parameters animate, the canvas redraws every frame, and recipes
-          are JSON you can pass around as URLs.
+          <Strong>Not a baked-pixel editor.</Strong> Everything is live.
+          Parameters animate. The canvas redraws every frame. Recipes are
+          JSON you can paste into a URL.
         </LI>
       </UL>
 
       <H2>What you actually need to know</H2>
       <P>
-        Two ideas carry most of the system:{' '}
-        <Term>recipes project to GLSL</Term> (one direction), and{' '}
-        <Term>GLSL edits reparse back into recipes</Term> (the other
-        direction). Hold those, and everything else — uniforms, blending,
-        helpers, the 3D camera — fits as a detail that supports one of those
-        two transports.
+        Two ideas carry the whole system. One:{' '}
+        <Term>recipes project to GLSL</Term>. Two:{' '}
+        <Term>GLSL edits reparse back into recipes</Term>. Hold those two
+        and everything else &mdash; uniforms, blending, helpers, the 3D
+        camera &mdash; reads as a detail that serves one of them.
       </P>
     </>
   ),
