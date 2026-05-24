@@ -107,4 +107,11 @@ describe('animUniformBindings', () => {
     const bs = animUniformBindings('b1', 'x', anim);
     expect(bs.length).toBe(2);
   });
+
+  it('noise_wiggle produces min + max + speed (3 floats, no phase)', () => {
+    const anim: Animation = { type: 'noise_wiggle', min: 0, max: 1, speed: 1, mode: 'hz' };
+    const bs = animUniformBindings('b1', 'x', anim);
+    expect(bs.map((b) => b.source.kind).sort()).toEqual(['anim_max', 'anim_min', 'anim_speed']);
+    expect(bs.every((b) => b.type === 'float')).toBe(true);
+  });
 });

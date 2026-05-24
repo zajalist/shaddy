@@ -40,20 +40,29 @@ export function emitAnimLocal(blockId: string, paramName: string, anim: Animatio
   }
 }
 
+// Narrowed to JUST the per-block source kinds (those that carry blockId +
+// paramName). Excludes the four `global_*` kinds whose source shape has no
+// blockId/paramName — and so removes the need for an `as` cast inside the
+// builders below.
+type PerBlockSourceKind = Extract<
+  UniformBinding['source'],
+  { blockId: string }
+>['kind'];
+
 export function animUniformBindings(
   blockId: string,
   paramName: string,
   anim: Animation,
 ): UniformBinding[] {
-  const floatB = (suffix: string, kind: UniformBinding['source']['kind']): UniformBinding => ({
+  const floatB = (suffix: string, kind: PerBlockSourceKind): UniformBinding => ({
     name: u(blockId, paramName, suffix),
     type: 'float',
-    source: { kind, blockId, paramName } as UniformBinding['source'],
+    source: { kind, blockId, paramName },
   });
-  const vec3B = (suffix: string, kind: UniformBinding['source']['kind']): UniformBinding => ({
+  const vec3B = (suffix: string, kind: PerBlockSourceKind): UniformBinding => ({
     name: u(blockId, paramName, suffix),
     type: 'vec3',
-    source: { kind, blockId, paramName } as UniformBinding['source'],
+    source: { kind, blockId, paramName },
   });
 
   switch (anim.type) {
