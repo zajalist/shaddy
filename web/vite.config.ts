@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from 'node:url';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +12,26 @@ import tailwindcss from '@tailwindcss/vite';
 // the user's local `claude` CLI (Claude Code subscription). Hackathon-grade:
 // no API keys, no auth, dev server only. The endpoint is namespaced with a
 // double-underscore prefix so it can't collide with anything we'd ever ship.
+
+// Resolve the claude binary path once at plugin load.
+//
+// Why we don't just rely on `shell: true` + 'claude' on Windows: the Vite
+// dev-server runs inside a non-TTY context, and the claude.exe shim does
+// internal console-handle init that fails under those conditions with
+// `STATUS_DLL_INIT_FAILED` (exit code 3221225794 / 0xC0000142). Resolving
+// the full path + dropping `shell: true` + setting `windowsHide: true`
+// avoids the shim's bad code path.
+const CLAUDE_BIN = (() => {
+  try {
+    const which = process.platform === 'win32' ? 'where' : 'which';
+    const out = execFileSync(which, ['claude'], { encoding: 'utf8' });
+    const first = out.split(/\r?\n/).map((s) => s.trim()).find(Boolean);
+    return first ?? 'claude';
+  } catch {
+    return 'claude';
+  }
+})();
+
 const claudeAskPlugin = (): Plugin => ({
   name: 'shaddy-claude-ask',
   apply: 'serve',
@@ -103,11 +123,15 @@ const claudeAskPlugin = (): Plugin => ({
           // `claude -p "<prompt>"` runs Claude Code non-interactively and
           // prints the response to stdout. We pass the prompt via stdin
           // instead of argv to dodge shell-escaping landmines on Windows.
+          // We deliberately drop `shell: true` and spawn the resolved bin
+          // path directly — `shell: true` on Windows triggers the shim's
+          // STATUS_DLL_INIT_FAILED (see CLAUDE_BIN comment above).
           let proc;
           try {
-            proc = spawn('claude', ['-p'], {
-              shell: process.platform === 'win32',
+            proc = spawn(CLAUDE_BIN, ['-p'], {
+              shell: false,
               stdio: ['pipe', 'pipe', 'pipe'],
+              windowsHide: true,
             });
           } catch (e) {
             cleanup();
