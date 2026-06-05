@@ -74,12 +74,17 @@ async def api():
     from app.db import get_session
     from app.main import app
 
+    import shutil
+
     engine, Session = await _fresh_schema()
+    thumbs_dir = "/tmp/shaddy-thumbs-test"
+    shutil.rmtree(thumbs_dir, ignore_errors=True)
     test_settings = Settings(
         supabase_url=TEST_SUPABASE_URL,
         supabase_jwt_alg="HS256",
         supabase_jwt_secret=TEST_JWT_SECRET,
         public_base_url="https://api.test",
+        thumbs_dir=thumbs_dir,
         cors_origins="",
     )
 

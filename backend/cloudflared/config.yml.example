@@ -1,0 +1,8 @@
+# Copy to config.yml and fill in your tunnel UUID + hostname.
+# The credentials.json next to this file comes from `cloudflared tunnel create`.
+tunnel: <TUNNEL_UUID>
+credentials-file: /etc/cloudflared/credentials.json
+ingress:
+  - hostname: api.<your-domain>
+    service: http://caddy:80
+  - service: http_status:404

@@ -1,0 +1,16 @@
+# Internal vhost on the box. Cloudflare terminates TLS at the edge and the
+# tunnel dials this over plain HTTP — no public port is opened on srv-dev-01.
+:80 {
+	handle_path /thumbs/* {
+		root * /data/thumbs
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+		header Access-Control-Allow-Origin "*"
+	}
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+}

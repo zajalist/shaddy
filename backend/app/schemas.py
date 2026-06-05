@@ -36,6 +36,26 @@ class ShaderOut(BaseModel):
     remix_of: uuid.UUID | None = None
 
 
+class ShaderPage(BaseModel):
+    items: list[ShaderOut]
+    next_cursor: str | None = None
+
+
+class ProfileOut(BaseModel):
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    avatar_url: str | None = None
+    created_at: datetime
+    shader_count: int
+    total_likes: int
+
+
+class LikeResult(BaseModel):
+    like_count: int
+    liked: bool
+
+
 class CreateReport(BaseModel):
     reason: str
     detail: str | None = Field(default=None, max_length=1000)

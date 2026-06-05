@@ -12,3 +12,8 @@ async def test_healthz_includes_version(client):
 async def test_cors_allows_configured_origin(client):
     resp = await client.get("/healthz", headers={"Origin": "http://localhost:5181"})
     assert resp.headers.get("access-control-allow-origin") == "http://localhost:5181"
+
+
+async def test_healthz_reports_db_connectivity(client):
+    body = (await client.get("/healthz")).json()
+    assert body["db"] is True  # postgres is up during the docker test run
