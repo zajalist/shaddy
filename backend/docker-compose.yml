@@ -1,0 +1,41 @@
+# Local dev + test stack. Production adds caddy + cloudflared (spec slice 10).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: shaddy
+      POSTGRES_USER: shaddy
+      POSTGRES_PASSWORD: shaddy
+    ports:
+      - "5433:5432" # host 5433 to avoid clashing with a local Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shaddy"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shaddy:shaddy@postgres:5432/shaddy
+      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      SUPABASE_JWT_ALG: ${SUPABASE_JWT_ALG:-HS256}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-dev-secret}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5181,http://localhost:5173}
+      THUMBS_DIR: /data/thumbs
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+    volumes:
+      - ./:/app
+      - thumbs:/data/thumbs
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
+  thumbs:
