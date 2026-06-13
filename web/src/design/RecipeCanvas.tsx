@@ -27,7 +27,7 @@
 // While the user is dragging the camera, u_mouse updates are suppressed so
 // mouse-driven 2D effects in any visible card don't jiggle in sympathy.
 
-import { useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 
 import {
@@ -54,6 +54,13 @@ export type RecipeCanvasProps = {
   className?: string;
 };
 
+export type RecipeCanvasHandle = {
+  snapshotPng(width: number, height: number, opts?: { alpha?: boolean }): Promise<string>;
+  getCanvas(): HTMLCanvasElement | null;
+  resize(width: number, height: number): void;
+  getFps(): number;
+};
+
 // Decay time after pointer leaves — short enough to feel responsive,
 // long enough that nothing visibly snaps.
 const MOUSE_DECAY_MS = 300;
@@ -76,14 +83,18 @@ const WASD_BASE_SPEED = 2.5;
 // Reset animation duration.
 const RESET_ANIM_MS = 350;
 
-export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
+export const RecipeCanvas = forwardRef<RecipeCanvasHandle, RecipeCanvasProps>(({ style, className }, ref) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);
   const structuralKeyRef = useRef<string>('');
+  const applyDprSizeRef = useRef<(() => void) | null>(null);
 
   const recipe = useCardsStore((s) => s.recipe);
   const camera = useCardsStore((s) => s.camera);
   const setCamera = useCardsStore((s) => s.setCamera);
+  const canvasSettings = useCardsStore((s) => s.canvas);
+  const canvasSettingsRef = useRef(canvasSettings);
+  useEffect(() => { canvasSettingsRef.current = canvasSettings; }, [canvasSettings]);
   // Multi-pass when any buffer passes are enabled, else fall through to the
   // back-compat single-pass path (which lets RendererAPI.compile stay the
   // happy path for single-pass recipes — and keeps existing tests stable).
@@ -139,10 +150,12 @@ export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
 
     const applyDprSize = () => {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-      const w = Math.max(1, Math.floor(host.clientWidth * dpr));
-      const h = Math.max(1, Math.floor(host.clientHeight * dpr));
+      const scale = canvasSettingsRef.current.renderScale;
+      const w = Math.max(1, Math.floor(host.clientWidth * dpr * scale));
+      const h = Math.max(1, Math.floor(host.clientHeight * dpr * scale));
       r.resize(w, h);
     };
+    applyDprSizeRef.current = applyDprSize;
     applyDprSize();
 
     const ro = typeof ResizeObserver !== 'undefined'
@@ -243,8 +256,40 @@ export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
       if (mql) mql.removeEventListener?.('change', onDprChange);
       host.replaceChildren();
       rendererRef.current = null;
+      applyDprSizeRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    if (canvasSettings.transparentExport) {
+      renderer.setClearColor(null);
+    } else {
+      renderer.setClearColor({
+        r: canvasSettings.background[0],
+        g: canvasSettings.background[1],
+        b: canvasSettings.background[2],
+        a: canvasSettings.backgroundAlpha,
+      });
+    }
+    renderer.setFpsCap(canvasSettings.fpsCap);
+    renderer.setRenderScale(canvasSettings.renderScale);
+    applyDprSizeRef.current?.();
+  }, [canvasSettings]);
+
+  useImperativeHandle(ref, () => ({
+    snapshotPng: (width, height, opts) => {
+      const renderer = rendererRef.current;
+      if (!renderer) return Promise.reject(new Error('RecipeCanvas: renderer not mounted'));
+      return renderer.snapshotAt(width, height, opts);
+    },
+    getCanvas: () => hostRef.current?.querySelector('canvas') ?? null,
+    resize: (width, height) => {
+      rendererRef.current?.resize(width, height);
+    },
+    getFps: () => rendererRef.current?.getFps() ?? 0,
+  }), []);
 
   // Drive the renderer from compiled output: split between recompile (heavy)
   // and setUniform (cheap). For multi-pass recipes we hand the renderer the
@@ -666,15 +711,17 @@ export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
       )}
     </div>
   );
-};
+});
 
 // ─── helpers (copied from AppShell so design/ stays self-contained) ────
 
 function structuralKey(c: CompiledShader): string {
   // Anything that affects the GLSL beyond marker comments. Marker comments
   // contain param values which change at every tick — strip them so a param
-  // tick doesn't trigger a renderer recompile.
-  return c.glsl.replace(/\{[^{}]*\}/g, '{}');
+  // tick doesn't trigger a renderer recompile. We strip only the marker line
+  // content (//#card …), NOT arbitrary {…} blocks in the GLSL body — the
+  // composition wrapper uses {…} with baked-in alpha/blend literals.
+  return c.glsl.replace(/\/\/#card.*/g, '//#card');
 }
 
 function toRendererUniform(value: ParameterValue): Uniform {

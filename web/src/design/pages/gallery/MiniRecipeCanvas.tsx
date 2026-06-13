@@ -151,7 +151,7 @@ export const MiniRecipeCanvas = ({
 // ─── helpers (mirror RecipeCanvas) ────────────────────────────────────────
 
 function structuralKey(c: CompiledShader): string {
-  return c.glsl.replace(/\{[^{}]*\}/g, '{}');
+  return c.glsl.replace(/\/\/#card.*/g, '//#card');
 }
 
 function toRendererUniform(value: number | readonly [number, number, number]): Uniform {
