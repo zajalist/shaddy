@@ -495,27 +495,8 @@ export const LESSONS: Lesson[] = [
 ];
 
 // ─── progress (localStorage) ─────────────────────────────────────────────
+// The persistence helpers live in ./progress.ts (re-exported here so existing
+// `import { loadProgress } from './lessons'` call sites keep working). This
+// file stays purely lesson DATA.
 
-const STORAGE_KEY = 'shade.learn.completed.v1';
-
-export function loadProgress(): Set<string> {
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.filter((x): x is string => typeof x === 'string'));
-  } catch {
-    return new Set();
-  }
-}
-
-export function saveProgress(done: Set<string>): void {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...done]));
-    }
-  } catch {
-    // best-effort; nothing else to do
-  }
-}
+export { loadProgress, saveProgress, STORAGE_KEY, LEGACY_KEY } from './progress';

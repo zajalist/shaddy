@@ -16,6 +16,7 @@ import type { CSSProperties } from 'react';
 
 import { GlslHighlight } from '../../GlslHighlight';
 import { SHADE, TYPE } from '../../tokens';
+import { useIsMobile } from '../../useIsMobile';
 import type { CheckResult, Lesson } from './lessons';
 import { RawShaderCanvas, type RawShaderCanvasHandle } from './RawShaderCanvas';
 
@@ -34,6 +35,7 @@ export const LessonEditor = ({ lesson, done, onCheckResult, disabled }: LessonEd
   const [compileErr, setCompileErr] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const canvasRef = useRef<RawShaderCanvasHandle | null>(null);
+  const isMobile = useIsMobile();
 
   // When the lesson changes, reset the editor to that lesson's starter.
   // (Could persist per-lesson drafts to localStorage if we wanted, but the
@@ -73,11 +75,37 @@ export const LessonEditor = ({ lesson, done, onCheckResult, disabled }: LessonEd
         <span style={titleStyle}>{lesson.title}</span>
       </div>
 
-      {/* Editor — dark code well like the composer's drawer */}
-      <div style={editorWellStyle}>
-        <pre style={editorPreStyle}>
-          <GlslHighlight source={source} editable onSourceChange={setSource} />
-        </pre>
+      {/* Editor + preview — side-by-side on desktop, stacked (editor first)
+          on mobile. The editor well flexes; the preview is a responsive
+          square (aspect-ratio: 1 / 1, capped at min(40%, 320px)). */}
+      <div style={{
+        ...bodyStyle,
+        gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) min(40%, 320px)',
+      }}>
+        {/* Editor — dark code well like the composer's drawer */}
+        <div style={editorWellStyle}>
+          <pre style={editorPreStyle}>
+            <GlslHighlight source={source} editable onSourceChange={setSource} />
+          </pre>
+        </div>
+
+        {/* Preview — responsive 1:1 square */}
+        <div style={previewWrapStyle}>
+          <RawShaderCanvas
+            source={source}
+            handleRef={(h) => { canvasRef.current = h; }}
+            onCompileResult={(r) => {
+              if (r.ok) {
+                setCompileErr(null);
+              } else {
+                const first = r.errors[0];
+                setCompileErr(first ? `Line ${first.line}: ${first.message}` : 'Compile error');
+              }
+            }}
+            style={previewCanvasStyle}
+          />
+          <div style={previewLabelStyle}>preview</div>
+        </div>
       </div>
 
       {/* Inline compile error pill */}
@@ -86,24 +114,6 @@ export const LessonEditor = ({ lesson, done, onCheckResult, disabled }: LessonEd
           {compileErr}
         </div>
       )}
-
-      {/* Preview */}
-      <div style={previewWrapStyle}>
-        <RawShaderCanvas
-          source={source}
-          handleRef={(h) => { canvasRef.current = h; }}
-          onCompileResult={(r) => {
-            if (r.ok) {
-              setCompileErr(null);
-            } else {
-              const first = r.errors[0];
-              setCompileErr(first ? `Line ${first.line}: ${first.message}` : 'Compile error');
-            }
-          }}
-          style={previewCanvasStyle}
-        />
-        <div style={previewLabelStyle}>preview</div>
-      </div>
 
       {/* Controls */}
       <div style={controlsStyle}>
@@ -182,9 +192,17 @@ const titleStyle: CSSProperties = {
   color: SHADE.text,
 };
 
-const editorWellStyle: CSSProperties = {
+const bodyStyle: CSSProperties = {
+  display: 'grid',
+  gap: 14,
+  alignItems: 'start',
   flex: '1 1 auto',
-  minHeight: 220,
+  minHeight: 0,
+};
+
+const editorWellStyle: CSSProperties = {
+  minHeight: 260,
+  height: '100%',
   background: SHADE.surface4,
   border: `1.5px solid ${SHADE.inkLine}`,
   borderRadius: 10,
@@ -215,13 +233,13 @@ const errorPillStyle: CSSProperties = {
 
 const previewWrapStyle: CSSProperties = {
   position: 'relative',
-  width: 220,
-  height: 220,
-  alignSelf: 'flex-start',
+  width: '100%',
+  maxWidth: 320,
+  aspectRatio: '1 / 1',
+  justifySelf: 'center',
   border: `1.5px solid ${SHADE.inkLine}`,
   borderRadius: 10,
   background: SHADE.surface4,
-  boxShadow: `0 3px 0 ${SHADE.inkLine}`,
   overflow: 'hidden',
 };
 
@@ -258,8 +276,7 @@ const baseBtnStyle: CSSProperties = {
   font: `700 14px/1 ${TYPE.body}`,
   letterSpacing: TYPE.trackTight,
   cursor: 'pointer',
-  boxShadow: `0 3px 0 ${SHADE.inkLine}`,
-  transition: 'transform 100ms ease, box-shadow 100ms ease, background 160ms ease',
+  transition: 'transform 100ms ease, background 160ms ease',
 };
 
 const secondaryBtnStyle: CSSProperties = {
