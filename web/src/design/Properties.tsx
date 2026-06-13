@@ -3,7 +3,7 @@
 // Wired to the real Recipe: when a TypedCard is selected, this renders that
 // card's real params (min..max float ranges + color swatches) and pushes
 // changes through useCardsStore.updateParamValue. When nothing is selected,
-// shows the global panel (canvas aspect, tempo, share).
+// shows the global panel (canvas aspect, export, share).
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -53,6 +53,7 @@ import {
   BLEND_MODES,
   lookupCardDef,
   useCardsStore,
+  resolveExportSize,
   type Animation,
   type AnimBlock,
   type BlendMode,
@@ -90,12 +91,14 @@ export type PropertiesPanelProps = {
   /** Controlled active tab. If omitted, the panel manages its own tab state. */
   tab?: RightTab;
   onTabChange?: (t: RightTab) => void;
+  /** Live renderer FPS, polled by DesktopApp; shown in the Canvas tab footer. */
+  fps?: number;
 };
 
 // The right bar is two explicit tabs (nothing leaves the bar): the Block
 // inspector for the selected card, and the Canvas tab for global recipe
 // settings (2D/3D, output, tempo, share).
-export const PropertiesPanel = ({ selectedCard, selectedIndex, selectedCards, selectedAnim, tab: tabProp, onTabChange }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedCard, selectedIndex, selectedCards, selectedAnim, tab: tabProp, onTabChange, fps = 0 }: PropertiesPanelProps) => {
   const [tabLocal, setTabLocal] = useState<RightTab>('block');
   const tab = tabProp ?? tabLocal;
   const setTab = onTabChange ?? setTabLocal;
@@ -117,7 +120,7 @@ export const PropertiesPanel = ({ selectedCard, selectedIndex, selectedCards, se
               : selectedCard ? <SelectedCardProps card={selectedCard} index={selectedIndex} />
               : selectedAnim ? <AnimBlockProps chainId={selectedAnim.chainId} block={selectedAnim.block} />
               : <BlockEmptyState />)
-          : <CanvasProps />}
+          : <CanvasProps fps={fps} />}
       </div>
     </div>
   );
@@ -163,10 +166,10 @@ const BlockEmptyState = () => (
   </div>
 );
 
-const CanvasProps = () => (
+const CanvasProps = ({ fps = 0 }: { fps?: number }) => (
   <>
     <ModePill />
-    <GlobalProps />
+    <GlobalProps fps={fps} />
   </>
 );
 
@@ -1590,9 +1593,13 @@ const ASPECTS: Array<{ key: 'square' | 'portrait' | 'landscape'; label: string }
   { key: 'portrait',  label: '1080×1920' },
 ];
 
-const GlobalProps = () => {
+const GlobalProps = ({ fps = 0 }: { fps?: number }) => {
   const recipe = useCardsStore((s) => s.recipe);
   const setRecipe = useCardsStore((s) => s.setRecipe);
+  const canvas = useCardsStore((s) => s.canvas);
+  const setCanvas = useCardsStore((s) => s.setCanvas);
+  const exportSize = resolveExportSize(recipe.canvasAspect, canvas.exportLongEdge);
+  const [bgOpen, setBgOpen] = useState(false);
   return (
     <>
       <PropSectionHeader title="Recipe" />
@@ -1601,57 +1608,156 @@ const GlobalProps = () => {
         <span style={{ color: DK.mid, marginLeft: 8 }}>· {recipe.canvasAspect}</span>
       </div>
       <div style={{ borderTop: `1px solid ${DK.border}` }} />
-      <PropSectionHeader title="Tempo" />
-      <div style={{ padding: '0 14px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ font: `600 38px ${TYPE.display}`, color: DK.text, lineHeight: 1, letterSpacing: TYPE.trackTighter }}>
-            120
-            <span style={{ color: DK.mid, fontSize: 14, marginLeft: 8, fontWeight: 500, letterSpacing: 0 }}>bpm</span>
-          </span>
-          <button
-            style={{
-              background: DK.well, color: DK.text,
-              border: `1px solid ${DK.border}`, borderRadius: 6,
-              padding: '7px 12px', font: `500 11px ${TYPE.bodyMono}`,
-              letterSpacing: '0.10em', textTransform: 'uppercase', cursor: 'pointer',
-            }}
-          >
-            tap
-          </button>
+      <PropSectionHeader title="Output" />
+      <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+          {ASPECTS.map((a) => {
+            const active = recipe.canvasAspect === a.key;
+            return (
+              <button
+                key={a.key}
+                onClick={() => setRecipe({ ...recipe, canvasAspect: a.key })}
+                style={{
+                  background: active ? DK.hover : DK.well,
+                  border: `1px solid ${active ? DK.borderHi : DK.border}`,
+                  borderRadius: 7, padding: '9px 10px',
+                  font: `500 11px ${TYPE.bodyMono}`,
+                  color: active ? DK.text : DK.mid,
+                  textAlign: 'left', cursor: 'pointer',
+                }}
+              >
+                {a.label}
+              </button>
+            );
+          })}
         </div>
-        <PropertySlider label="Tempo" value={0.5} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ font: `600 10.5px ${TYPE.body}`, color: DK.mid, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              Export resolution
+            </span>
+            <span style={{ font: `500 11px ${TYPE.bodyMono}`, color: DK.faint }}>
+              {exportSize.width} × {exportSize.height}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+            {([1080, 1440, 2160, 4320] as const).map((edge) => {
+              const active = canvas.exportLongEdge === edge;
+              const label = edge === 1080 ? '1080p' : edge === 1440 ? '1440p' : edge === 2160 ? '4K' : '8K';
+              return (
+                <button
+                  key={edge}
+                  type="button"
+                  onClick={() => setCanvas({ exportLongEdge: edge })}
+                  style={{
+                    background: active ? DK.hover : DK.well,
+                    border: `1px solid ${active ? DK.borderHi : DK.border}`,
+                    borderRadius: 7,
+                    padding: '8px 10px',
+                    font: `500 11px ${TYPE.bodyMono}`,
+                    color: active ? DK.text : DK.mid,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
       <div style={{ borderTop: `1px solid ${DK.border}` }} />
-      <PropSectionHeader title="Output" />
-      <div style={{ padding: '0 14px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {ASPECTS.map((a) => {
-          const active = recipe.canvasAspect === a.key;
-          return (
-            <button
-              key={a.key}
-              onClick={() => setRecipe({ ...recipe, canvasAspect: a.key })}
-              style={{
-                background: active ? DK.hover : DK.well,
-                border: `1px solid ${active ? DK.borderHi : DK.border}`,
-                borderRadius: 7, padding: '9px 10px',
-                font: `500 11px ${TYPE.bodyMono}`,
-                color: active ? DK.text : DK.mid,
-                textAlign: 'left', cursor: 'pointer',
-              }}
-            >
-              {a.label}
-            </button>
-          );
-        })}
-        <div
+      <PropSectionHeader title="Background" />
+      <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CanvasSwatch value={canvas.background} open={bgOpen} onToggle={() => setBgOpen((v) => !v)} onChange={(background) => setCanvas({ background })} />
+        <PropertySlider
+          label="Background alpha"
+          value={canvas.backgroundAlpha}
+          onChange={(backgroundAlpha) => setCanvas({ backgroundAlpha })}
+        />
+        <button
+          type="button"
+          onClick={() => setCanvas({ transparentExport: !canvas.transparentExport })}
           style={{
-            background: DK.well, border: `1px solid ${DK.border}`,
-            borderRadius: 7, padding: '9px 10px',
-            font: `500 11px ${TYPE.bodyMono}`, color: DK.faint,
-            textAlign: 'left',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 10, padding: '9px 10px',
+            background: canvas.transparentExport ? DK.hover : DK.well,
+            border: `1px solid ${canvas.transparentExport ? DK.borderHi : DK.border}`,
+            borderRadius: 7,
+            color: canvas.transparentExport ? DK.text : DK.mid,
+            cursor: 'pointer',
+            font: `600 11px ${TYPE.bodyMono}`,
           }}
         >
-          3840×2160
+          <span>Export with transparency</span>
+          <span>{canvas.transparentExport ? 'On' : 'Off'}</span>
+        </button>
+      </div>
+      <div style={{ borderTop: `1px solid ${DK.border}` }} />
+      <PropSectionHeader title="Performance" />
+      <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ font: `600 10.5px ${TYPE.body}`, color: DK.mid, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            FPS cap
+          </span>
+          <span style={{ font: `500 11px ${TYPE.bodyMono}`, color: DK.faint }}>
+            {canvas.fpsCap === 0 ? 'Uncapped' : `${canvas.fpsCap} FPS`}
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+          {([0, 60, 30] as const).map((fpsCap) => {
+            const active = canvas.fpsCap === fpsCap;
+            const label = fpsCap === 0 ? 'Uncapped' : String(fpsCap);
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setCanvas({ fpsCap })}
+                style={{
+                  background: active ? DK.hover : DK.well,
+                  border: `1px solid ${active ? DK.borderHi : DK.border}`,
+                  borderRadius: 7,
+                  padding: '8px 10px',
+                  font: `500 11px ${TYPE.bodyMono}`,
+                  color: active ? DK.text : DK.mid,
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ font: `600 10.5px ${TYPE.body}`, color: DK.mid, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            Render scale
+          </span>
+          <span style={{ font: `500 11px ${TYPE.bodyMono}`, color: DK.faint }}>
+            {Math.round(canvas.renderScale * 100)}%
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+          {([1, 0.75, 0.5, 0.25] as const).map((renderScale) => {
+            const active = canvas.renderScale === renderScale;
+            return (
+              <button
+                key={renderScale}
+                type="button"
+                onClick={() => setCanvas({ renderScale })}
+                style={{
+                  background: active ? DK.hover : DK.well,
+                  border: `1px solid ${active ? DK.borderHi : DK.border}`,
+                  borderRadius: 7,
+                  padding: '8px 10px',
+                  font: `500 11px ${TYPE.bodyMono}`,
+                  color: active ? DK.text : DK.mid,
+                  cursor: 'pointer',
+                }}
+              >
+                {Math.round(renderScale * 100)}%
+              </button>
+            );
+          })}
         </div>
       </div>
       <div style={{ borderTop: `1px solid ${DK.border}` }} />
@@ -1679,10 +1785,50 @@ const GlobalProps = () => {
           display: 'flex', justifyContent: 'space-between',
         }}
       >
-        <span>WEBGL · OK</span>
-        <span>v0.4.2</span>
+        <span>WEBGL2 · {Math.max(0, Math.round(fps))} FPS</span>
+        <span>{canvas.transparentExport ? 'TRANSPARENT' : 'OPAQUE'}</span>
       </div>
     </>
+  );
+};
+
+const CanvasSwatch = ({
+  value,
+  open,
+  onToggle,
+  onChange,
+}: {
+  value: ColorRgb;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (next: ColorRgb) => void;
+}) => {
+  const r = Math.round(value[0] * 255);
+  const g = Math.round(value[1] * 255);
+  const b = Math.round(value[2] * 255);
+  const hex = `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%', height: 34, borderRadius: 7,
+          background: hex,
+          border: `1.5px solid ${SHADE.inkLine}`,
+          cursor: 'pointer', display: 'block',
+        }}
+        aria-label="Canvas colour"
+      />
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <RgbColorPicker
+            color={{ r, g, b }}
+            onChange={(c) => onChange([c.r / 255, c.g / 255, c.b / 255] as unknown as ColorRgb)}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

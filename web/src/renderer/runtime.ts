@@ -70,6 +70,9 @@ class Renderer implements RendererAPI {
   private uniforms = new Map<string, Uniform>();
   private fpsCounter = new FpsCounter();
   private fpsWatchdog = new FpsWatchdog();
+  private clearColor: { r: number; g: number; b: number; a: number } | null = null;
+  private fpsCap = 0;
+  private lastDrawAt = 0;
 
   // Texture bookkeeping for sampler2D uniforms. Each unique uniform name
   // gets a stable WebGLTexture + texture-unit slot (0, 1, 2, ...). On
@@ -121,7 +124,11 @@ class Renderer implements RendererAPI {
     // preserveDrawingBuffer: true means snapshot() can call toDataURL at any
     // time without having to time it precisely against the compositor.
     // Modest perf cost; acceptable for a learning environment.
-    const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+    const gl = canvas.getContext('webgl2', {
+      alpha: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: true,
+    });
     if (!gl) throw new Error('renderer: WebGL2 not available in this browser');
 
     const vao = gl.createVertexArray();
@@ -402,6 +409,32 @@ class Renderer implements RendererAPI {
     // don't have to do anything else here.
   }
 
+  setClearColor(color: { r: number; g: number; b: number; a: number } | null): void {
+    this.clearColor = color;
+  }
+
+  setFpsCap(fps: number): void {
+    this.fpsCap = fps >= 60 ? 60 : fps >= 30 ? 30 : 0;
+  }
+
+  setRenderScale(_scale: number): void {
+    // Design layer folds renderScale into resize() — no-op here.
+  }
+
+  snapshotAt(width: number, height: number, opts?: { alpha?: boolean }): Promise<string> {
+    const canvas = this.canvas;
+    if (!canvas) {
+      return Promise.reject(new Error('renderer.snapshotAt: call mount() before snapshotAt()'));
+    }
+    const prev = { width: canvas.width, height: canvas.height };
+    const alpha = opts?.alpha ?? false;
+    this.resize(width, height);
+    this.renderFrame(performance.now(), false, alpha);
+    const url = canvas.toDataURL('image/png');
+    this.resize(prev.width, prev.height);
+    return Promise.resolve(url);
+  }
+
   snapshot(): Promise<string> {
     const canvas = this.canvas;
     if (!canvas) {
@@ -423,6 +456,83 @@ class Renderer implements RendererAPI {
 
   private notifySubs(result: CompileResult): void {
     for (const cb of this.compileSubs) cb(result);
+  }
+
+  private applyBackdrop(gl: WebGL2RenderingContext, shouldClear: boolean): void {
+    const color = this.clearColor;
+    if (!shouldClear || !color) {
+      gl.disable(gl.BLEND);
+      return;
+    }
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(color.r * color.a, color.g * color.a, color.b * color.a, color.a);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+
+  private renderFrame(now: number, countFrame: boolean, snapshotAlpha = false): void {
+    const gl = this.gl;
+    const canvas = this.canvas;
+    if (!gl || !canvas) return;
+
+    if (countFrame) {
+      this.fpsCounter.tick(now);
+      this.lastDrawAt = now;
+    }
+
+    const applyBackdrop = !snapshotAlpha;
+
+    if (this.multiPasses) {
+      for (const id of this.fbos.keys()) this.ensureFboPair(id);
+      const timeSec = (now - this.startTime) / 1000;
+      for (const pass of this.multiPasses) {
+        if (pass.id === 'image') {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+          this.applyBackdrop(gl, applyBackdrop);
+        } else {
+          const pair = this.fbos.get(pass.id);
+          if (!pair) continue;
+          gl.bindFramebuffer(gl.FRAMEBUFFER, pair.write.fb);
+          gl.viewport(0, 0, pair.width, pair.height);
+        }
+        gl.useProgram(pass.program);
+        if (pass.stdLocs.uTime) gl.uniform1f(pass.stdLocs.uTime, timeSec);
+        if (pass.stdLocs.uResolution) gl.uniform2f(pass.stdLocs.uResolution, canvas.width, canvas.height);
+        if (pass.stdLocs.uMouse) gl.uniform2f(pass.stdLocs.uMouse, this.mouseX, this.mouseY);
+        this.applyCallerUniformsToProgram(pass.program);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (pass.id !== 'image') {
+          const pair = this.fbos.get(pass.id)!;
+          const tmp = pair.read;
+          pair.read = pair.write;
+          pair.write = tmp;
+        }
+      }
+      return;
+    }
+
+    const program = this.program;
+    const locs = this.stdLocs;
+    if (!program || !locs) return;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    this.applyBackdrop(gl, applyBackdrop);
+    gl.useProgram(program);
+
+    if (locs.uTime) {
+      gl.uniform1f(locs.uTime, (now - this.startTime) / 1000);
+    }
+    if (locs.uResolution) {
+      gl.uniform2f(locs.uResolution, canvas.width, canvas.height);
+    }
+    if (locs.uMouse) {
+      gl.uniform2f(locs.uMouse, this.mouseX, this.mouseY);
+    }
+
+    this.applyCallerUniformsToProgram(program);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
   private attachPointerListeners(host: HTMLElement): void {
@@ -461,9 +571,15 @@ class Renderer implements RendererAPI {
     if (!gl || !canvas) return;
 
     const now = performance.now();
-    this.fpsCounter.tick(now);
+    if (this.fpsCap > 0) {
+      const minFrameGap = 1000 / this.fpsCap;
+      if (now - this.lastDrawAt < minFrameGap) {
+        this.rafHandle = requestAnimationFrame(this.loop);
+        return;
+      }
+    }
 
-    if (this.fpsWatchdog.shouldHalve(this.fpsCounter.get(), now)) {
+    if (this.fpsCap === 0 && this.fpsWatchdog.shouldHalve(this.fpsCounter.get(), now)) {
       const next = halveBufferSize({ width: canvas.width, height: canvas.height });
       this.resize(next.width, next.height);
       this.fpsCounter.reset();
@@ -472,70 +588,7 @@ class Renderer implements RendererAPI {
           `Subscribe to onCompile / poll getFps() for further perf insight.`,
       );
     }
-
-    // Multi-pass branch — render the buffer passes into their write FBOs,
-    // swap each pair after its draw, then render the image pass to the
-    // default framebuffer. Cross-pass sampling sees the most-recent frame's
-    // output (because the previous pass already swapped); same-pass
-    // sampling sees the PREVIOUS frame's output (we sample read BEFORE
-    // swapping, even though we draw into write).
-    if (this.multiPasses) {
-      // Make sure FBOs match current canvas size — they're re-allocated
-      // lazily here so resize() doesn't have to know about them.
-      for (const id of this.fbos.keys()) this.ensureFboPair(id);
-      const timeSec = (now - this.startTime) / 1000;
-      for (const pass of this.multiPasses) {
-        if (pass.id === 'image') {
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.viewport(0, 0, canvas.width, canvas.height);
-        } else {
-          const pair = this.fbos.get(pass.id);
-          if (!pair) continue;
-          gl.bindFramebuffer(gl.FRAMEBUFFER, pair.write.fb);
-          gl.viewport(0, 0, pair.width, pair.height);
-        }
-        gl.useProgram(pass.program);
-        if (pass.stdLocs.uTime) gl.uniform1f(pass.stdLocs.uTime, timeSec);
-        if (pass.stdLocs.uResolution) gl.uniform2f(pass.stdLocs.uResolution, canvas.width, canvas.height);
-        if (pass.stdLocs.uMouse) gl.uniform2f(pass.stdLocs.uMouse, this.mouseX, this.mouseY);
-        this.applyCallerUniformsToProgram(pass.program);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-        // Ping-pong swap: after this pass drew into `write`, swap so the
-        // texture we just produced becomes the readable one for the NEXT
-        // frame (or for any LATER pass this frame sampling cross-pass).
-        if (pass.id !== 'image') {
-          const pair = this.fbos.get(pass.id)!;
-          const tmp = pair.read;
-          pair.read = pair.write;
-          pair.write = tmp;
-        }
-      }
-      this.rafHandle = requestAnimationFrame(this.loop);
-      return;
-    }
-
-    // Single-pass branch — original code path.
-    const program = this.program;
-    const locs = this.stdLocs;
-    if (!program || !locs) return;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.useProgram(program);
-
-    if (locs.uTime) {
-      gl.uniform1f(locs.uTime, (now - this.startTime) / 1000);
-    }
-    if (locs.uResolution) {
-      gl.uniform2f(locs.uResolution, canvas.width, canvas.height);
-    }
-    if (locs.uMouse) {
-      gl.uniform2f(locs.uMouse, this.mouseX, this.mouseY);
-    }
-
-    this.applyCallerUniformsToProgram(program);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.renderFrame(now, true);
 
     this.rafHandle = requestAnimationFrame(this.loop);
   };

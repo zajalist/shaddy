@@ -91,6 +91,22 @@ export function createRenderer(): RendererAPI {
       // no-op — the CSS gradient fills its parent.
     },
 
+    setClearColor(_color: { r: number; g: number; b: number; a: number } | null): void {
+      // no-op — the mock doesn't render shader state.
+    },
+
+    setFpsCap(_fps: number): void {
+      // no-op — the mock doesn't run a real frame loop.
+    },
+
+    setRenderScale(_scale: number): void {
+      // no-op — the mock doesn't run a real frame loop.
+    },
+
+    snapshotAt(_width: number, _height: number, _opts?: { alpha?: boolean }): Promise<string> {
+      return Promise.resolve(TINY_PNG_DATA_URL);
+    },
+
     snapshot(): Promise<string> {
       return Promise.resolve(TINY_PNG_DATA_URL);
     },

@@ -39,6 +39,12 @@ describe('mock renderer', () => {
     expect(url.startsWith('data:image/png;base64,')).toBe(true);
   });
 
+  it('snapshotAt returns a PNG data URL', async () => {
+    const r = createRenderer();
+    const url = await r.snapshotAt(320, 180, { alpha: true });
+    expect(url.startsWith('data:image/png;base64,')).toBe(true);
+  });
+
   it('getFps returns a positive number', () => {
     expect(createRenderer().getFps()).toBeGreaterThan(0);
   });
@@ -48,6 +54,10 @@ describe('mock renderer', () => {
     expect(() => r.setUniform('u_color', { kind: 'vec3', value: [1, 0, 0] })).not.toThrow();
     expect(() => r.setUniform('u_color', null)).not.toThrow();
     expect(() => r.resize(800, 600)).not.toThrow();
+    expect(() => r.setClearColor({ r: 1, g: 0, b: 0, a: 1 })).not.toThrow();
+    expect(() => r.setClearColor(null)).not.toThrow();
+    expect(() => r.setFpsCap(30)).not.toThrow();
+    expect(() => r.setRenderScale(0.5)).not.toThrow();
   });
 
   it('onCompile fires exactly once on first compile, not on later compiles', () => {

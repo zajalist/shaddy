@@ -1,16 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  DEFAULT_CANVAS_SETTINGS,
   _resetCardIdCounter,
   cloneRecipeWithFreshIds,
   generateCardId,
   useCardsStore,
+  resolveExportSize,
 } from './state';
 import { STARTER_RECIPES } from './starter-recipes';
 import type { Card } from './types';
 
 beforeEach(() => {
   _resetCardIdCounter();
-  useCardsStore.setState({ recipe: { canvasAspect: 'square', cards: [] } });
+  useCardsStore.setState({
+    recipe: { canvasAspect: 'square', cards: [] },
+    canvas: DEFAULT_CANVAS_SETTINGS,
+    activePassId: 'image',
+  });
 });
 
 afterEach(() => {
@@ -127,6 +133,30 @@ describe('useCardsStore — composition', () => {
     const id = useCardsStore.getState().recipe.cards[0]!.id;
     useCardsStore.getState().setBlendMode(id, 'screen');
     expect(useCardsStore.getState().recipe.cards[0]?.blendMode).toBe('screen');
+  });
+});
+
+describe('canvas settings', () => {
+  it('defaults to the shared canvas settings object', () => {
+    expect(useCardsStore.getState().canvas).toEqual(DEFAULT_CANVAS_SETTINGS);
+  });
+
+  it('setCanvas shallow-merges without mutating the recipe', () => {
+    const beforeRecipe = useCardsStore.getState().recipe;
+    useCardsStore.getState().setCanvas({ fpsCap: 30, transparentExport: true });
+    expect(useCardsStore.getState().canvas).toMatchObject({
+      ...DEFAULT_CANVAS_SETTINGS,
+      fpsCap: 30,
+      transparentExport: true,
+    });
+    expect(useCardsStore.getState().recipe).toBe(beforeRecipe);
+    expect(useCardsStore.getState().recipe.cards.length).toBe(0);
+  });
+
+  it('resolveExportSize matches the expected aspect ratios', () => {
+    expect(resolveExportSize('landscape', 2160)).toEqual({ width: 3840, height: 2160 });
+    expect(resolveExportSize('square', 1080)).toEqual({ width: 1080, height: 1080 });
+    expect(resolveExportSize('portrait', 4320)).toEqual({ width: 2430, height: 4320 });
   });
 });
 
