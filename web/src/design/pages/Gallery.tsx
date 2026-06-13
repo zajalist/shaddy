@@ -9,12 +9,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
+  isApiError,
   listGallery,
   type GalleryListItem,
   type GalleryMode,
   type GallerySort,
   type ListParams,
 } from '@/api';
+
+const errMsg = (err: unknown): string =>
+  isApiError(err) ? err.message : err instanceof Error ? err.message : String(err);
 
 import { SHADE, TYPE } from '../tokens';
 import { useGalleryChrome } from './gallery/chrome';
@@ -59,7 +63,7 @@ function useGalleryFeed(params: Omit<ListParams, 'cursor'>) {
         reachedEnd: page.nextCursor === null,
       }));
     } catch (err) {
-      setState((s) => ({ ...s, loading: false, error: err instanceof Error ? err.message : String(err) }));
+      setState((s) => ({ ...s, loading: false, error: errMsg(err) }));
     }
   }, []);
 

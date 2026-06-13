@@ -3,7 +3,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listGallery = vi.fn();
-vi.mock('@/api', () => ({ listGallery: (...a: unknown[]) => listGallery(...a) }));
+vi.mock('@/api', () => ({
+  listGallery: (...a: unknown[]) => listGallery(...a),
+  isApiError: (e: unknown) => typeof e === 'object' && e !== null && 'status' in e,
+}));
 
 import Gallery from './Gallery';
 

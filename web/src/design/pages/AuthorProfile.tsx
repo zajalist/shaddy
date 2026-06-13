@@ -45,7 +45,7 @@ export default function AuthorProfile() {
       .catch((err) => {
         if (cancelled) return;
         if (isApiError(err) && err.status === 404) setNotFound(true);
-        else setError(err instanceof Error ? err.message : String(err));
+        else setError(isApiError(err) ? err.message : err instanceof Error ? err.message : String(err));
       });
     return () => {
       cancelled = true;
@@ -62,7 +62,7 @@ export default function AuthorProfile() {
         setCursor(page.nextCursor);
         setReachedEnd(page.nextCursor === null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(isApiError(err) ? err.message : err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }
