@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SHADE, TYPE } from '../tokens';
-import { PAGE_BG, FONTS_HREF, KEYFRAMES_ID } from './constants';
+import { FONTS_HREF, KEYFRAMES_ID, PAGE_BG } from './constants';
 
 export const useLandingChrome = () => {
   useEffect(() => {
@@ -149,7 +149,7 @@ export const useNavScroll = () => {
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    let lastY = 0;
+    let lastY = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
       setHidden(y > lastY && y > 100);

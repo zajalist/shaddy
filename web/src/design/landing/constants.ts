@@ -2,7 +2,7 @@
 export const PAGE_BG = '#0b0c0e';
 
 // Single source of truth for the repository and routes.
-export const REPO_URL = 'https://github.com/shaddy-app/shaddy';
+export const REPO_URL = 'https://github.com/zajalist/shaddy';
 export const ROUTES = {
   composer: '/design',
   gallery: '/gallery',
