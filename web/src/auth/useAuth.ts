@@ -4,20 +4,25 @@
 // events and cross-tab `storage` events.
 
 import { useEffect, useState } from 'react';
-import type { AuthState, AuthUser } from './oidc';
+import type { AuthProvider, AuthState, AuthUser } from './session';
 import {
   readAuthState,
   signIn,
   signOut,
   subscribeToAuthChanges,
-} from './oidc';
+} from './session';
 
 export interface UseAuth {
   user: AuthUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: () => Promise<void>;
+  // Optional args keep the zero-arg `signIn()` call sites working while letting
+  // the provider picker route to a specific method.
+  signIn: (
+    provider?: AuthProvider,
+    creds?: { email: string; password: string; mode?: 'signin' | 'signup' },
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 

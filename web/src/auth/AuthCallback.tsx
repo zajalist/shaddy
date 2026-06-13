@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handleCallback } from './oidc';
+import { handleCallback } from './session';
 
 type Status =
   | { kind: 'pending' }

@@ -9,8 +9,8 @@ export type { AuthConfig } from './config';
 export { useAuth } from './useAuth';
 export type { UseAuth } from './useAuth';
 
-export { signIn, signOut, getAccessToken, getUser } from './oidc';
-export type { AuthUser, AuthState } from './oidc';
+export { signIn, signOut, getAccessToken, getUser } from './session';
+export type { AuthUser, AuthState, AuthProvider } from './session';
 
 export { AuthCallback } from './AuthCallback';
 export { SignInButton } from './SignInButton';
