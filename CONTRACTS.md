@@ -6,6 +6,12 @@ This file is the law. The `web/src/integration/` folder is the only place those 
 
 > The product is now **frontend-only**. The ML backend (`POST /optimize`, WS streaming, PyTorch optimizer) has been cut — photo-match is deferred. See [`docs/decisions/2026-05-23-frontend-only.md`](./docs/decisions/2026-05-23-frontend-only.md) and the "Deferred" callout in [`SPEC.md`](./SPEC.md).
 
+> **⚠️ Drift reconciled.** The architecture grew past this document. The actual tracks under `web/src/` are **`renderer/`, `cards/`, `ux/`, `design/`, `auth/`** (+ `integration/`, + a parked `compiler/` dataflow-IR that nothing wires in):
+> - **`design/` is the live composer** (the de-facto integration UI: `DesktopApp.tsx`, `RecipeCanvas.tsx`, `Properties.tsx`, …). It composes the PUBLIC entries of `cards`/`renderer`/`ux`/`auth`. It is now a first-class track with an enforced eslint boundary (no deep-imports past a sibling's `index.ts`).
+> - **`editor/` was never built.** Its literal-editing surface lives in `design/GlslHighlight.tsx` + the `cards/` reverse parser (`reparse`). The cargo-cult eslint rule for it has been removed.
+> - **`ux/` is now just the Mascot** character; `@/ux` is its public entry.
+> - The `cards/` public surface below is **out of date** — see the live `web/src/cards/index.ts`. Notably `Parameter.animation` is a real `Animation | null` (per-param animation shipped), and `Recipe` carries `passes` (multi-pass A–D), `mode` ('2d'|'3d'), card `attributes`, and macros.
+
 ---
 
 ## 1. Renderer ↔ everyone
@@ -255,15 +261,14 @@ This is where:
 ## Dependency direction (enforced by ESLint — see `web/eslint.config.js`)
 
 ```
-integration/  ───────────────┐
-   │  │  │  │                │
-   ▼  ▼  ▼  ▼                ▼
-ux/  cards/  editor/  renderer/  shared/
-       │
-       └── may import @/editor entry (for AST helpers)
+integration/ ──────────────────────┐
+   │                                │
+   ▼                                ▼
+design/  ──►  ux/  cards/  renderer/  auth/  shared/
+                         (public entries only — no deep imports)
 ```
 
-Arrows point to modules that may be imported. Anything that draws an arrow the wrong way is a bug.
+Arrows point to modules that may be imported (their public `index.ts` only). `design/` is the live composer and may compose every public entry; everything else stays a leaf or near-leaf. Anything that draws an arrow the wrong way — or reaches past a sibling's `index.ts` — is a bug, now enforced by `eslint.config.js`.
 
 ---
 

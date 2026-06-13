@@ -168,3 +168,108 @@ describe('STARTER_RECIPES', () => {
     }
   });
 });
+
+describe('useCardsStore — custom animations', () => {
+  const st = () => useCardsStore.getState();
+  const seedSquare = () => {
+    st().insertTypedCard('square');
+    return st().recipe.cards[0]!.id;
+  };
+  const customRefOf = (cardId: string, paramKey: string) => {
+    const card = st().recipe.cards.find((c) => c.id === cardId);
+    const anim = card?.kind === 'typed' ? card.params[paramKey]?.animation : null;
+    return anim?.type === 'custom' ? anim.ref : null;
+  };
+
+  it('createCustomAnimation creates a Time→Oscillate chain and binds the param', () => {
+    const id = seedSquare();
+    const chainId = st().createCustomAnimation(id, 'size');
+    expect(chainId).toBeTruthy();
+    const chains = st().recipe.animations ?? [];
+    expect(chains).toHaveLength(1);
+    expect(chains[0]!.blocks.map((b) => b.type)).toEqual(['time', 'oscillate']);
+    expect(customRefOf(id, 'size')).toBe(chainId);
+  });
+
+  it('bindParamToAnimation reuses one chain across two params', () => {
+    const a = seedSquare();
+    st().insertTypedCard('square');
+    const b = st().recipe.cards[1]!.id;
+    const chainId = st().createCustomAnimation(a, 'size')!;
+    st().bindParamToAnimation(b, 'size', chainId);
+    expect(customRefOf(a, 'size')).toBe(chainId);
+    expect(customRefOf(b, 'size')).toBe(chainId);
+    expect(st().recipe.animations).toHaveLength(1); // still one shared chain
+  });
+
+  it('addAnimBlock / removeAnimBlock edit the chain', () => {
+    const id = seedSquare();
+    const chainId = st().createCustomAnimation(id, 'size')!;
+    const remapId = st().addAnimBlock(chainId, 'remap')!;
+    expect((st().recipe.animations ?? [])[0]!.blocks.map((b) => b.type)).toEqual(['time', 'oscillate', 'remap']);
+
+    st().removeAnimBlock(chainId, remapId);
+    expect((st().recipe.animations ?? [])[0]!.blocks.map((b) => b.type)).toEqual(['time', 'oscillate']);
+  });
+
+  it('updateAnimBlockParam bakes a new value into a block', () => {
+    const id = seedSquare();
+    const chainId = st().createCustomAnimation(id, 'size')!;
+    const osc = (st().recipe.animations ?? [])[0]!.blocks[1]!;
+    st().updateAnimBlockParam(chainId, osc.id, 'speed', 3.5);
+    const after = (st().recipe.animations ?? [])[0]!.blocks[1]!;
+    expect(after.params.speed?.value).toBe(3.5);
+  });
+
+  it('removeAnimChain deletes the chain and unbinds every param', () => {
+    const id = seedSquare();
+    const chainId = st().createCustomAnimation(id, 'size')!;
+    st().removeAnimChain(chainId);
+    expect(st().recipe.animations).toBeUndefined();
+    expect(customRefOf(id, 'size')).toBeNull();
+  });
+
+  it('setAnimChainsFromRuns splits a chain and rebinds to the tail block', () => {
+    const id = seedSquare();
+    st().createCustomAnimation(id, 'size'); // Time→Oscillate, bound to size
+    const blocks = (st().recipe.animations ?? [])[0]!.blocks.map((b) => b.id);
+    st().setAnimChainsFromRuns([[blocks[0]!], [blocks[1]!]]); // unsnap → two animations
+    const chains = st().recipe.animations ?? [];
+    expect(chains).toHaveLength(2);
+    // the binding followed the old chain's TAIL block into its new chain
+    const tailChain = chains.find((c) => c.blocks.some((b) => b.id === blocks[1]))!;
+    expect(customRefOf(id, 'size')).toBe(tailChain.id);
+  });
+
+  it('setAnimChainsFromRuns merges singletons into one animation', () => {
+    seedSquare();
+    const a = st().startAnimChain('time')!;
+    const b = st().startAnimChain('oscillate')!;
+    expect(st().recipe.animations).toHaveLength(2);
+    st().setAnimChainsFromRuns([[a, b]]); // snap together → one animation
+    const chains = st().recipe.animations ?? [];
+    expect(chains).toHaveLength(1);
+    expect(chains[0]!.blocks.map((bl) => bl.type)).toEqual(['time', 'oscillate']);
+  });
+
+  it('startAnimChain creates an unbound single-block chain (palette drop)', () => {
+    const blockId = st().startAnimChain('noise');
+    expect(blockId).toBeTruthy();
+    const chains = st().recipe.animations ?? [];
+    expect(chains).toHaveLength(1);
+    expect(chains[0]!.blocks).toHaveLength(1);
+    expect(chains[0]!.blocks[0]!.type).toBe('noise');
+    expect(chains[0]!.blocks[0]!.id).toBe(blockId);
+  });
+
+  it('cloneRecipeWithFreshIds remaps the binding to the fresh chain id', () => {
+    const id = seedSquare();
+    st().createCustomAnimation(id, 'size');
+    const cloned = cloneRecipeWithFreshIds(st().recipe);
+    const newChainId = cloned.animations![0]!.id;
+    const card = cloned.cards[0]!;
+    const ref = card.kind === 'typed' && card.params.size?.animation?.type === 'custom'
+      ? card.params.size.animation.ref : null;
+    expect(ref).toBe(newChainId); // ref points at the cloned chain, not the original
+  });
+});

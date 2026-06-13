@@ -4,8 +4,8 @@
 // this just maps the lesson moods onto the real one's 4 base moods.
 
 import type { CSSProperties } from 'react';
-import { Mascot as UxMascot } from '@/ux/Mascot';
-import type { MascotMood as UxMood } from '@/ux/Mascot';
+import { Mascot as UxMascot } from '@/ux';
+import type { MascotMood as UxMood } from '@/ux';
 
 // Lesson narrative uses 5 expressive labels; the real mascot has 4 base
 // moods. Map: cheering → happy, pointing → neutral, sad → sleeping (sloped

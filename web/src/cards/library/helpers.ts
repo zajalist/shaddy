@@ -1,10 +1,14 @@
 // Reusable GLSL helper functions referenced by cards via CardDef.helpers.
 // The compiler walks the recipe, collects the union of names + transitive
 // dependencies, then emits each function ONCE at the top of the shader
-// (before main()). Emission order is fixed below so dependents always come
-// after their dependencies.
+// (before main()). Emission order is DERIVED (see orderedHelpers below) — no
+// hand-maintained order list to fall out of sync.
+//
+// `BODIES` holds just the GLSL text; everything ELSE about a helper (its deps
+// and emission phase) lives in `META`, and the two are composed into the one
+// public `HELPERS` map. A reader asks `HELPERS[name]` and gets the whole story.
 
-export const GLSL_HELPERS: Record<string, string> = {
+const BODIES: Record<string, string> = {
   hash21: `float hash21(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }`,
@@ -350,73 +354,70 @@ export const GLSL_HELPERS: Record<string, string> = {
 }`,
 };
 
-/** Helper → list of other helpers it depends on. Resolved transitively at compile. */
-export const HELPER_DEPS: Record<string, string[]> = {
-  noise2: ['hash21'],
-  fbm2: ['noise2', 'hash21'],
-  ridged2: ['noise2', 'hash21'],
-  worley2: ['hash22'],
+// ─── Helper metadata ────────────────────────────────────────────────────
+// Everything ABOUT a helper beyond its body. Only the handful with deps or a
+// non-default phase need an entry; the rest fall back to {deps:[], phase:'pre'},
+// so adding a plain helper to BODIES needs NOTHING here. Crucially there is no
+// separate emission-ORDER list — order is derived (see orderedHelpers), so a
+// helper can never be silently dropped by forgetting to list it.
+//
+//   phase 'pre'  → emitted before sdScene() (the default; every 2D helper)
+//   phase 'post' → emitted AFTER sdScene() in the 3D compiler (these call
+//                  sdScene by name, so they're invalid until it exists)
+export type HelperPhase = 'pre' | 'post';
+const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = {
+  noise2: { deps: ['hash21'] },
+  fbm2: { deps: ['noise2', 'hash21'] },
+  ridged2: { deps: ['noise2', 'hash21'] },
+  worley2: { deps: ['hash22'] },
+  sceneNormal3: { phase: 'post' },
+  softShadow3: { phase: 'post' },
 };
 
-/** Fixed emission order. Any helper named here that's in the requested set is
- *  emitted; anything not in the registry is ignored. Dependents come AFTER
- *  their dependencies. */
-export const HELPER_EMISSION_ORDER: readonly string[] = [
-  'hash21',
-  'hash22',
-  'noise2',
-  'fbm2',
-  'ridged2',
-  'worley2',
-  'hsv2rgb',
-  'rgb2hsv',
-  'rot2',
-  'cospal',
-  'sdfBox',
-  'sdfHex',
-  'sdfTri',
-  'sdfStar',
-  'sdfHeart',
-  'sdfSegment',
-  'sdfCapsule',
-  'sdfRoundedBox',
-  'sdfEllipse',
-  'sdfPolyN',
-  'sdfVesica',
-  'sdfPie',
-  'sdfTrapezoid',
-  'sdfParallelogram',
-  'sdfHorseshoe',
-  'asciiGlyph5x7',
-  // 3D — sdMin/sdSmoothMin/sdf*3 are needed BEFORE sdScene, sceneNormal3 +
-  // softShadow3 are needed AFTER sdScene (the 3D compiler emits sdScene
-  // between the two halves, see compile.ts.compile3d).
-  'sdMin',
-  'sdSmoothMin',
-  'sdfBox3',
-  'sdfTorus3',
-  'sceneNormal3',
-  'softShadow3',
-];
+/** The single source of truth for a GLSL helper: its body + how it emits. */
+export type HelperDef = { body: string; deps: readonly string[]; phase: HelperPhase };
 
-/** Helpers that must be emitted AFTER sdScene() in the 3D compiler — they
- *  reference sdScene by name so they're not valid until the scene exists. */
-export const HELPERS_AFTER_SCENE: ReadonlySet<string> = new Set([
-  'sceneNormal3',
-  'softShadow3',
-]);
+/** One entry per helper, composed from its body + metadata. Consumers read
+ *  `HELPERS[name]` and get everything. */
+export const HELPERS: Record<string, HelperDef> = Object.fromEntries(
+  Object.entries(BODIES).map(([name, body]) => [name, {
+    body,
+    deps: META[name]?.deps ?? [],
+    phase: META[name]?.phase ?? 'pre',
+  }]),
+) as Record<string, HelperDef>;
 
-/** Expand a set of helper names to include all transitive dependencies. */
+/** Expand a set of requested helper names to include all transitive deps. */
 export function resolveHelperClosure(requested: Iterable<string>): Set<string> {
   const out = new Set<string>();
   const stack = [...requested];
   while (stack.length > 0) {
     const name = stack.pop()!;
     if (out.has(name)) continue;
-    if (!(name in GLSL_HELPERS)) continue;
+    if (!(name in HELPERS)) continue;
     out.add(name);
-    const deps = HELPER_DEPS[name];
-    if (deps) for (const d of deps) stack.push(d);
+    for (const d of HELPERS[name]!.deps) stack.push(d);
   }
+  return out;
+}
+
+export type OrderedHelper = { name: string; body: string; phase: HelperPhase };
+
+/** The closure's helpers in deterministic emission order: dependencies before
+ *  dependents, with declaration order (the order in BODIES) as the stable
+ *  tiebreak. A stable DFS post-order — byte-identical across builds (the
+ *  reverse-parser round-trip relies on it) and impossible to forget a helper. */
+export function orderedHelpers(closure: ReadonlySet<string>): OrderedHelper[] {
+  const visited = new Set<string>();
+  const out: OrderedHelper[] = [];
+  const visit = (name: string): void => {
+    if (visited.has(name) || !closure.has(name)) return;
+    const def = HELPERS[name];
+    if (!def) return;
+    visited.add(name);
+    for (const d of def.deps) visit(d); // dependencies first
+    out.push({ name, body: def.body, phase: def.phase });
+  };
+  for (const name of Object.keys(BODIES)) visit(name); // stable declaration order
   return out;
 }

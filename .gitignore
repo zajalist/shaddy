@@ -19,3 +19,9 @@ Thumbs.db
 
 # claude code agent state + transient worktrees
 .claude/
+
+# dev/debris artifacts
+.playwright-mcp/
+/cv.jpeg
+/effects-*.png
+web/svgpreview/

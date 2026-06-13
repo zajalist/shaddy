@@ -7,6 +7,9 @@ export const DIAMOND_GRID: CardDef = {
   category: 'shape',
   friendlyName: 'Diamond grid',
   description: 'Repeating diamond tiles.',
+  // Deprecated: make with `square` (rotated 45°) + `repeat`. Kept hidden for
+  // back-compat with existing recipes.
+  hidden: true,
   icon: '◆',
   params: {
     scale: { kind: 'float', label: 'scale', default: 6, min: 1, max: 30, step: 0.1 },

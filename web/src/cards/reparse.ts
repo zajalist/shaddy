@@ -16,15 +16,72 @@
 //     gets its rawSource updated.
 
 import { findAllMarkers, findEndLine, sliceSpanBody } from './markers';
+import { lookupCardDef } from './library';
+import { uniformNameFor, attrUniformNameFor } from './compile';
+import { animUniforms } from './anim';
+import { formatParameterAsGlslLiteral } from './format';
 import type {
   BlendMode,
   Card,
   CompiledShader,
+  ParameterValue,
   Recipe,
   ReparseEvent,
   ReparseResult,
+  TypedCard,
   WildcardCard,
 } from './types';
+
+/** When a typed card becomes a wildcard, its captured body still references
+ *  that card's per-card uniforms (`u_card{i}_param`). But a wildcard emits no
+ *  uniform declarations of its own, so those references would be UNDECLARED in
+ *  the recompiled shader → a GL compile error that blanks the preview. Bake the
+ *  card's current param values in as GLSL literals so the wildcard is
+ *  self-contained (and renders exactly what it looked like at capture). Only
+ *  the card's OWN uniforms are baked; references to still-typed neighbours stay
+ *  as uniforms and remain declared. */
+function bakeOwnUniformLiterals(body: string, cardIndex: number, card: TypedCard): string {
+  const def = lookupCardDef(card.type);
+  if (!def) return body;
+  // text params are inlined identifiers, not uniforms; sampler kinds can't be a
+  // literal — leave both untouched.
+  const isMedia = (k: string): boolean => k === 'text' || k === 'image' || k === 'video' || k === 'buffer';
+  const repl: Array<{ name: string; lit: string }> = [];
+
+  for (const [paramKey, paramDef] of Object.entries(def.params)) {
+    if (isMedia(paramDef.kind)) continue;
+    const anim = card.params[paramKey]?.animation;
+    if (anim && (paramDef.kind === 'float' || paramDef.kind === 'color')) {
+      // Animated → bake the ENDPOINT uniforms (min/max/speed/…). The static
+      // u_card{i}_{key} is never emitted for an animated param; the body reads
+      // these via its per-frame local, so baking them keeps the wildcard
+      // self-contained AND still animating (it computes from baked endpoints).
+      for (const au of animUniforms(cardIndex, paramKey, anim)) {
+        repl.push({ name: au.name, lit: formatParameterAsGlslLiteral(au.value) });
+      }
+      continue;
+    }
+    const value = (card.params[paramKey]?.value ?? paramDef.default) as ParameterValue;
+    repl.push({ name: uniformNameFor(cardIndex, paramKey), lit: formatParameterAsGlslLiteral(value) });
+  }
+  // Wired attribute uniforms (u_card{i}_a{n}_param) — same treatment.
+  (card.attributes ?? []).forEach((attr, attrIndex) => {
+    const adef = lookupCardDef(attr.type);
+    if (!adef) return;
+    for (const [paramKey, paramDef] of Object.entries(adef.params)) {
+      if (isMedia(paramDef.kind)) continue;
+      const value = (attr.params[paramKey]?.value ?? paramDef.default) as ParameterValue;
+      repl.push({ name: attrUniformNameFor(cardIndex, attrIndex, paramKey), lit: formatParameterAsGlslLiteral(value) });
+    }
+  });
+
+  // Replace LONGEST names first so a name can't clobber a longer one sharing its
+  // prefix (e.g. u_card0_size must not corrupt u_card0_size_min).
+  repl.sort((a, b) => b.name.length - a.name.length);
+  let out = body;
+  for (const { name, lit } of repl) out = out.split(name).join(lit);
+  return out;
+}
 
 export function reparse(
   prevRecipe: Recipe,
@@ -68,7 +125,11 @@ export function reparse(
     const nextAlpha = marker.alpha ?? 1;
     const nextBlend: BlendMode = marker.blend ?? 'normal';
     let updatedCard: Card = card;
-    if (nextAlpha !== prevAlpha) {
+    // The marker writes alpha at 3 fractional digits, so a pure render→parse
+    // cycle reads back a rounded value. Only adopt the marker alpha when the
+    // user actually moved it PAST display precision — otherwise an unedited
+    // round-trip would silently mutate e.g. 0.1234 → 0.123 every tick.
+    if (Math.abs(nextAlpha - prevAlpha) > 5e-4) {
       updatedCard = { ...updatedCard, alpha: nextAlpha };
       events.push({ kind: 'alpha-updated', cardId: card.id, alpha: nextAlpha });
     }
@@ -85,12 +146,15 @@ export function reparse(
     }
 
     if (updatedCard.kind === 'typed') {
+      // Self-contain the captured body: bake this card's own uniform values in
+      // as literals so the resulting wildcard has no dangling u_card* refs.
+      const baked = bakeOwnUniformLiterals(currentBody, i, updatedCard);
       const wildcard: WildcardCard = {
         kind: 'wildcard',
         id: updatedCard.id,
         enabled: updatedCard.enabled,
-        rawSource: currentBody,
-        displayName: extractDisplayName(currentBody),
+        rawSource: baked,
+        displayName: extractDisplayName(baked),
         alpha: updatedCard.alpha,
         blendMode: updatedCard.blendMode,
       };
@@ -98,7 +162,7 @@ export function reparse(
       events.push({
         kind: 'card-became-wildcard',
         cardId: updatedCard.id,
-        capturedSource: currentBody,
+        capturedSource: baked,
       });
       continue;
     }

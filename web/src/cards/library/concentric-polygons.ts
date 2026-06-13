@@ -7,6 +7,9 @@ export const CONCENTRIC_POLYGONS: CardDef = {
   category: 'shape',
   friendlyName: 'Concentric polygons',
   description: 'N-gon SDF onion-skin bands.',
+  // Folded into the generic `concentric` card (type = Polygon). Kept hidden
+  // for back-compat with existing recipes.
+  hidden: true,
   icon: '⬡',
   params: {
     sides: { kind: 'float', label: 'sides', default: 6, min: 3, max: 12, step: 1 },

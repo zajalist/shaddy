@@ -7,6 +7,9 @@ export const DOT_GRID_2: CardDef = {
   category: 'shape',
   friendlyName: 'Dot grid',
   description: 'Grid of circular dots with adjustable radius.',
+  // Deprecated: make with `circle` (small radius) + `repeat`. Kept hidden for
+  // back-compat with existing recipes.
+  hidden: true,
   icon: '⋮⋮',
   params: {
     spacing: { kind: 'float', label: 'spacing', default: 8, min: 1, max: 30, step: 0.1 },

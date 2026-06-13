@@ -66,15 +66,9 @@ export default tseslint.config(
     ]),
   },
 
-  // editor/ — leaf. Must not import renderer, ux, integration.
-  {
-    files: ['src/editor/**/*.{ts,tsx}'],
-    rules: restrict([
-      xModule('renderer', 'editor is a leaf module'),
-      xModule('ux', 'editor is a leaf module'),
-      xModule('integration', 'editor is a leaf module'),
-    ]),
-  },
+  // (No editor/ block: the editor/ track in CONTRACTS.md was never built — its
+  //  literal-editing surface lives in design/GlslHighlight.tsx + the cards/
+  //  reverse parser. The cargo-cult rule for a nonexistent folder was removed.)
 
   // shared/ — leaf. Must not import any application module.
   {
@@ -87,14 +81,29 @@ export default tseslint.config(
     ]),
   },
 
-  // ux/ — composes renderer + editor + cards entry points, may not import integration.
+  // ux/ — the Mascot character module; may compose entry points, not integration.
   {
     files: ['src/ux/**/*.{ts,tsx}'],
     rules: restrict([
       xModule('integration', 'ux is consumed by integration, not the other way around'),
       deepSibling('renderer'),
-      deepSibling('editor'),
       deepSibling('cards'),
+      deepSibling('compiler'),
+    ]),
+  },
+
+  // design/ — the LIVE composer track (the de-facto integration UI; absent from
+  // the original CONTRACTS four-track diagram). It composes the PUBLIC entries
+  // of cards/renderer/ux/auth; it must NOT deep-import a sibling's internals,
+  // and must not import integration/. This boundary was missing entirely, which
+  // is how design/ accumulated past-the-surface imports (now fixed).
+  {
+    files: ['src/design/**/*.{ts,tsx}'],
+    rules: restrict([
+      xModule('integration', 'design/ is composed by integration/, not the reverse'),
+      deepSibling('cards'),
+      deepSibling('renderer'),
+      deepSibling('ux'),
       deepSibling('compiler'),
     ]),
   },

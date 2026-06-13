@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { SHADE } from './tokens';
 import { CARD_ICON_PATHS } from './card-icons';
+import { ICON_V2 } from './iconsV2';
 
 // Flat-multicolor icon set (iconshock-style).
 // Design rules:
@@ -505,44 +506,15 @@ const ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
-  // Composer icon — TWO chunky puzzle pieces interlocking horizontally
-  // with a clear tab-in-notch joint at the centre. At small navbar size the
-  // previous three-stacked-tiles design collapsed visually into two
-  // horizontal bars; this version reads as "puzzle pieces snapping" from
-  // 16px upward. Sparkle in the top-right for charisma.
-  'composer-blocks': ({ c, cream }) => (
-    <>
-      {/* soft drop shadow */}
-      <g transform="translate(0.6 0.9)" opacity="0.32">
-        <path d="M4 6 H10 V9 A1 1 0 0 0 11 10 A1 1 0 0 0 12 9 V6 H20 V18 H4 Z" fill={SHADOW} />
-      </g>
-
-      {/* LEFT piece — solid square with a TAB poking right at mid-height.
-          Slightly tilted left for hand-drawn personality. */}
-      <g transform="rotate(-2.5 7.2 12)">
-        <path
-          d="M3.2 5.2 H10.2 V10.4 A1.1 1.1 0 0 0 11.3 11.5 H12.3 A1.1 1.1 0 0 0 13.4 12.6 V13.4 A1.1 1.1 0 0 0 12.3 14.5 H11.3 A1.1 1.1 0 0 0 10.2 15.6 V18.6 H3.2 Z"
-          fill={c}
-        />
-        <rect x="3.2" y="5.2" width="7" height="1.6" rx="0.7" fill={cream} opacity="0.4" />
-      </g>
-
-      {/* RIGHT piece — solid square with a NOTCH cut into its left at
-          mid-height that exactly meets the left piece's tab. Tilted right. */}
-      <g transform="rotate(2.5 16.8 12)">
-        <path
-          d="M20.8 5.2 H13.8 V10.4 A1.1 1.1 0 0 1 12.7 11.5 H11.7 A1.1 1.1 0 0 1 10.6 12.6 V13.4 A1.1 1.1 0 0 1 11.7 14.5 H12.7 A1.1 1.1 0 0 1 13.8 15.6 V18.6 H20.8 Z"
-          fill={c} opacity="0.92"
-        />
-        <rect x="14" y="5.2" width="6.8" height="1.6" rx="0.7" fill={cream} opacity="0.36" />
-      </g>
-
-      {/* charisma sparkle top-right */}
-      <path
-        d="M20 3.6 L20.5 5.2 L22 5.6 L20.5 6 L20 7.6 L19.5 6 L18 5.6 L19.5 5.2 Z"
-        fill={cream}
-      />
-    </>
+  // Composer icon — one clean, flat puzzle piece (the universal "blocks"
+  // glyph). The old two-tilted-pieces-with-shadow-and-sparkle version muddied
+  // into a blob below ~20px; a single solid piece with crisp bumps reads from
+  // 14px up. Flat fill, no shadow/sparkle (see the no-glow rule).
+  'composer-blocks': ({ c }) => (
+    <path
+      fill={c}
+      d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"
+    />
   ),
 };
 
@@ -554,6 +526,8 @@ export type IconProps = {
   style?: CSSProperties;
   className?: string;
   rotate?: number;
+  /** Force the legacy glyph (skip the iconsV2 redraw). Used by the icon gallery. */
+  legacy?: boolean;
 };
 
 // Icons whose `name` doesn't match a known ICON_PATHS entry render as either
@@ -572,7 +546,7 @@ function isLikelyEmoji(name: string): boolean {
 // Card icons are looked up under the `card-<kebab-type>` namespace.
 const ALL_ICONS: Record<string, IconRenderer> = { ...ICON_PATHS, ...CARD_ICON_PATHS };
 
-export const Icon = ({ name, size = 20, color, cream, style, className, rotate }: IconProps) => {
+export const Icon = ({ name, size = 20, color, cream, style, className, rotate, legacy }: IconProps) => {
   const c = color ?? 'currentColor';
   const k = cream ?? SHADE.cream;
   const renderer = ALL_ICONS[name];
@@ -581,6 +555,18 @@ export const Icon = ({ name, size = 20, color, cream, style, className, rotate }
     transform: rotate ? `rotate(${rotate}deg)` : undefined,
     ...style,
   };
+  // Prefer the redrawn iconsV2 glyph (with its uniform ink edge) when one exists,
+  // unless legacy is forced. Names not yet redrawn fall back to the legacy set.
+  const v2 = legacy ? undefined : ICON_V2[name];
+  if (v2) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" style={baseStyle} className={className}>
+        <g style={{ filter: `drop-shadow(0 0.6px 0.15px ${SHADE.inkLine}bb)` }}>
+          {v2({ c, cream: k, ink: SHADE.inkLine })}
+        </g>
+      </svg>
+    );
+  }
   if (!renderer) {
     if (isLikelyEmoji(name)) {
       const emojiStyle: CSSProperties = {

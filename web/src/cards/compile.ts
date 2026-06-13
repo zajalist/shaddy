@@ -13,20 +13,25 @@
 
 import {
   CARD_LIBRARY_LIST,
-  GLSL_HELPERS,
-  HELPER_EMISSION_ORDER,
-  HELPERS_AFTER_SCENE,
   WILDCARD_DISPLAY_NAME_FALLBACK,
   WILDCARD_FRIENDLY_NAME,
   lookupCardDef,
+  orderedHelpers,
   resolveHelperClosure,
 } from './library';
 import { END_MARKER, formatCardMarker } from './markers';
-import { formatParameterForDisplay, substitutePlaceholders } from './format';
+import { formatParameterForDisplay, substitutePlaceholders, glslFloat } from './format';
+import { emitAnimLocal, animLocalName, animUniforms, animHelpers } from './anim';
+import { animLocalName as animChainLocal, foldAnimChain, animChainHelpers } from './anim-blocks';
+import { encodeParam, encodeAttr, UNIFORM_REF_RE } from './uniform-names';
 import type {
+  AnimChain,
   BlendMode,
   Card,
+  CardAttribute,
+  CardCategory,
   CardDef,
+  CardIO,
   CompiledShader,
   ParameterValue,
   Pass,
@@ -86,19 +91,79 @@ export function compile(recipe: Recipe): CompiledShader {
   return (recipe.mode === '3d') ? compile3d(recipe) : compile2d(recipe);
 }
 
+/** The custom-animation chains a recipe's params actually bind to (via
+ *  `animation: { type: 'custom', ref }`), in `recipe.animations` order. Orphan
+ *  refs (chain deleted) are dropped — only existing chains are returned, so
+ *  only they fold to a per-frame local. Empty when there are no custom
+ *  animations, keeping the byte-identical invariant intact for old recipes. */
+function collectReferencedAnimChains(recipe: Recipe): AnimChain[] {
+  const all = recipe.animations ?? [];
+  if (all.length === 0) return [];
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const refd = new Set<string>();
+  for (const card of recipe.cards) {
+    if (card.kind === 'typed') {
+      for (const p of Object.values(card.params)) {
+        if (p?.animation?.type === 'custom' && byId.has(p.animation.ref)) refd.add(p.animation.ref);
+      }
+    } else if (card.kind === 'wildcard') {
+      // A typed card hand-edited into a wildcard keeps its `_anim_<id>` text but
+      // loses its typed params. Keep the chain's local alive if the raw source
+      // still names it, so the reference doesn't dangle (blank preview).
+      for (const c of all) {
+        if (!refd.has(c.id) && card.rawSource.includes(animChainLocal(c.id))) refd.add(c.id);
+      }
+    }
+  }
+  return all.filter((c) => refd.has(c.id));
+}
+
 function compile2d(recipe: Recipe): CompiledShader {
   const uniformDecls: string[] = [];
   const uniforms: UniformBinding[] = [];
 
+  // Custom-animation context. `animChainIds` = every chain that EXISTS (so a
+  // bound param resolves to its local; an orphan ref falls back to a static
+  // uniform). `referencedChains` = the subset actually bound by ≥1 param —
+  // only those fold to a per-frame local. Empty for any recipe without custom
+  // animations, so the byte-identical invariant is untouched.
+  const animChainIds = new Set((recipe.animations ?? []).map((c) => c.id));
+  const referencedChains = collectReferencedAnimChains(recipe);
+
   // ── Pass 1: emit per-card uniform declarations + collect uniform bindings ──
   recipe.cards.forEach((card, cardIndex) => {
     if (card.kind !== 'typed') return;
+    if (card.enabled === false) return; // muted → no uniforms (see Pass 3)
     const def = lookupCardDef(card.type);
     if (!def) return;
     // In a 2D recipe, 3D cards become no-ops and emit no uniforms — their
     // uniforms are never referenced by the 2D shader template.
     if (def.mode === '3d') return;
     for (const [paramKey, paramDef] of Object.entries(def.params)) {
+      // 'text' params (reroute names) are inlined into the GLSL as identifiers,
+      // never wired as uniforms — skip them here.
+      if (paramDef.kind === 'text') continue;
+      // Repeat's `scope` is compile-only — it picks the tiling reach at build
+      // time and is never referenced by the shader, so it gets no uniform.
+      if (card.type === 'repeat' && paramKey === 'scope') continue;
+      // Reroute `channel` is compile-only (picks the rr_ var's type/register).
+      if ((card.type === 'reroute_decl' || card.type === 'reroute_use') && paramKey === 'channel') continue;
+      const anim = card.params[paramKey]?.animation;
+      // Bound to a custom animation chain: the chain folds to a global local
+      // with baked params, so this param needs NO uniform. (An orphan ref —
+      // chain deleted — falls through to the static uniform below.)
+      if (anim?.type === 'custom') {
+        if (paramDef.kind === 'float' && animChainIds.has(anim.ref)) continue;
+      } else if (anim && (paramDef.kind === 'float' || paramDef.kind === 'color')) {
+        // Built-in animated float/colour param: emit its endpoint uniforms
+        // (min/max/speed/…) carrying the Animation's current values, instead of
+        // the single static uniform. The snippet references a per-frame local.
+        for (const au of animUniforms(cardIndex, paramKey, anim)) {
+          uniformDecls.push(`uniform ${au.glType} ${au.name};`);
+          uniforms.push({ name: au.name, cardId: card.id, paramKey: au.paramKey, value: au.value });
+        }
+        continue;
+      }
       const name = uniformNameFor(cardIndex, paramKey);
       const glType = glslTypeForParam(paramDef.kind);
       uniformDecls.push(`uniform ${glType} ${name};`);
@@ -112,21 +177,75 @@ function compile2d(recipe: Recipe): CompiledShader {
       const value: ParameterValue = card.params[paramKey]?.value ?? fallback;
       uniforms.push({ name, cardId: card.id, paramKey, value });
     }
+    // Scoped attribute uniforms — one set per wired attribute. paramKey is
+    // namespaced so it never collides with the host card's own params.
+    for (const { attr, attrIndex, adef } of wiredAttrs(card)) {
+      for (const [paramKey, paramDef] of Object.entries(adef.params)) {
+        const name = attrUniformNameFor(cardIndex, attrIndex, paramKey);
+        const glType = glslTypeForParam(paramDef.kind);
+        uniformDecls.push(`uniform ${glType} ${name};`);
+        const fallback: ParameterValue = paramKindFallback(paramDef);
+        const value: ParameterValue = attr.params[paramKey]?.value ?? fallback;
+        uniforms.push({ name, cardId: card.id, paramKey: `a${attrIndex}_${paramKey}`, value });
+      }
+    }
   });
+
+  // ── Dangling-uniform guard ──
+  // A wildcard body can reference u_card*/u_buffer* names this build no longer
+  // declares (a hand-edited wildcard, or a sampler the typed→wildcard bake
+  // couldn't inline). Declare a benign fallback for each so the shader still
+  // links instead of failing on an undeclared identifier (which blanks the
+  // preview). Added to the uniform block here — BEFORE Pass 3 records spans —
+  // so card span line numbers are unaffected.
+  for (const decl of collectDanglingUniformFallbacks(recipe.cards, uniformDecls)) {
+    uniformDecls.push(decl);
+  }
 
   // ── Pass 2: collect helper functions referenced by any card ──
   const requestedHelpers = new Set<string>();
   for (const card of recipe.cards) {
     if (card.kind !== 'typed') continue;
+    if (card.enabled === false) continue; // muted → no helpers
+    // Macro cards have no def of their own; pull helpers from their sub-blocks
+    // (their GLSL is inline-expanded into the macro body).
+    if (card.type === 'macro') {
+      for (const sub of card.macro?.blocks ?? []) {
+        const sdef = lookupCardDef(sub.type);
+        if (sdef && sdef.mode !== '3d' && sdef.helpers) for (const h of sdef.helpers) requestedHelpers.add(h);
+      }
+      continue;
+    }
     const def = lookupCardDef(card.type);
-    if (!def?.helpers) continue;
-    // 3D cards' helpers only exist in the 3D compiler path (they reference
-    // sdScene which the 2D template doesn't define).
-    if (def.mode === '3d') continue;
-    for (const h of def.helpers) requestedHelpers.add(h);
+    // 3D cards' helpers only exist in the 3D compiler path.
+    if (def && def.mode !== '3d' && def.helpers) {
+      for (const h of def.helpers) requestedHelpers.add(h);
+    }
+    // Animated params may need helpers too (noise → noise2 + its deps).
+    if (def && def.mode !== '3d') {
+      for (const p of Object.values(card.params)) {
+        if (p?.animation) for (const h of animHelpers(p.animation)) requestedHelpers.add(h);
+      }
+    }
+    // Wired attribute helpers (uv-transform distortions may pull helpers too).
+    for (const { adef } of wiredAttrs(card)) {
+      if (adef.helpers) for (const h of adef.helpers) requestedHelpers.add(h);
+    }
+  }
+  // Custom animation chains pull their own block helpers (e.g. Noise → noise2).
+  for (const chain of referencedChains) {
+    for (const h of animChainHelpers(chain)) requestedHelpers.add(h);
   }
   const helperClosure = resolveHelperClosure(requestedHelpers);
   const anyComposition = recipe.cards.some(hasNonDefaultComposition);
+
+  // ── Repeat wrap planning ──
+  // A Repeat card placed after a shape tiles that shape. Because the engine is
+  // a single linear uv→d→col pass, "after" is realised by wrapping the
+  // preceding shape body in `{ vec2 _rep_uv = uv; uv = <tile>; <body>; uv =
+  // _rep_uv; }`. Here we precompute, per card index, the tile statements that
+  // should wrap it (a shape can be tiled by more than one downstream Repeat).
+  const repeatWrapByIndex = collectRepeatWraps(recipe.cards);
 
   // ── Pass 3: emit the GLSL body, tracking spans line by line ──
   const lines: string[] = [];
@@ -137,15 +256,8 @@ function compile2d(recipe: Recipe): CompiledShader {
     lines.push('');
   }
 
-  // Helpers emitted exactly once, in the fixed order so dependents follow
-  // their dependencies.
-  const emittedHelpers: string[] = [];
-  for (const name of HELPER_EMISSION_ORDER) {
-    if (!helperClosure.has(name)) continue;
-    const body = GLSL_HELPERS[name];
-    if (!body) continue;
-    emittedHelpers.push(body);
-  }
+  // Helpers emitted exactly once, in derived dependency order.
+  const emittedHelpers = orderedHelpers(helperClosure).map((h) => h.body);
   if (emittedHelpers.length > 0 || anyComposition) {
     lines.push('// === helpers ===');
     for (const body of emittedHelpers) {
@@ -162,32 +274,62 @@ function compile2d(recipe: Recipe): CompiledShader {
   for (const line of MAIN_PRELUDE) lines.push(line);
   lines.push('');
 
+  // Pre-declare every named-reroute var (declarations AND usages) up front so
+  // a usage whose ref has no matching declaration reads vec3(0.0) instead of
+  // an undeclared-variable error. These lines live OUTSIDE any card span.
+  const rerouteDecls = collectRerouteDecls(recipe.cards);
+  if (rerouteDecls.length > 0) {
+    lines.push('  // === named reroutes ===');
+    for (const decl of rerouteDecls) lines.push(decl);
+    lines.push('');
+  }
+
+  // Fold every referenced custom-animation chain into one per-frame local
+  // (`_anim_<id>`), declared up front so any bound param's snippet can read it.
+  // Like the reroute decls, these lines live OUTSIDE any card span.
+  if (referencedChains.length > 0) {
+    lines.push('  // === animations ===');
+    for (const chain of referencedChains) {
+      for (const declLine of foldAnimChain(chain)) lines.push(declLine);
+    }
+    lines.push('');
+  }
+
   const spans: Span[] = [];
 
   recipe.cards.forEach((card, cardIndex) => {
-    const markerLine = lines.length + 1; // 1-based
-    const cardBodyLines: string[] = [];
+    const emit = new CardEmit();
 
-    if (card.kind === 'typed') {
-      emitTypedCard(card, cardIndex, lines, cardBodyLines);
+    if (card.enabled === false) {
+      // Muted card: emit the marker + a single note so the span stays 1:1 with
+      // recipe.cards (reparse hard-fails on marker-count divergence) but the
+      // card contributes nothing to uv/d/col. Its uniforms/helpers were already
+      // skipped in Pass 1/2; we also skip repeat/composition wraps here.
+      emitDisabledCard(card, emit);
     } else {
-      emitWildcardCard(card, lines, cardBodyLines);
+      if (card.kind === 'typed') {
+        emitTypedCard(card, cardIndex, emit, animChainIds);
+      } else {
+        emitWildcardCard(card, emit);
+      }
+
+      // If a downstream Repeat tiles this (shape) card, wrap its body in a
+      // tiled-uv save/restore block. Inner to composition so the composition
+      // snapshot brackets the tiled result.
+      const tiles = repeatWrapByIndex.get(cardIndex);
+      if (tiles && tiles.length > 0) {
+        wrapWithRepeat(tiles, emit);
+      }
+
+      // If this card composes (alpha < 1 or blend != normal), wrap its body
+      // lines in a snapshot/mix block. We do this AFTER emit so the per-card
+      // emitter doesn't have to know about composition.
+      if (hasNonDefaultComposition(card)) {
+        wrapWithComposition(card, emit);
+      }
     }
 
-    // If this card composes (alpha < 1 or blend != normal), wrap its body
-    // lines in a snapshot/mix block. We do this AFTER emit so the per-card
-    // emitter doesn't have to know about composition.
-    if (hasNonDefaultComposition(card)) {
-      wrapWithComposition(card, lines, cardBodyLines);
-    }
-
-    const endLine = lines.length; // 1-based, INCLUSIVE
-    spans.push({
-      cardId: card.id,
-      startLine: markerLine,
-      endLine,
-      expectedBody: cardBodyLines.join('\n'),
-    });
+    spans.push(emit.flush(card.id, lines));
   });
 
   lines.push(END_MARKER);
@@ -264,6 +406,7 @@ function compile3d(recipe: Recipe): CompiledShader {
   let materialExpr = 'vec3(0.85, 0.7, 0.45)';
   recipe.cards.forEach((card, cardIndex) => {
     if (card.kind !== 'typed') return;
+    if (card.enabled === false) return; // muted → no uniforms / no material
     const def = lookupCardDef(card.type);
     if (!def || def.mode !== '3d') return;
     for (const [paramKey, paramDef] of Object.entries(def.params)) {
@@ -286,6 +429,11 @@ function compile3d(recipe: Recipe): CompiledShader {
     }
   });
 
+  // Dangling-uniform guard (same as the 2D path) — keep wildcard refs linkable.
+  for (const decl of collectDanglingUniformFallbacks(recipe.cards, uniformDecls)) {
+    uniformDecls.push(decl);
+  }
+
   // ── Pass 2: helper closure — always include the raymarch core ──
   const requestedHelpers = new Set<string>([
     'sdMin', 'sdSmoothMin', 'sceneNormal3', 'softShadow3',
@@ -307,17 +455,13 @@ function compile3d(recipe: Recipe): CompiledShader {
     lines.push('');
   }
 
-  // Helpers BEFORE sdScene — emit primitives + sdMin/sdSmoothMin first so
-  // sdScene can reference them. sceneNormal3 + softShadow3 reference sdScene
-  // so they MUST come after.
+  // Helpers split by phase: 'pre' helpers (primitives + sdMin/sdSmoothMin)
+  // emit before sdScene; 'post' helpers (sceneNormal3 + softShadow3) reference
+  // sdScene by name so they MUST come after it.
   const helpersBefore: string[] = [];
   const helpersAfter: string[] = [];
-  for (const name of HELPER_EMISSION_ORDER) {
-    if (!helperClosure.has(name)) continue;
-    const body = GLSL_HELPERS[name];
-    if (!body) continue;
-    if (HELPERS_AFTER_SCENE.has(name)) helpersAfter.push(body);
-    else helpersBefore.push(body);
+  for (const h of orderedHelpers(helperClosure)) {
+    (h.phase === 'post' ? helpersAfter : helpersBefore).push(h.body);
   }
 
   if (helpersBefore.length > 0) {
@@ -343,22 +487,15 @@ function compile3d(recipe: Recipe): CompiledShader {
   // Pre-pass: drop a marker + body for EVERY card (so the code view still
   // shows them in order); 2D cards get a no-op note inside sdScene.
   recipe.cards.forEach((card, cardIndex) => {
-    const markerLine = lines.length + 1;
-    const cardBodyLines: string[] = [];
-
-    if (card.kind === 'typed') {
-      emit3dTypedCard(card, cardIndex, lines, cardBodyLines);
+    const emit = new CardEmit();
+    if (card.enabled === false) {
+      emitDisabledCard(card, emit);
+    } else if (card.kind === 'typed') {
+      emit3dTypedCard(card, cardIndex, emit);
     } else {
-      emitWildcardCard(card, lines, cardBodyLines);
+      emitWildcardCard(card, emit);
     }
-
-    const endLine = lines.length;
-    spans.push({
-      cardId: card.id,
-      startLine: markerLine,
-      endLine,
-      expectedBody: cardBodyLines.join('\n'),
-    });
+    spans.push(emit.flush(card.id, lines));
   });
 
   lines.push('  return d;');
@@ -391,100 +528,85 @@ function compile3d(recipe: Recipe): CompiledShader {
   };
 }
 
-function emit3dTypedCard(
-  card: TypedCard,
-  cardIndex: number,
-  out: string[],
-  bodyOut: string[],
-): void {
+/** The scratch pad a single card emits into. Its marker line + body lines
+ *  accumulate HERE (never written to the shared output during emission), so the
+ *  two-buffer lockstep the old `(out, bodyOut)` pattern relied on can't be
+ *  broken — there is only one buffer. `wrap` brackets the body in place (no
+ *  splice surgery on the shared output), and `flush` stamps the marker + body
+ *  into the output exactly once, returning the card's Span. */
+class CardEmit {
+  private markerLine = '';
+  private hasMarker = false;
+  private bodyLines: string[] = [];
+
+  /** The card's marker line — the Span's first line; NOT part of the body. */
+  marker(line: string): void { this.markerLine = line; this.hasMarker = true; }
+
+  /** Append one body line (recorded into span.expectedBody). */
+  line(s: string): void { this.bodyLines.push(s); }
+
+  /** Bracket the current body in open/close lines, re-indenting the existing
+   *  body one step (default 2 spaces). Pure surgery on THIS card's buffer. */
+  wrap(open: readonly string[], close: readonly string[], indent = '  '): void {
+    const inner = this.bodyLines.map((l) => indent + l);
+    this.bodyLines = [...open, ...inner, ...close];
+  }
+
+  /** Stamp marker + body into `out` and return the card's Span. */
+  flush(cardId: string, out: string[]): Span {
+    const startLine = out.length + 1; // 1-based — the marker's line
+    if (this.hasMarker) out.push(this.markerLine);
+    for (const l of this.bodyLines) out.push(l);
+    return { cardId, startLine, endLine: out.length, expectedBody: this.bodyLines.join('\n') };
+  }
+}
+
+function emit3dTypedCard(card: TypedCard, cardIndex: number, emit: CardEmit): void {
   // Portal — same treatment as in 2D: marker + comment, no shader effect.
   if (card.type === 'portal') {
-    out.push(
-      formatCardMarker({
-        cardId: card.id,
-        friendlyName: 'Portal',
-        alpha: card.alpha,
-        blend: card.blendMode,
-      }),
-    );
-    const body = '  // portal — visual chain wrap (no shader effect)';
-    out.push(body);
-    bodyOut.push(body);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: 'Portal', alpha: card.alpha, blend: card.blendMode }));
+    emit.line('  // portal — visual chain wrap (no shader effect)');
     return;
   }
 
   const def = lookupCardDef(card.type);
   if (!def) {
-    out.push(formatCardMarker({
-      cardId: card.id,
-      friendlyName: `Unknown (${card.type})`,
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }));
-    const note = `  // unknown card type: ${card.type}`;
-    out.push(note);
-    bodyOut.push(note);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: `Unknown (${card.type})`, alpha: card.alpha, blend: card.blendMode }));
+    emit.line(`  // unknown card type: ${card.type}`);
     return;
   }
 
   // 2D card in a 3D recipe → marker + skip-note, no contribution.
   if (def.mode !== '3d' || !def.contribution3d) {
-    out.push(formatCardMarker({
-      cardId: card.id,
-      friendlyName: def.friendlyName,
-      paramDisplays: buildParamDisplays(def, card),
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }));
-    const note = `  // ${def.type} — 2D card, no effect in 3D recipe`;
-    out.push(note);
-    bodyOut.push(note);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, paramDisplays: buildParamDisplays(def, card), alpha: card.alpha, blend: card.blendMode }));
+    emit.line(`  // ${def.type} — 2D card, no effect in 3D recipe`);
     return;
   }
 
-  out.push(
-    formatCardMarker({
-      cardId: card.id,
-      friendlyName: def.friendlyName,
-      paramDisplays: buildParamDisplays(def, card),
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }),
-  );
+  emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, paramDisplays: buildParamDisplays(def, card), alpha: card.alpha, blend: card.blendMode }));
 
   const sub = (template: string): string => substitutePlaceholders(template, (paramKey) => {
     if (!(paramKey in def.params)) {
-      throw new Error(
-        `[cards.compile] card "${def.type}" references unknown placeholder {{${paramKey}}}`,
-      );
+      throw new Error(`[cards.compile] card "${def.type}" references unknown placeholder {{${paramKey}}}`);
     }
     return uniformNameFor(cardIndex, paramKey);
   });
 
   const contrib = def.contribution3d;
-  const pushBody = (line: string): void => {
-    out.push(line);
-    bodyOut.push(line);
-  };
-
   if (contrib.sdfExpr) {
     // d = sdSmoothMin(d, <expr>, k); — uses k=0 → hard min via the helper.
-    pushBody(`  d = sdSmoothMin(d, ${sub(contrib.sdfExpr)}, k);`);
+    emit.line(`  d = sdSmoothMin(d, ${sub(contrib.sdfExpr)}, k);`);
   } else if (contrib.domainExpr) {
     // Rebind p for subsequent contributions. Stays inside sdScene's scope.
-    pushBody(`  p = ${sub(contrib.domainExpr)};`);
+    emit.line(`  p = ${sub(contrib.domainExpr)};`);
   } else if (contrib.smoothness !== undefined) {
-    pushBody(`  k = ${sub(contrib.smoothness)};`);
+    emit.line(`  k = ${sub(contrib.smoothness)};`);
   } else if (contrib.material !== undefined) {
-    // Material is global — the file-scope g_material is assigned in main()
-    // because GLSL ES global initializers must be constants (no uniform
-    // refs). Pass-1 already walked all 3D cards and resolved the LAST
-    // material expression, which compile3d substitutes into MAIN_3D_HEAD.
-    // This card's body is just a marker note. Documented limitation:
-    // material is global, not per-surface.
-    pushBody(`  // ${def.type} — global material (last material card wins)`);
+    // Material is global — assigned in main() via MAIN_3D_HEAD (Pass 1 resolved
+    // the last material expr). This card's body is just a marker note.
+    emit.line(`  // ${def.type} — global material (last material card wins)`);
   } else {
-    pushBody(`  // ${def.type} — 3D card without a recognized contribution`);
+    emit.line(`  // ${def.type} — 3D card without a recognized contribution`);
   }
 }
 
@@ -493,24 +615,90 @@ function emit3dTypedCard(
 function emitTypedCard(
   card: TypedCard,
   cardIndex: number,
-  out: string[],
-  bodyOut: string[],
+  emit: CardEmit,
+  animChainIds: ReadonlySet<string> = new Set(),
 ): void {
   // Portal — purely a visual chain-wrap marker. Emits the card marker line
   // (so reparse can still see it as a known card) plus a single comment so
   // the span has a non-empty body. Zero params → no uniforms, no helpers.
   if (card.type === 'portal') {
-    out.push(
-      formatCardMarker({
-        cardId: card.id,
-        friendlyName: 'Portal',
-        alpha: card.alpha,
-        blend: card.blendMode,
-      }),
-    );
-    const body = '  // portal — visual chain wrap (no shader effect)';
-    out.push(body);
-    bodyOut.push(body);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: 'Portal', alpha: card.alpha, blend: card.blendMode }));
+    emit.line('  // portal — visual chain wrap (no shader effect)');
+    return;
+  }
+
+  // Repeat — a compile-time control card. It tiles the PRECEDING shape(s)
+  // rather than mutating uv forward, so the user authors it AFTER the shape
+  // (matching the shape → distortion → colour → effect pipeline). The actual
+  // tiling is injected into the wrapped shapes' bodies by compile2d; here the
+  // card emits only its marker + a note so its own span stays a no-op.
+  if (card.type === 'repeat') {
+    const rdef = lookupCardDef('repeat');
+    emit.marker(formatCardMarker({
+      cardId: card.id,
+      friendlyName: rdef?.friendlyName ?? 'Repeat',
+      paramDisplays: rdef ? buildParamDisplays(rdef, card) : undefined,
+      alpha: card.alpha,
+      blend: card.blendMode,
+    }));
+    emit.line('  // repeat — tiles the preceding shape(s); see the wrapped shape body');
+    return;
+  }
+
+  // Named reroutes — special-cased like portal. A DECLARATION assigns the
+  // running colour to its named `rr_*` var (pre-declared at the top of main);
+  // a USAGE reads that var as a source. The CardDef.snippetTemplate is never
+  // substituted — we emit the one line directly so it's deterministic and
+  // round-trips through reparse.
+  if (card.type === 'reroute_decl' || card.type === 'reroute_use') {
+    const isDecl = card.type === 'reroute_decl';
+    const rdef = lookupCardDef(card.type);
+    const raw = card.params[isDecl ? 'name' : 'ref']?.value;
+    const id = sanitizeRerouteId(typeof raw === 'string' ? raw : '');
+    const ch = rerouteChannelOf(card);
+    const v = rerouteVarName(id, ch);
+    const reg = REROUTE_CHANNEL[ch].reg;
+    emit.marker(formatCardMarker({
+      cardId: card.id,
+      friendlyName: rdef?.friendlyName ?? (isDecl ? 'Reroute' : 'Reroute (use)'),
+      alpha: card.alpha,
+      blend: card.blendMode,
+    }));
+    // decl taps the register into the var; use reads the var back into it.
+    emit.line(isDecl ? `  ${v} = ${reg};` : `  ${reg} = ${v};`);
+    return;
+  }
+
+  // Macro — a "function" block that inline-expands to its sub-blocks' GLSL,
+  // with each sub-block's params baked as literal constants (so the body is
+  // self-contained and constant-foldable). One marker / one span per macro,
+  // so reparse still sees it as a single card.
+  if (card.type === 'macro') {
+    emit.marker(formatCardMarker({
+      cardId: card.id,
+      friendlyName: card.macro?.name || 'Macro',
+      alpha: card.alpha,
+      blend: card.blendMode,
+    }));
+    const lines: string[] = [];
+    for (const sub of card.macro?.blocks ?? []) {
+      const sdef = lookupCardDef(sub.type);
+      // v1: only plain typed blocks expand — skip markers, nested macros, 3D.
+      if (!sdef || sdef.mode === '3d') continue;
+      if (sub.type === 'portal' || sub.type === 'macro' || sub.type.startsWith('reroute_')) continue;
+      let snippet: string;
+      try {
+        snippet = substitutePlaceholders(sdef.snippetTemplate, (k) => {
+          const pd = sdef.params[k];
+          const v = sub.params[k]?.value ?? (pd ? paramKindFallback(pd) : 0);
+          return glslLiteral(v, pd?.kind);
+        });
+      } catch { continue; }
+      for (const ln of snippet.split('\n')) lines.push(`  ${ln}`);
+    }
+    const raw = lines.length > 0 ? lines : ['  // (empty macro)'];
+    const bodyLines = card.macro?.compress ? compressMacroLines(raw) : raw;
+    for (const ln of bodyLines) emit.line(ln);
     return;
   }
 
@@ -518,15 +706,8 @@ function emitTypedCard(
   if (!def) {
     // Defensive — recipe references a card type we no longer have. Render
     // as a wildcard-style marker so the user at least sees the cardId.
-    out.push(formatCardMarker({
-      cardId: card.id,
-      friendlyName: `Unknown (${card.type})`,
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }));
-    const note = `  // unknown card type: ${card.type}`;
-    out.push(note);
-    bodyOut.push(note);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: `Unknown (${card.type})`, alpha: card.alpha, blend: card.blendMode }));
+    emit.line(`  // unknown card type: ${card.type}`);
     return;
   }
 
@@ -534,27 +715,18 @@ function emitTypedCard(
   // card exists in source but the shader stays clean. (The 3D compiler path
   // is the symmetric counterpart for 2D cards.)
   if (def.mode === '3d') {
-    out.push(formatCardMarker({
-      cardId: card.id,
-      friendlyName: def.friendlyName,
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }));
-    const note = `  // ${def.type} — 3D card, no effect in 2D recipe`;
-    out.push(note);
-    bodyOut.push(note);
+    emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, alpha: card.alpha, blend: card.blendMode }));
+    emit.line(`  // ${def.type} — 3D card, no effect in 2D recipe`);
     return;
   }
 
-  out.push(
-    formatCardMarker({
-      cardId: card.id,
-      friendlyName: def.friendlyName,
-      paramDisplays: buildParamDisplays(def, card),
-      alpha: card.alpha,
-      blend: card.blendMode,
-    }),
-  );
+  emit.marker(formatCardMarker({
+    cardId: card.id,
+    friendlyName: def.friendlyName,
+    paramDisplays: buildParamDisplays(def, card),
+    alpha: card.alpha,
+    blend: card.blendMode,
+  }));
 
   const snippet = substitutePlaceholders(def.snippetTemplate, (paramKey) => {
     if (!(paramKey in def.params)) {
@@ -564,86 +736,335 @@ function emitTypedCard(
         `[cards.compile] card "${def.type}" references unknown placeholder {{${paramKey}}}`,
       );
     }
+    // Animated float/colour params resolve to their per-frame local instead of
+    // the static uniform (the local is declared just above the snippet).
+    const anim = card.params[paramKey]?.animation;
+    const pkind = def.params[paramKey]?.kind;
+    // Bound to a custom chain: resolve to the shared chain local `_anim_<id>`
+    // (declared once up front). Orphan ref or non-float → static uniform.
+    if (anim?.type === 'custom') {
+      if (pkind === 'float' && animChainIds.has(anim.ref)) return animChainLocal(anim.ref);
+      return uniformNameFor(cardIndex, paramKey);
+    }
+    if (anim && (pkind === 'float' || pkind === 'color')) {
+      return animLocalName(cardIndex, paramKey);
+    }
     return uniformNameFor(cardIndex, paramKey);
   });
 
+  // Per-frame locals for this card's animated params — declared before the
+  // snippet (and before any attr block) so they're in scope wherever the
+  // snippet reads them. Part of the card's body, so they round-trip.
+  for (const [paramKey, paramDef] of Object.entries(def.params)) {
+    const anim = card.params[paramKey]?.animation;
+    // Custom-chain params read the shared `_anim_<id>` local — no per-card
+    // local to emit here. Only built-in animations emit a per-card local.
+    if (anim && anim.type !== 'custom' && (paramDef.kind === 'float' || paramDef.kind === 'color')) {
+      emit.line(`  ${emitAnimLocal(cardIndex, paramKey, anim)}`);
+    }
+  }
+
+  // Scoped uv-transform attributes: save uv, apply each attribute's
+  // transform, run the host body against the transformed uv, then restore so
+  // downstream cards see the original coordinate. The whole thing stays one
+  // span body, so the composition wrap (if any) snapshots col/d around it.
+  const attrs = wiredAttrs(card);
+  if (attrs.length > 0) {
+    emit.line('  { vec2 _attr_uv = uv;');
+    for (const { attrIndex, adef } of attrs) {
+      const asnippet = substitutePlaceholders(adef.snippetTemplate, (paramKey) => {
+        if (!(paramKey in adef.params)) {
+          throw new Error(
+            `[cards.compile] attribute "${adef.type}" references unknown placeholder {{${paramKey}}}`,
+          );
+        }
+        return attrUniformNameFor(cardIndex, attrIndex, paramKey);
+      });
+      emit.line(`    // attr · ${adef.friendlyName}`);
+      for (const aline of asnippet.split('\n')) emit.line(`    ${aline}`);
+    }
+    for (const snippetLine of snippet.split('\n')) emit.line(`    ${snippetLine}`);
+    emit.line('    uv = _attr_uv;');
+    emit.line('  }');
+    return;
+  }
+
   for (const snippetLine of snippet.split('\n')) {
-    const indented = `  ${snippetLine}`;
-    out.push(indented);
-    bodyOut.push(indented);
+    emit.line(`  ${snippetLine}`);
   }
 }
 
-function emitWildcardCard(card: WildcardCard, out: string[], bodyOut: string[]): void {
+/** Emit a muted (enabled:false) card: its marker + a single note. Keeps the
+ *  span 1:1 with recipe.cards while contributing zero GLSL. Used by both the 2D
+ *  and 3D paths. */
+function emitDisabledCard(card: Card, emit: CardEmit): void {
+  const name = card.kind === 'typed'
+    ? (lookupCardDef(card.type)?.friendlyName ?? card.macro?.name ?? card.type)
+    : (card.displayName ?? WILDCARD_DISPLAY_NAME_FALLBACK);
+  emit.marker(formatCardMarker({ cardId: card.id, friendlyName: name, alpha: card.alpha, blend: card.blendMode }));
+  emit.line(`  // ${name} — disabled`);
+}
+
+function emitWildcardCard(card: WildcardCard, emit: CardEmit): void {
   const friendlyName = card.displayName ?? WILDCARD_DISPLAY_NAME_FALLBACK;
-  out.push(formatCardMarker({
-    cardId: card.id,
-    friendlyName,
-    alpha: card.alpha,
-    blend: card.blendMode,
-  }));
+  emit.marker(formatCardMarker({ cardId: card.id, friendlyName, alpha: card.alpha, blend: card.blendMode }));
   // Wildcard rawSource is emitted verbatim (no indentation injection — the
   // user is responsible for their own formatting inside a wildcard span).
   if (card.rawSource.length > 0) {
-    for (const rawLine of card.rawSource.split('\n')) {
-      out.push(rawLine);
-      bodyOut.push(rawLine);
-    }
+    for (const rawLine of card.rawSource.split('\n')) emit.line(rawLine);
   }
 }
 
-/** Mutate `out` (and `bodyOut`) in place: take the already-emitted card body
- *  lines off the tail and re-emit them inside an alpha/blend composition
- *  block. Both `out` (full source buffer) and `bodyOut` (this card's body
- *  for span.expectedBody) get the same wrapped lines. */
-function wrapWithComposition(card: Card, out: string[], bodyOut: string[]): void {
-  // Snapshot the body lines we just wrote (still in both buffers), then pop
-  // them off so we can re-emit wrapped.
-  const popCount = bodyOut.length;
-  const innerLines = bodyOut.slice();
-  out.splice(out.length - popCount, popCount);
-  bodyOut.length = 0;
+/** Bracket the card's body in an alpha/blend composition block: snapshot
+ *  col/d, run the body, then mix back. Pure list surgery on the card's scratch
+ *  pad — no splicing of the shared output. */
+function wrapWithComposition(card: Card, emit: CardEmit): void {
+  const alphaLit = glslFloat(cardAlpha(card));
+  const modeLit = String(BLEND_MODE_CODE[cardBlend(card)]);
+  emit.wrap(
+    ['  {', '    vec3 _prev_col = col;', '    float _prev_d = d;'],
+    [
+      `    col = mix(_prev_col, ${BLEND_HELPER_NAME}(_prev_col, col, ${modeLit}), ${alphaLit});`,
+      `    d = mix(_prev_d, d, ${alphaLit});`,
+      '  }',
+    ],
+  );
+}
 
-  const alpha = cardAlpha(card);
-  const blend = cardBlend(card);
-  const alphaLit = glslLit(alpha);
-  const modeLit = String(BLEND_MODE_CODE[blend]);
-
-  const push = (s: string): void => {
-    out.push(s);
-    bodyOut.push(s);
+/** Plan which cards a Repeat tiles. Returns a map cardIndex → tile statements
+ *  (GLSL `uv = …;` lines) to inject before that card's body. A Repeat with
+ *  scope 'all' (1) tiles every shape card before it; scope 'direct' (0,
+ *  default) tiles only the contiguous shape run immediately preceding it. The
+ *  tile statement references the Repeat's own count uniforms so dragging the
+ *  count still updates live. */
+function collectRepeatWraps(cards: Recipe['cards']): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  const repeatDef = lookupCardDef('repeat');
+  if (!repeatDef) return out;
+  // Repeat tiles cards that produce the distance field. Asking the IO contract
+  // ("writes 'd'") instead of `category === 'shape'` is byte-identical today
+  // (only shape cards write d) but states the real intent and lets a non-shape
+  // card opt in by declaring its io.
+  const writesDistance = (c: Card): boolean => {
+    if (c.kind !== 'typed') return false;
+    const def = lookupCardDef(c.type);
+    return def ? cardIO(def).writes.includes('d') : false;
   };
-  push('  {');
-  push('    vec3 _prev_col = col;');
-  push('    float _prev_d = d;');
-  for (const line of innerLines) {
-    // Already 2-space indented from the emitter; add another indent step so
-    // the body reads as a clear scoped block.
-    push(`  ${line}`);
-  }
-  push(`    col = mix(_prev_col, ${BLEND_HELPER_NAME}(_prev_col, col, ${modeLit}), ${alphaLit});`);
-  push(`    d = mix(_prev_d, d, ${alphaLit});`);
-  push('  }');
+
+  cards.forEach((card, ri) => {
+    if (card.kind !== 'typed' || card.type !== 'repeat') return;
+    if (card.enabled === false) return; // muted repeat tiles nothing
+    const tileStmt = substitutePlaceholders(repeatDef.snippetTemplate, (k) =>
+      uniformNameFor(ri, k),
+    );
+    const scope = Number(card.params.scope?.value ?? 0);
+    const targets: number[] = [];
+    if (scope === 1) {
+      for (let j = 0; j < ri; j++) { const c = cards[j]; if (c && writesDistance(c)) targets.push(j); }
+    } else {
+      for (let j = ri - 1; j >= 0; j--) {
+        const c = cards[j];
+        if (c && writesDistance(c)) targets.push(j);
+        else break;
+      }
+    }
+    for (const t of targets) {
+      const arr = out.get(t) ?? [];
+      arr.push(tileStmt);
+      out.set(t, arr);
+    }
+  });
+  return out;
 }
 
-function glslLit(n: number): string {
-  const s = Number(n.toFixed(6)).toString();
-  return s.includes('.') ? s : `${s}.0`;
+/** Bracket the card's body in a tiled-uv block (save uv → apply each tile →
+ *  body → restore uv). Pure list surgery on the card's scratch pad. */
+function wrapWithRepeat(tiles: string[], emit: CardEmit): void {
+  const open = ['  { vec2 _rep_uv = uv;'];
+  for (const tile of tiles) {
+    for (const tl of tile.split('\n')) open.push(`    ${tl.trim()}`);
+  }
+  emit.wrap(open, ['    uv = _rep_uv;', '  }']);
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
-export function uniformNameFor(cardIndex: number, paramKey: string): string {
-  return `u_card${cardIndex}_${paramKey}`;
+// Standard uniforms the renderer always provides — never need a fallback.
+const STD_UNIFORM_NAMES: ReadonlySet<string> = new Set([
+  'u_resolution', 'u_time', 'u_mouse', 'u_cam_eye', 'u_cam_target', 'u_cam_up',
+]);
+// Name suffixes that signal a texture (so the fallback is a sampler2D, which
+// reads black when unbound — safe — rather than a float that mistypes a
+// texture() call).
+const SAMPLER_NAME_RE = /(?:_tex|_texture|_img|_image|_video|_buf|_buffer|_sampler|_map)$/;
+
+/** Scan wildcard bodies for `u_card…` / `u_buffer…` references that this
+ *  build's `uniformDecls` doesn't declare, and return a sorted (deterministic)
+ *  list of fallback `uniform …;` declarations so the shader still links.
+ *  Sampler-shaped names become sampler2D (reads black unbound); everything else
+ *  becomes float. Empty for any recipe with no dangling refs, so normal output
+ *  stays byte-identical. */
+function collectDanglingUniformFallbacks(cards: Recipe['cards'], uniformDecls: string[]): string[] {
+  const declared = new Set<string>();
+  for (const d of uniformDecls) {
+    const m = /uniform\s+\w+\s+(u_\w+)\s*;/.exec(d);
+    if (m?.[1]) declared.add(m[1]);
+  }
+  const missing = new Set<string>();
+  for (const card of cards) {
+    if (card.kind !== 'wildcard') continue;
+    for (const match of card.rawSource.matchAll(UNIFORM_REF_RE)) {
+      const name = match[0];
+      if (!declared.has(name) && !STD_UNIFORM_NAMES.has(name)) missing.add(name);
+    }
+  }
+  return [...missing].sort().map((name) => {
+    const isSampler = SAMPLER_NAME_RE.test(name) || /^u_buffer_[a-d]$/.test(name);
+    return `uniform ${isSampler ? 'sampler2D' : 'float'} ${name}; // fallback — dangling wildcard reference`;
+  });
+}
+
+/** Resolve a 1-based GLSL body line number to the card whose span contains it,
+ *  so a raw driver error ("L42: undeclared identifier") can be re-anchored to a
+ *  card ("Card 'Swirl': …"). Both the renderer's user-coordinate error line and
+ *  Span line numbers are relative to the emitted body. Returns null when no span
+ *  covers the line (preamble/helpers/epilogue). */
+export function cardForLine(spans: Span[], line: number): Span | null {
+  for (const s of spans) {
+    if (line >= s.startLine && line <= s.endLine) return s;
+  }
+  return null;
+}
+
+// Default register IO per category — the single place "what does a card touch"
+// is answered when a CardDef doesn't declare `io` explicitly.
+const CATEGORY_IO: Record<CardCategory, CardIO> = {
+  shape: { reads: ['uv'], writes: ['d'] },
+  distortion: { reads: ['uv'], writes: ['uv'] },
+  color: { reads: ['d'], writes: ['col'] },
+  effect: { reads: ['col'], writes: ['col'] },
+};
+
+/** The pipeline registers a card reads/writes — the single authority the
+ *  compiler reasons about ordering/tiling from. Explicit `def.io` wins; else
+ *  derived from `category`. */
+export function cardIO(def: CardDef): CardIO {
+  return def.io ?? CATEGORY_IO[def.category];
+}
+
+// The uniform-name scheme lives in ./uniform-names (the single authority).
+// Re-exported here under their historical names so the public surface and the
+// reverse parser keep importing them from one place.
+export const uniformNameFor = encodeParam;
+export const attrUniformNameFor = encodeAttr;
+
+// Distortion card types whose snippet reassigns `uv`. v1 wires ONLY these as
+// scoped block attributes — applied before the host body inside a uv
+// save/restore, so they transform just that block. The scalar (d-mutating)
+// distortions and the other categories arrive in later passes of this feature.
+export const UV_TRANSFORM_ATTR_TYPES: ReadonlySet<string> = new Set([
+  'translate', 'scale_uv', 'mirror_x', 'mirror_y', 'skew',
+  'swirl', 'twirl', 'fisheye', 'polar_warp', 'mirror_domain',
+  'mirror_repeat', 'polar_repeat', 'wave_warp', 'noise_warp', 'zoom_blur_uv',
+]);
+
+/** The host block's wired (uv-transform) attributes, paired with their def +
+ *  original index (the index is part of the attribute uniform name so it stays
+ *  stable across other attributes being added/removed). */
+function wiredAttrs(card: TypedCard): Array<{ attr: CardAttribute; attrIndex: number; adef: CardDef }> {
+  const out: Array<{ attr: CardAttribute; attrIndex: number; adef: CardDef }> = [];
+  (card.attributes ?? []).forEach((attr, attrIndex) => {
+    if (attr.enabled === false) return;
+    if (!UV_TRANSFORM_ATTR_TYPES.has(attr.type)) return;
+    const adef = lookupCardDef(attr.type);
+    if (adef) out.push({ attr, attrIndex, adef });
+  });
+  return out;
+}
+
+/** Sanitize a user-given reroute name into a GLSL-identifier suffix. Non
+ *  word-chars become '_'; empty collapses to 'unnamed'. The compiler always
+ *  prefixes `rr_`, so a leading digit is harmless. Case is preserved so
+ *  distinct names stay distinct (GLSL identifiers are case-sensitive). */
+export function sanitizeRerouteId(name: string): string {
+  const s = name.replace(/[^A-Za-z0-9_]/g, '_');
+  return s.length > 0 ? s : 'unnamed';
+}
+
+/** A named reroute carries one of three pipeline registers. 'col' is the
+ *  legacy/default channel and keeps the bare `rr_<id>` var name + vec3 type so
+ *  existing recipes stay byte-identical; 'd'/'uv' get a typed suffixed var. */
+type RerouteChannel = 'col' | 'd' | 'uv';
+const REROUTE_CHANNEL: Record<RerouteChannel, { type: string; reg: string; zero: string }> = {
+  col: { type: 'vec3', reg: 'col', zero: 'vec3(0.0)' },
+  d: { type: 'float', reg: 'd', zero: '0.0' },
+  uv: { type: 'vec2', reg: 'uv', zero: 'vec2(0.0)' },
+};
+function rerouteChannelOf(card: TypedCard): RerouteChannel {
+  const v = Number(card.params.channel?.value ?? 0);
+  return v === 1 ? 'd' : v === 2 ? 'uv' : 'col';
+}
+function rerouteVarName(id: string, ch: RerouteChannel): string {
+  return ch === 'col' ? `rr_${id}` : `rr_${id}__${ch}`;
+}
+
+/** Pre-declaration lines for every distinct reroute var (decls AND usages), in
+ *  first-appearance order, typed by channel: `vec3 rr_<id> = vec3(0.0);` /
+ *  `float rr_<id>__d = 0.0;` / `vec2 rr_<id>__uv = vec2(0.0);`. Emitted at the
+ *  top of main() so a usage whose ref has no matching declaration reads the
+ *  zero default instead of an undeclared-variable error. */
+function collectRerouteDecls(cards: Recipe['cards']): string[] {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const card of cards) {
+    if (card.kind !== 'typed') continue;
+    let raw: ParameterValue | undefined;
+    if (card.type === 'reroute_decl') raw = card.params.name?.value;
+    else if (card.type === 'reroute_use') raw = card.params.ref?.value;
+    else continue;
+    const id = sanitizeRerouteId(typeof raw === 'string' ? raw : '');
+    const ch = rerouteChannelOf(card);
+    const v = rerouteVarName(id, ch);
+    if (seen.has(v)) continue;
+    seen.add(v);
+    lines.push(`  ${REROUTE_CHANNEL[ch].type} ${v} = ${REROUTE_CHANNEL[ch].zero};`);
+  }
+  return lines;
+}
+
+/** Format a param value as a GLSL literal — used to bake a macro's sub-block
+ *  params into its inline-expanded body. float/select → a float literal,
+ *  color → vec3(...), everything else (media/text) → 0.0 (unsupported in v1).
+ *  Routes through the canonical `glslFloat` so baked macro literals spell the
+ *  same bytes as uniform-default literals (byte-identical invariant). */
+function glslLiteral(value: ParameterValue, kind: string | undefined): string {
+  if (kind === 'color' && Array.isArray(value)) {
+    return `vec3(${glslFloat(value[0] ?? 0)}, ${glslFloat(value[1] ?? 0)}, ${glslFloat(value[2] ?? 0)})`;
+  }
+  if (typeof value === 'number') return glslFloat(value);
+  return '0.0';
+}
+
+/** Optional macro compression: strip arithmetic-identity operations that a
+ *  baked literal produced (`x * 1.0`, `x + 0.0`, `x - 0.0`). These are exact
+ *  IEEE identities, so the rendered result is byte-identical — the code is just
+ *  shorter. (Deeper CSE/constant-folding via the dataflow IR is a follow-up.) */
+function compressMacroLines(lines: string[]): string[] {
+  return lines.map((ln) => ln
+    .replace(/ \* 1\.0(?![\d.])/g, '')
+    .replace(/ \+ 0\.0(?![\d.])/g, '')
+    .replace(/ - 0\.0(?![\d.])/g, ''));
 }
 
 /** GL type for a given ParamDef.kind. Image + video + buffer params are
  *  textures bound through the runtime's sampler2D path. */
 function glslTypeForParam(
-  kind: 'float' | 'color' | 'select' | 'image' | 'video' | 'buffer',
+  kind: 'float' | 'color' | 'select' | 'image' | 'video' | 'buffer' | 'text',
 ): string {
   if (kind === 'color') return 'vec3';
   if (kind === 'image' || kind === 'video' || kind === 'buffer') return 'sampler2D';
+  // 'text' is compile-only and never emitted as a uniform (the uniform passes
+  // skip it); 'float' here is purely defensive.
   return 'float';
 }
 
@@ -677,6 +1098,7 @@ export function validateRecipe(recipe: Recipe): string[] {
   const known = new Set(CARD_LIBRARY_LIST.map((c) => c.type));
   for (const card of recipe.cards) {
     if (card.kind === 'wildcard') continue;
+    if (card.type === 'macro') continue; // macros have no library def; their sub-blocks are validated implicitly at compile
     if (!known.has(card.type)) out.push(`unknown card type: ${card.type}`);
   }
   return out;
@@ -748,6 +1170,9 @@ export function compileMultiPass(recipe: Recipe): CompiledMultiPass {
       canvasAspect: recipe.canvasAspect,
       cards: pass.cards,
       ...(pass.mode ?? recipe.mode ? { mode: pass.mode ?? recipe.mode } : {}),
+      // Custom animation chains are shared Recipe-wide, so a buffer pass can
+      // bind params to them too. (Buffer passes don't recurse into `passes`.)
+      ...(recipe.animations ? { animations: recipe.animations } : {}),
     };
     passes.push({ id, name: pass.name, shader: compile(subRecipe) });
   }

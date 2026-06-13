@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, DragEventHandler, MouseEventHandler } from 'react';
 import type { Card } from '@/cards';
-import { lookupCardDef } from '@/cards';
 import { CATEGORIES, SHADE, TYPE } from './tokens';
-import type { BlockDef, BlockMini } from './tokens';
+import type { BlockDef } from './tokens';
 import { Icon } from './icons';
-import { miniForCard } from './card-adapter';
+import { MacroIcon } from './macro-icons';
 
 export const BLOCK_W = 168;
 export const BLOCK_H = 96;
@@ -16,20 +15,25 @@ const RADIUS = 5;
 export type BlockEdge = 'flat' | 'notch' | 'tab';
 export type BlockVariant = { left?: BlockEdge; right?: BlockEdge };
 
-export function blockPath(W = BLOCK_W, H = BLOCK_H, td = TAB, th = TAB_H, r = RADIUS, variant: BlockVariant = {}) {
+/** The puzzle silhouette. `connector` picks the tab/notch SHAPE so different
+ *  block species read as distinct AND can't visually mate across species:
+ *   - 'classic' — the trapezoidal tab used by 2D/3D/reroute/macro blocks
+ *   - 'round'   — a semicircular tab/notch, used by animation blocks */
+export type BlockConnector = 'classic' | 'round';
+export function blockPath(W = BLOCK_W, H = BLOCK_H, td = TAB, th = TAB_H, r = RADIUS, variant: BlockVariant = {}, connector: BlockConnector = 'classic') {
   const left = variant.left ?? 'notch';
   const right = variant.right ?? 'tab';
   const tabY1 = (H - th) / 2;
   const tabY2 = (H + th) / 2;
+  const ry = th / 2;
   const parts: string[] = [];
   parts.push(`M ${r} 0`);
   parts.push(`H ${W - r}`);
   parts.push(`Q ${W} 0 ${W} ${r}`);
   if (right === 'tab') {
     parts.push(`V ${tabY1}`);
-    parts.push(`L ${W + td} ${tabY1 + 4}`);
-    parts.push(`L ${W + td} ${tabY2 - 4}`);
-    parts.push(`L ${W} ${tabY2}`);
+    if (connector === 'round') parts.push(`A ${td} ${ry} 0 0 1 ${W} ${tabY2}`); // bulge right
+    else parts.push(`L ${W + td} ${tabY1 + 4}`, `L ${W + td} ${tabY2 - 4}`, `L ${W} ${tabY2}`);
     parts.push(`V ${H - r}`);
   } else {
     parts.push(`V ${H - r}`);
@@ -39,9 +43,8 @@ export function blockPath(W = BLOCK_W, H = BLOCK_H, td = TAB, th = TAB_H, r = RA
   parts.push(`Q 0 ${H} 0 ${H - r}`);
   if (left === 'notch') {
     parts.push(`V ${tabY2}`);
-    parts.push(`L ${td} ${tabY2 - 4}`);
-    parts.push(`L ${td} ${tabY1 + 4}`);
-    parts.push(`L 0 ${tabY1}`);
+    if (connector === 'round') parts.push(`A ${td} ${ry} 0 0 0 0 ${tabY1}`); // bite in (mirror of the tab)
+    else parts.push(`L ${td} ${tabY2 - 4}`, `L ${td} ${tabY1 + 4}`, `L 0 ${tabY1}`);
     parts.push(`V ${r}`);
   } else {
     parts.push(`V ${r}`);
@@ -50,121 +53,6 @@ export function blockPath(W = BLOCK_W, H = BLOCK_H, td = TAB, th = TAB_H, r = RA
   parts.push('Z');
   return parts.join(' ');
 }
-
-// Mini-slider tuned to fit inside the block's inner content area. No floating
-// chip overlapping it — the param-count indicator lives inline with the label.
-const MiniSlider = ({
-  label, value, animated, paramCount,
-}: { label: string; value: number; animated?: boolean; paramCount?: number }) => {
-  const [t, setT] = useState(value);
-  useEffect(() => {
-    if (!animated) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = () => {
-      const dt = (performance.now() - start) / 1000;
-      setT(0.5 + 0.45 * Math.sin(dt * 1.7));
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
-    return () => cancelAnimationFrame(raf);
-  }, [animated]);
-  const v = animated ? t : value;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-      <span
-        style={{
-          font: `700 9px ${TYPE.bodyMono}`, color: SHADE.textDim,
-          textTransform: 'uppercase', letterSpacing: '0.14em',
-          flex: '0 0 auto',
-        }}
-      >
-        {label}
-        {paramCount != null && paramCount > 1 && (
-          <span style={{ marginLeft: 4, color: SHADE.textFaint, letterSpacing: 0 }}>
-            ·{paramCount}
-          </span>
-        )}
-      </span>
-      <div
-        style={{
-          position: 'relative', flex: 1, height: 5,
-          background: SHADE.surface3,
-          border: `1px solid ${SHADE.border}`,
-          borderRadius: 1,
-        }}
-      >
-        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: SHADE.border }} />
-        <div
-          style={{
-            position: 'absolute', left: 0, top: 0, bottom: 0,
-            width: `${v * 100}%`,
-            background: animated ? SHADE.ember : SHADE.inkLine,
-            borderTopLeftRadius: 1, borderBottomLeftRadius: 1,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            left: `calc(${v * 100}% - 4px)`, top: -3,
-            width: 8, height: 10,
-            background: SHADE.surface1,
-            border: `1.5px solid ${animated ? SHADE.ember : SHADE.inkLine}`,
-            borderRadius: 1,
-          }}
-        />
-      </div>
-    </div>
-  );
-};
-
-const WildcardMini = () => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-    <span
-      style={{
-        font: `700 9px ${TYPE.bodyMono}`, color: SHADE.textDim,
-        textTransform: 'uppercase', letterSpacing: '0.14em',
-      }}
-    >
-      Custom GLSL
-    </span>
-    <span style={{ marginLeft: 'auto', font: `700 9px ${TYPE.bodyMono}`, color: SHADE.ember }}>
-      {'</>'}
-    </span>
-  </div>
-);
-
-const MiniSwatches = ({ values }: { values: string[] }) => (
-  <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-    {values.map((c, i) => (
-      <div
-        key={i}
-        style={{
-          width: 14, height: 10, borderRadius: 1,
-          background: c,
-          boxShadow: `inset 0 0 0 1px ${SHADE.inkLine}55`,
-        }}
-      />
-    ))}
-  </div>
-);
-
-const renderMini = (mini: BlockMini, isAnimated: boolean, paramCount?: number) => {
-  if (mini.kind === 'slider') {
-    return <MiniSlider label={mini.label} value={mini.value} animated={isAnimated} paramCount={paramCount} />;
-  }
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ font: `700 9px ${TYPE.bodyMono}`, color: SHADE.textDim, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-        palette
-        {paramCount != null && paramCount > 1 && (
-          <span style={{ marginLeft: 4, color: SHADE.textFaint, letterSpacing: 0 }}>·{paramCount}</span>
-        )}
-      </span>
-      <MiniSwatches values={mini.values} />
-    </div>
-  );
-};
 
 export type BlockProps = {
   id: string;
@@ -176,10 +64,7 @@ export type BlockProps = {
   animated?: boolean;
   onClick?: MouseEventHandler<HTMLDivElement>;
   onDoubleClick?: MouseEventHandler<HTMLDivElement>;
-  /** Active-params count shown as a "+N" chip when > 1 */
-  paramCount?: number;
-  /** Live card from the recipe — when provided, the in-block mini reflects the
-   *  card's current first-param value rather than the BlockDef default. */
+  /** Live card from the recipe — drives the ANIM badge + the param pulse. */
   card?: Card;
   // ─── drag-and-drop chain reordering ──────────────────────────────────
   /** Makes the block draggable in the chain. */
@@ -199,29 +84,47 @@ export type BlockProps = {
    *  visually. */
   portalSide?: 'exit' | 'enter' | null;
   portalColor?: string | null;
+  /** This block is pinned in the preview (F-lock) — shows a gold padlock. */
+  locked?: boolean;
+  /** Override the category colour to render a distinct block SPECIES (e.g.
+   *  animation blocks in cyan). When set, the block chrome uses this colour. */
+  accent?: string;
+  /** Connector silhouette — 'round' marks a species (animation blocks) whose
+   *  tabs/notches only mate with their own kind. Defaults to 'classic'. */
+  connector?: BlockConnector;
 };
 
 export const Block = ({
   id, block, selected = false, snapTarget = false, dragging = false,
-  variant = {}, animated, onClick, onDoubleClick, paramCount = 1, card,
+  variant = {}, animated, onClick, onDoubleClick, card,
   draggable, onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
   isDragSource = false, dropIndicator = null,
-  portalSide = null, portalColor = null,
+  portalSide = null, portalColor = null, locked = false,
+  accent, connector = 'classic',
 }: BlockProps) => {
   const cat = CATEGORIES[block.cat];
-  const path = blockPath(BLOCK_W, BLOCK_H, TAB, TAB_H, RADIUS, variant);
+  const accentColor = accent ?? cat.color;
+  // Named reroute → render as a distinctive bold name banner (same silhouette,
+  // so it still snaps) instead of the icon + mini layout. `name` is the live
+  // `name`/`ref` text param; declaration = filled teal, usage = teal outline.
+  const rr = card?.kind === 'typed' && (card.type === 'reroute_decl' || card.type === 'reroute_use')
+    ? {
+        isDecl: card.type === 'reroute_decl',
+        name: String(
+          (card.type === 'reroute_decl' ? card.params.name?.value : card.params.ref?.value) ?? '',
+        ) || '—',
+      }
+    : null;
+  // Macro ("function" block) → indigo banner with the macro name + sub-count.
+  const mc = card?.kind === 'typed' && card.type === 'macro'
+    ? { name: card.macro?.name || 'Macro', count: card.macro?.blocks.length ?? 0, icon: card.macro?.icon }
+    : null;
+  const path = blockPath(BLOCK_W, BLOCK_H, TAB, TAB_H, RADIUS, variant, connector);
   const totalW = BLOCK_W + (variant.right === 'flat' ? 0 : TAB);
-  const sliderAnimated = block.mini.kind === 'slider' ? block.mini.animated : undefined;
-  const isAnimated = animated ?? sliderAnimated ?? false;
-
-  // Wildcard card → show a code badge as the mini, ignoring BlockDef.mini.
-  const isWildcard = card?.kind === 'wildcard';
-  const liveMini: BlockMini = (() => {
-    if (!card || card.kind !== 'typed') return block.mini;
-    const def = lookupCardDef(card.type);
-    if (!def) return block.mini;
-    return miniForCard(def, card);
-  })();
+  // A real per-param animation lights up the block's ANIM badge.
+  const hasAnimatedParam = card?.kind === 'typed'
+    && Object.values(card.params).some((p) => p?.animation != null);
+  const isAnimated = hasAnimatedParam || (animated ?? false);
 
   // ─── pulse on param updates ─────────────────────────────────────────
   // Subscribing parents pass the live `card` — when its params object
@@ -250,10 +153,10 @@ export const Block = ({
     return () => window.clearTimeout(t);
   }, [pulseAt, pulseActive]);
 
-  const fill = SHADE.surface1;
-  const baseStroke = selected ? SHADE.inkLine : SHADE.border;
-  const stroke = pulseActive ? SHADE.ember : baseStroke;
-  const strokeWidth = selected || pulseActive ? 1.6 : 1;
+  const fill = rr ? (rr.isDecl ? SHADE.reroute : SHADE.surface1) : mc ? SHADE.macro : SHADE.surface1;
+  const baseStroke = rr ? SHADE.rerouteDeep : mc ? SHADE.macroDeep : accent ? accent : selected ? SHADE.inkLine : SHADE.border;
+  const stroke = locked ? SHADE.gold : pulseActive ? SHADE.ember : baseStroke;
+  const strokeWidth = locked ? 2 : (rr || mc) ? 2 : accent ? 1.5 : selected || pulseActive ? 1.6 : 1;
 
   // CSS width = BLOCK_W only. The tab (right protrusion) is part of the SVG
   // path which has overflow:visible, so it bleeds past the container's CSS
@@ -282,6 +185,23 @@ export const Block = ({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
+      {locked && (
+        <div
+          aria-hidden
+          title="Locked in preview (press F to unlock)"
+          style={{
+            position: 'absolute', right: 8, top: 8, zIndex: 4,
+            width: 16, height: 16, borderRadius: 4,
+            background: SHADE.gold,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="9" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a1208" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="5" y="11" width="14" height="9" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+        </div>
+      )}
       {dropIndicator === 'left' && (
         <div
           aria-hidden
@@ -350,62 +270,113 @@ export const Block = ({
         <clipPath id={`clip-${id}`}>
           <path d={path} />
         </clipPath>
-        <rect x="0" y="0" width={BLOCK_W} height="4" fill={cat.color} clipPath={`url(#clip-${id})`} />
+        <rect x="0" y="0" width={BLOCK_W} height="4" fill={rr ? SHADE.rerouteDeep : mc ? SHADE.macroDeep : accentColor} clipPath={`url(#clip-${id})`} />
         {snapTarget && (
           <path d={path} fill="none" stroke={SHADE.ember} strokeWidth="2" />
         )}
       </svg>
 
+      {rr ? (
+        <div
+          style={{
+            position: 'absolute', inset: 0, paddingLeft: TAB + 6, paddingRight: 8,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 3, pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              font: `700 8px ${TYPE.bodyMono}`, letterSpacing: '0.22em', textTransform: 'uppercase',
+              color: rr.isDecl ? `${SHADE.cream}cc` : SHADE.reroute,
+            }}
+          >
+            {rr.isDecl ? 'Reroute' : 'Use'}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, maxWidth: '100%' }}>
+            <span style={{ font: `700 16px ${TYPE.body}`, lineHeight: 1, flex: '0 0 auto', color: rr.isDecl ? SHADE.cream : SHADE.reroute }}>
+              {rr.isDecl ? '⤺' : '⤻'}
+            </span>
+            <span
+              style={{
+                font: `800 15px ${TYPE.body}`, letterSpacing: '0.02em',
+                color: rr.isDecl ? SHADE.cream : SHADE.rerouteDeep,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}
+            >
+              {rr.name}
+            </span>
+          </div>
+        </div>
+      ) : mc ? (
+        <div
+          style={{
+            position: 'absolute', inset: 0, paddingLeft: TAB + 6, paddingRight: 8,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 3, pointerEvents: 'none',
+          }}
+        >
+          <span style={{ font: `700 8px ${TYPE.bodyMono}`, letterSpacing: '0.22em', textTransform: 'uppercase', color: `${SHADE.cream}cc` }}>
+            Macro · {mc.count}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, maxWidth: '100%' }}>
+            <span style={{ display: 'flex', alignItems: 'center', lineHeight: 0, flex: '0 0 auto' }}><MacroIcon name={mc.icon} size={16} color={SHADE.cream} strokeWidth={2} /></span>
+            <span style={{ font: `800 15px ${TYPE.body}`, letterSpacing: '0.02em', color: SHADE.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {mc.name}
+            </span>
+          </div>
+        </div>
+      ) : (
       <div
         style={{
           position: 'absolute',
           left: TAB + 11, right: 10,
           top: 9, bottom: 8,
-          display: 'flex', flexDirection: 'column',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
           pointerEvents: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+        {/* Block face = icon + name only. Params are edited in the right
+            inspector, never exposed as sliders on the block. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div
             style={{
               width: 22, height: 22, borderRadius: 3,
-              background: `${cat.color}1c`,
-              border: `1px solid ${cat.color}55`,
+              background: `${accentColor}1c`,
+              border: `1px solid ${accentColor}55`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flex: '0 0 auto',
             }}
           >
-            <Icon name={block.icon} size={13} color={cat.color} />
+            <Icon name={block.icon} size={13} color={accentColor} />
           </div>
           <span
             style={{
               font: `600 11.5px ${TYPE.body}`,
               color: SHADE.text,
               letterSpacing: '0.04em',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}
           >
             {block.name}
           </span>
           {isAnimated && (
             <span
+              title="This block has animated parameters"
               style={{
-                marginLeft: 'auto',
-                font: `600 8.5px ${TYPE.bodyMono}`,
-                color: SHADE.ember,
-                letterSpacing: '0.16em',
+                marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 3,
+                font: `700 8px ${TYPE.bodyMono}`,
+                color: SHADE.ember, letterSpacing: '0.16em',
+                padding: '1px 5px', borderRadius: 3,
+                background: `${SHADE.ember}1c`, border: `1px solid ${SHADE.ember}40`,
               }}
             >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={SHADE.ember} strokeWidth="2.4" strokeLinecap="round"><path d="M3 12q3-6 6 0t6 0 6 0" /></svg>
               ANIM
             </span>
           )}
         </div>
-        {/* mini slider — full inner width; param count lives inline with the label */}
-        <div style={{ marginTop: 'auto', marginBottom: 4 }}>
-          {isWildcard
-            ? <WildcardMini />
-            : renderMini(liveMini, isAnimated, paramCount)}
-        </div>
       </div>
+      )}
     </div>
   );
 };

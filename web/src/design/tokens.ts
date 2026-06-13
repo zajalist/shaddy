@@ -28,9 +28,10 @@ export const SHADE = {
   topbarDim:     '#8a8377',
   topbarBorder:  '#2a2826',
 
-  // Brand
-  gold:      '#FCB427',
-  goldDeep:  '#966B17',
+  // Brand — austere desaturated ochre (matches the Intersect logo gold).
+  // Was #FCB427 (very saturated); dialled down for a quieter, Gaea-like feel.
+  gold:      '#D3A13F',
+  goldDeep:  '#8A6418',
   cream:     '#FEE7C7',
   // Secondary warm accent (used for sliders' filled portion)
   ember:     '#B56A1D',
@@ -40,6 +41,49 @@ export const SHADE = {
   catDistort: '#B5365E',
   catColor:   '#6F7F1A',
   catEffect:  '#5C3FA8',
+
+  // Reserved accent for NAMED REROUTES — a teal used by no block category, so
+  // a reroute banner reads as a distinct class of node (a teleport, not an
+  // operation). Flat fills only, no glow.
+  reroute:     '#0E8585',
+  rerouteDeep: '#0A5F5F',
+
+  // Reserved accent for MACROS ("function" blocks) — a saturated indigo, also
+  // used by no category, so a macro reads as a collapsed sub-graph.
+  macro:       '#5B4BD6',
+  macroDeep:   '#372C92',
+
+  // Reserved accent for CUSTOM ANIMATIONS (signal-generator chains) — a cool
+  // cyan used by no block category, so an animation block reads as a distinct
+  // species (a signal, not an operation). Flat fills only, no glow.
+  anim:        '#27A8C9',
+  animDeep:    '#1A7C95',
+} as const;
+
+// Shared warm "instrument" panel palette — the dark chrome (top bar, right
+// inspector, preview) shares ONE deliberate value ladder so the whole editor
+// frame reads as a single calm DCC surface around the warm Scratch workspace.
+// Color is reserved for content (category blocks) and live values (amber).
+// Neutral-warm charcoal — the SAME dark family as the top bar (#1d1c1a) and the
+// GLSL code drawer (SHADE.surface4 #1a1815), NOT a saturated brown. `panel`
+// equals the top bar so the inspector reads as one continuous dark chrome.
+export const PANEL = {
+  well:     '#141311', // deepest — input wells / slider track recess / stage
+  sub:      '#1a1916', // nested surface (attribute boxes) ~ code drawer bg
+  panel:    '#1d1c1a', // base panel surface (= top bar)
+  raised:   '#242320', // raised module headers (sections, preview bar)
+  divider:  '#2a2926', // hairline dividers (low contrast)
+  border:   '#353330', // control borders
+  borderHi: '#4c4a44', // emphasized edges
+  text:     '#ece8de', // titles
+  value:    '#e6b052', // amber — live numeric values (matches the code gold tones)
+  dim:      '#918d83', // section labels
+  mid:      '#847f75', // param labels
+  faint:    '#67635b', // hints / hex
+  gold:     SHADE.gold,
+  goldDeep: SHADE.goldDeep,
+  hover:    '#2c2b27',
+  danger:   '#cf8d86',
 } as const;
 
 export type CategoryKey = 'shape' | 'distort' | 'color' | 'effect';

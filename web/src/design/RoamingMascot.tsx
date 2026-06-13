@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Mascot } from '@/ux/Mascot';
-import type { MascotMood } from '@/ux/Mascot';
+import { Mascot } from '@/ux';
+import type { MascotMood } from '@/ux';
 import { SHADE, TYPE } from './tokens';
 
 // A single fixed-position mascot that drifts around the viewport with

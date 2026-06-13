@@ -52,6 +52,11 @@ export type RecipeCanvasProps = {
   /** Style applied to the host div. Use this to control aspect ratio + size. */
   style?: CSSProperties;
   className?: string;
+  /** Gaea-style step preview: when set, the image pass renders only the cards
+   *  UP TO (and including) the card with this id, so you see the cumulative
+   *  result through that step. A d→rgb visualiser is appended when the slice
+   *  has produced no colour yet, so shape/distortion steps stay visible. */
+  previewUpToId?: string | null;
 };
 
 // Decay time after pointer leaves — short enough to feel responsive,
@@ -76,7 +81,7 @@ const WASD_BASE_SPEED = 2.5;
 // Reset animation duration.
 const RESET_ANIM_MS = 350;
 
-export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
+export const RecipeCanvas = ({ style, className, previewUpToId }: RecipeCanvasProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);
   const structuralKeyRef = useRef<string>('');
@@ -84,22 +89,57 @@ export const RecipeCanvas = ({ style, className }: RecipeCanvasProps) => {
   const recipe = useCardsStore((s) => s.recipe);
   const camera = useCardsStore((s) => s.camera);
   const setCamera = useCardsStore((s) => s.setCamera);
-  // Multi-pass when any buffer passes are enabled, else fall through to the
-  // back-compat single-pass path (which lets RendererAPI.compile stay the
-  // happy path for single-pass recipes — and keeps existing tests stable).
-  const hasBufferPasses = (recipe.passes?.length ?? 0) > 0;
-  const compiled: CompiledShader = useMemo(() => compile(recipe), [recipe]);
+  // Which chain the editor is focused on. When the user is editing a buffer
+  // pass we render THAT pass's output to the screen so the preview reflects
+  // what they're building (otherwise the on-screen image always shows the
+  // final image pass and a buffer chain looks like it "does nothing").
+  const activePassId = useCardsStore((s) => s.activePassId);
+
+  // Gaea-style step preview — render the active pass only up to `previewUpToId`.
+  // Slicing from index 0 keeps every kept card's index (so media uniform names
+  // stay aligned); the appended d→rgb card lands last and shifts nothing.
+  const renderRecipe = useMemo(() => {
+    // The cards that drive the on-screen image: the active buffer pass when
+    // one is selected, else the real image pass.
+    const baseCards = activePassId === 'image'
+      ? recipe.cards
+      : (recipe.passes?.find((p) => p.id === activePassId)?.cards ?? recipe.cards);
+
+    if (!previewUpToId) {
+      return baseCards === recipe.cards ? recipe : { ...recipe, cards: baseCards };
+    }
+    const idx = baseCards.findIndex((c) => c.id === previewUpToId);
+    if (idx < 0) return baseCards === recipe.cards ? recipe : { ...recipe, cards: baseCards };
+    let sliced = baseCards.slice(0, idx + 1);
+    if (recipe.mode !== '3d') {
+      const isColorType = (type: string): boolean => lookupCardDef(type)?.category === 'color';
+      const hasColor = sliced.some((c) => {
+        if (c.kind !== 'typed') return false;
+        // A macro counts as producing colour if any of its sub-blocks does.
+        if (c.type === 'macro') return (c.macro?.blocks ?? []).some((b) => isColorType(b.type));
+        return isColorType(c.type);
+      });
+      if (!hasColor) {
+        sliced = [...sliced, { kind: 'typed' as const, id: '__preview_dviz', type: 'd_as_rgb', enabled: true, params: {} }];
+      }
+    }
+    return { ...recipe, cards: sliced };
+  }, [recipe, previewUpToId, activePassId]);
+
+  // Multi-pass when any buffer passes are enabled, else the single-pass path.
+  const hasBufferPasses = (renderRecipe.passes?.length ?? 0) > 0;
+  const compiled: CompiledShader = useMemo(() => compile(renderRecipe), [renderRecipe]);
   const compiledMulti = useMemo(
-    () => (hasBufferPasses ? compileMultiPass(recipe) : null),
-    [recipe, hasBufferPasses],
+    () => (hasBufferPasses ? compileMultiPass(renderRecipe) : null),
+    [renderRecipe, hasBufferPasses],
   );
 
   // Snapshot of the current recipe kept in a ref so the per-frame loop can
   // walk image/video params and push their texture uniforms without
   // re-attaching the rAF closure every recipe edit. The recipe itself is
   // the source of truth — we only read from this; never mutate.
-  const recipeRef = useRef(recipe);
-  useEffect(() => { recipeRef.current = recipe; }, [recipe]);
+  const recipeRef = useRef(renderRecipe);
+  useEffect(() => { recipeRef.current = renderRecipe; }, [renderRecipe]);
 
   const is3d = recipe.mode === '3d';
 

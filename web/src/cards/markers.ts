@@ -39,6 +39,22 @@ export type EndMarker = {
 
 // ─── Formatting ─────────────────────────────────────────────────────────
 
+/** Neutralize the tokens in a user-controlled string (macro names, wildcard
+ *  display names — both fully user-editable) that would corrupt the single-line
+ *  marker: newlines (would inject a SECOND `//#card` line → reparse's
+ *  marker-count check bails the whole document to syntaxPending), the marker
+ *  prefix itself, the `@{` composition delimiter, and trailing braces that
+ *  confuse the composition anchor. Idempotent; only touches the marker line
+ *  (never card body / span.expectedBody), so it's purely cosmetic + safe. */
+export function sanitizeMarkerText(s: string): string {
+  return s
+    .replace(/[\r\n]+/g, ' ')   // collapse to one line
+    .replace(/\/\/#/g, '/ /#')  // defang an injected marker prefix
+    .replace(/@\{/g, '@ {')     // defang the composition delimiter
+    .replace(/\}+\s*$/g, '')    // no trailing braces (composition anchor)
+    .trim();
+}
+
 export function formatCardMarker(opts: {
   cardId: string;
   friendlyName: string;
@@ -46,7 +62,7 @@ export function formatCardMarker(opts: {
   alpha?: number;
   blend?: BlendMode;
 }): string {
-  const head = `${MARKER_PREFIX} ${opts.cardId} ${opts.friendlyName}`;
+  const head = `${MARKER_PREFIX} ${sanitizeMarkerText(opts.cardId)} ${sanitizeMarkerText(opts.friendlyName)}`;
   const displays = opts.paramDisplays;
   let withParams = head;
   if (displays) {

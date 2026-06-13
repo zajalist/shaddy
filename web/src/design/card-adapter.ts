@@ -8,8 +8,8 @@
 // Two category vocabularies — keep them mapped here so the rest of design/
 // can keep using CategoryKey ('shape' | 'distort' | 'color' | 'effect').
 
-import type { CardDef, CardCategory, Parameter, TypedCard } from '@/cards';
-import { CARD_LIBRARY_LIST } from '@/cards';
+import type { AnimBlock, CardDef, CardCategory, Parameter, TypedCard } from '@/cards';
+import { ANIM_BLOCKS, CARD_LIBRARY_LIST } from '@/cards';
 
 import type { BlockDef, BlockMini, CategoryKey } from './tokens';
 
@@ -135,8 +135,10 @@ function rgbToHex(r: number, g: number, b: number): string {
   return `#${to255(r)}${to255(g)}${to255(b)}`;
 }
 
-/** The library list, materialized as BlockDefs in their original card order. */
-export const ALL_BLOCKS: BlockDef[] = CARD_LIBRARY_LIST.map(cardDefToBlockDef);
+/** The library list, materialized as BlockDefs in their original card order.
+ *  Deprecated cards (def.hidden) are kept in the engine for recipe back-compat
+ *  but excluded here so they don't appear in the palette / search. */
+export const ALL_BLOCKS: BlockDef[] = CARD_LIBRARY_LIST.filter((d) => !d.hidden).map(cardDefToBlockDef);
 
 /** Fast lookup by card type. */
 const REAL_BLOCK_BY_ID: Record<string, BlockDef> = Object.fromEntries(
@@ -188,6 +190,32 @@ export const BLOCK_BY_ID: Record<string, BlockDef> = new Proxy(REAL_BLOCK_BY_ID,
     return ALL_BLOCKS[0];
   },
 }) as Record<string, BlockDef>;
+
+/** Adapt an animation block into the shared BlockDef shape so it renders through
+ *  the SAME <Block> component as 2D/3D blocks (just a cyan 'anim' species with a
+ *  round connector). The mini shows the block's primary param. */
+export function animBlockToBlockDef(b: AnimBlock): BlockDef {
+  const def = ANIM_BLOCKS[b.type];
+  let mini: BlockMini = { kind: 'slider', label: def?.label ?? b.type, value: 0.5 };
+  if (def) {
+    const floatEntry = Object.entries(def.params).find(([, pd]) => pd.kind === 'float');
+    if (floatEntry && floatEntry[1].kind === 'float') {
+      const key = floatEntry[0];
+      const pd = floatEntry[1];
+      const live = (b.params[key]?.value ?? pd.default) as number;
+      mini = { kind: 'slider', label: shortLabel(key), value: paramToNormalized(live, pd) };
+    } else {
+      const first = Object.entries(def.params)[0];
+      if (first && first[1].kind === 'select') {
+        const [key, pd] = first;
+        const live = (b.params[key]?.value ?? pd.default) as number;
+        const idx = Math.max(0, pd.options.findIndex((o) => o.value === live));
+        mini = { kind: 'slider', label: (pd.options[idx]?.label ?? key).slice(0, 6), value: pd.options.length > 1 ? idx / (pd.options.length - 1) : 0 };
+      }
+    }
+  }
+  return { id: b.id, cat: 'shape', name: def?.label ?? b.type, icon: def?.icon ?? '∿', mini };
+}
 
 // Re-export the Parameter type for downstream design/ files that need it.
 export type { Parameter };

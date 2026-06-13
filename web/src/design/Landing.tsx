@@ -5,10 +5,9 @@ import { Icon, ShadeLogo } from './icons';
 import { SignInButton } from '@/auth';
 import { Starfield } from './Starfield';
 import { ShadeCanvas } from './ShadeCanvas';
-import { RDHero } from './RDHero';
+import { HeroPortal } from './HeroPortal';
 import { Block } from './Block';
 import type { BlockVariant } from './Block';
-import { RoamingMascot } from './RoamingMascot';
 import { TemplatesShared } from './TemplatesShared';
 import type { Template } from './TemplatesShared';
 import { FractalEntity } from './FractalEntity';
@@ -21,7 +20,7 @@ import { useIsMobile } from './useIsMobile';
 const PAGE_BG = '#0b0c0e';
 const KEYFRAMES_ID = 'shade-landing-keyframes';
 const FONTS_HREF =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Geist+Mono:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap';
+  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Geist+Mono:wght@400;500;600&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap';
 
 const useLandingChrome = () => {
   useEffect(() => {
@@ -51,6 +50,14 @@ const useLandingChrome = () => {
         @keyframes shadeFadeUp {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shadeFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes shadeDotPulse {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50%      { opacity: 1;    transform: scale(1.3); }
         }
         @keyframes shaddyDriftA {
           0%   { transform: translate(0, 0)        rotate(0deg);  }
@@ -134,6 +141,10 @@ const useLandingChrome = () => {
         /* Auth pills — subtle hover lift */
         .auth-pill { transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.18s; }
         .auth-pill:hover { transform: translateY(-1px); }
+        /* Page TOC — Gaea-style sentence-case links with a playful hover nudge */
+        .toc-link { transition: color 0.25s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1); }
+        .toc-link:hover { color: rgba(254,231,199,0.9) !important; transform: translateX(4px); }
+        .toc-link:hover .toc-dot { transform: translateY(-50%) scale(1); opacity: 0.7; }
       `;
       document.head.appendChild(style);
     }
@@ -197,24 +208,30 @@ const LandingNav = () => {
       }}
     >
       <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
-      <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1, textDecoration: 'none', color: 'inherit' }}>
-        <ShadeLogo size={22} />
-        <span style={{ font: `700 14px ${TYPE.display}`, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Shaddy</span>
-      </a>
-      {/* Desktop centered nav — hidden on mobile in favour of a hamburger sheet */}
+      {/* Mobile: mascot mark on the left */}
+      {isMobile && (
+        <a href="#top" aria-label="Shaddy home" style={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 1, textDecoration: 'none' }}>
+          <img src="/mascot.svg" alt="Shaddy" style={{ height: 28, width: 'auto', display: 'block' }} />
+        </a>
+      )}
+      {/* Desktop: centred cluster — mascot mark + section links. Everything is
+          centred except the github / sign-in / editor controls on the right. */}
       {!isMobile && (
-        <nav
+        <div
           style={{
             position: 'absolute', left: '50%', top: 0, bottom: 0,
             transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: 4, zIndex: 1,
+            display: 'flex', alignItems: 'center', gap: 22, zIndex: 1,
           }}
         >
+          <a href="#top" aria-label="Shaddy home" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', marginRight: 4 }}>
+            <img src="/mascot.svg" alt="Shaddy" style={{ height: 30, width: 'auto', display: 'block' }} />
+          </a>
           <NavLink href="#how">How it works</NavLink>
           <NavLink href="#compose">Compose</NavLink>
           <NavLink href="#code">Code</NavLink>
           <NavLink href="#faq">FAQ</NavLink>
-        </nav>
+        </div>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10, position: 'relative', zIndex: 1 }}>
         {!isMobile && (
@@ -254,7 +271,12 @@ const LandingNav = () => {
           }}
         >
           <span className="comp-svg" style={{ display: 'inline-flex' }}>
-            <Icon name="composer-blocks" size={20} color={SHADE.gold} cream={SHADE.cream} />
+            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="8" height="8" rx="2.2" fill="#1a1208" />
+              <rect x="13" y="3" width="8" height="8" rx="2.2" fill="#1a1208" opacity="0.5" />
+              <rect x="3" y="13" width="8" height="8" rx="2.2" fill="#1a1208" opacity="0.5" />
+              <rect x="13" y="13" width="8" height="8" rx="2.2" fill="#1a1208" />
+            </svg>
           </span>
         </a>
         {isMobile && (
@@ -425,7 +447,6 @@ const SectionSeparator = () => (
 // ─── Fixed left page TOC (hayba style) ──────────────────────────────────
 type TocItem = { id: string; label: string };
 const TOC: TocItem[] = [
-  { id: 'top',     label: 'Shaddy' },
   { id: 'how',     label: 'How it works' },
   { id: 'templates', label: 'Templates' },
   { id: 'compose', label: 'Compose' },
@@ -464,43 +485,64 @@ const PageTOC = () => {
       aria-label="Page sections"
       style={{
         position: 'fixed',
-        left: 36, top: '50%', transform: 'translateY(-50%)',
+        left: 40, top: '50%', transform: 'translateY(-50%)',
         zIndex: 60,
-        display: 'flex', flexDirection: 'column', gap: 14,
-        font: `500 12px ${TYPE.body}`,
+        display: 'flex', flexDirection: 'column', gap: 18,
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? 'auto' : 'none',
-        transition: 'opacity 0.4s cubic-bezier(0.16,1,0.3,1)',
+        transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
+      {/* quiet vertical guide line the active bar rides along */}
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute', left: 0, top: 2, bottom: 2, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(232,226,212,0.09) 14%, rgba(232,226,212,0.09) 86%, transparent)',
+        }}
+      />
       {TOC.map((t) => {
         const isActive = t.id === active;
-        const isBrand = t.id === 'top';
         return (
           <a
             key={t.id}
             href={`#${t.id}`}
+            className="toc-link"
             style={{
               position: 'relative',
-              color: isActive ? SHADE.cream : 'rgba(232,226,212,0.45)',
+              color: isActive ? SHADE.cream : 'rgba(232,226,212,0.34)',
               textDecoration: 'none',
-              padding: `2px 0 2px ${isActive ? 22 : 14}px`,
-              transition: 'color 0.2s, padding-left 0.2s',
-              lineHeight: 1.3,
-              fontWeight: isBrand ? 600 : 500,
-              fontSize: isBrand ? 13 : 12,
-              marginBottom: isBrand ? 6 : 0,
+              padding: '2px 0 2px 18px',
+              lineHeight: 1.25,
+              // Sentence-case Bricolage (Gaea-style), not all-caps mono.
+              font: `${isActive ? 600 : 400} 13.5px ${TYPE.body}`,
+              letterSpacing: '0.005em',
             }}
           >
+            {/* active: a soft gold vertical bar riding the guide line */}
             <span
               aria-hidden
               style={{
                 position: 'absolute', left: 0, top: '50%',
-                width: isActive ? 14 : 6, height: 1,
-                background: isActive ? SHADE.gold : 'currentColor',
+                width: 2, height: isActive ? 16 : 0,
+                borderRadius: 2,
+                background: SHADE.gold,
+                boxShadow: isActive ? `0 0 10px ${SHADE.gold}aa` : 'none',
                 transform: 'translateY(-50%)',
-                opacity: isActive ? 1 : 0.5,
-                transition: 'width 0.25s cubic-bezier(0.16,1,0.3,1), background 0.25s, opacity 0.25s',
+                transition: 'height 0.32s cubic-bezier(0.16,1,0.3,1), box-shadow 0.32s',
+              }}
+            />
+            {/* inactive: a tiny dot that wakes up on hover (playful) */}
+            <span
+              className="toc-dot"
+              aria-hidden
+              style={{
+                position: 'absolute', left: 4, top: '50%',
+                width: 3, height: 3, borderRadius: '50%',
+                background: SHADE.gold,
+                transform: 'translateY(-50%) scale(0)',
+                opacity: 0,
+                transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s',
               }}
             />
             {t.label}
@@ -517,143 +559,84 @@ const Hero = () => (
     id="top"
     style={{
       position: 'relative',
-      minHeight: '100vh',
+      minHeight: '100svh',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      textAlign: 'center', padding: 'clamp(5rem, 9vw, 7rem) clamp(1.25rem, 4vw, 2rem) clamp(4rem, 7vw, 6rem)',
+      alignItems: 'center', justifyContent: 'flex-end',
+      textAlign: 'center',
+      padding: '0 clamp(1.25rem, 4vw, 2rem) clamp(8vh, 12vh, 140px)',
       overflow: 'hidden',
     }}
   >
-    {/* live reaction-diffusion field */}
-    <div style={{ position: 'absolute', inset: 0, opacity: 0.78 }}>
-      <RDHero />
-    </div>
-    {/* vignette so text reads */}
-    <div
-      style={{
-        position: 'absolute', inset: 0,
-        background:
-          `radial-gradient(ellipse 60% 50% at 50% 45%, rgba(11,12,14,0.0) 0%, rgba(11,12,14,0.4) 45%, rgba(11,12,14,0.92) 88%)`,
-        pointerEvents: 'none',
-      }}
-    />
-    {/* rising specks for life */}
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {Array.from({ length: 10 }).map((_, i) => (
-        <span
-          key={i}
-          style={{
-            position: 'absolute',
-            left: `${8 + i * 9}%`, bottom: -20,
-            width: 2, height: 2, borderRadius: '50%',
-            background: 'rgba(252,180,39,0.55)',
-            filter: 'blur(0.5px)',
-            animation: `shadeSpeck ${26 + (i % 4) * 3}s linear ${-i * 2.4}s infinite`,
-          }}
-        />
-      ))}
+    {/* full-bleed portal — the Arcane shader fills the whole hero */}
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <HeroPortal />
     </div>
 
-    <div style={{ position: 'relative', zIndex: 1, animation: 'shadeFadeUp 1s ease-out 0.1s both' }}>
-      <div
-        style={{
-          display: 'inline-block',
-          font: `700 11px ${TYPE.bodyMono}`,
-          letterSpacing: '0.22em', textTransform: 'uppercase',
-          color: SHADE.gold, marginBottom: 28,
-        }}
-      >
-        Scratch for GPU shaders
-      </div>
+    {/* legibility scrims — a soft edge vignette + a bottom gradient over the
+        darker lower half where the text sits, so the copy reads cleanly while
+        the portal stays the hero */}
+    <div
+      aria-hidden
+      style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background:
+          'radial-gradient(ellipse 78% 66% at 50% 33%, transparent 34%, rgba(11,12,14,0.28) 72%, rgba(11,12,14,0.62) 100%)',
+      }}
+    />
+    <div
+      aria-hidden
+      style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background:
+          'linear-gradient(to bottom, rgba(11,12,14,0.30) 0%, transparent 22%, transparent 42%, rgba(11,12,14,0.52) 74%, rgba(11,12,14,0.88) 100%)',
+      }}
+    />
+
+    {/* content — bottom-weighted so it clears the portal ring above it */}
+    <div
+      style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        maxWidth: 720, animation: 'shadeFadeUp 1s ease-out 0.2s both',
+      }}
+    >
       <h1
         style={{
           margin: 0,
-          font: `600 clamp(2.4rem, 5.4vw, 4.6rem) ${TYPE.display}`,
+          // Clean, light Hanken Grotesk (not the quirky Bricolage) — refined and
+          // austere like Quadspinner, carried by scale and weight, not flourish.
+          font: `300 clamp(3rem, 6.4vw, 5.4rem) "Hanken Grotesk", system-ui, sans-serif`,
           color: SHADE.cream,
-          letterSpacing: TYPE.trackTighter,
-          lineHeight: 1.02,
-          textShadow: '0 2px 24px rgba(0,0,0,0.55)',
-          maxWidth: 900,
+          letterSpacing: '-0.015em',
+          lineHeight: 1.0,
+          textShadow: '0 2px 50px rgba(0,0,0,0.55)',
         }}
       >
-        Will the real slim shader<br />
-        please stand up?
+        Cast a little shade.
       </h1>
       <p
         style={{
           margin: '24px auto 0',
-          maxWidth: 600,
-          font: `400 17px ${TYPE.body}`,
-          color: 'rgba(232,226,212,0.72)',
-          lineHeight: 1.55,
+          maxWidth: 420,
+          font: `300 15px "Hanken Grotesk", system-ui, sans-serif`,
+          color: 'rgba(232,226,212,0.58)',
+          letterSpacing: '0.005em',
+          lineHeight: 1.6,
+          textShadow: '0 1px 12px rgba(0,0,0,0.5)',
         }}
       >
-        Shaddy snaps shader art together like puzzle blocks. Drag a card, see
-        the canvas move, peek at the GLSL underneath. The code is the canvas
-        and the canvas is the code. Drop a photo in, an AI turns it into
-        editable cards. The GLSL it spits out is real — paste it into
-        Shadertoy, drop it into your own WebGL page, send the share URL to
-        a friend. Browser tab, no install, no account.
+        Learn how GPU shaders actually work.
       </p>
-      <div style={{ marginTop: 36, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <a
-          href="/design"
-          style={{
-            background: SHADE.gold, color: '#1a1208',
-            border: `1px solid ${SHADE.goldDeep}`,
-            borderRadius: 3, padding: '12px 22px',
-            font: `700 12px ${TYPE.body}`,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 10,
-          }}
-        >
-          Open the composer
-          <span style={{ fontWeight: 400 }}>→</span>
-        </a>
-        <a
-          href="#how"
-          style={{
-            background: 'transparent', color: SHADE.cream,
-            border: '1px solid rgba(255,255,255,0.18)',
-            borderRadius: 3, padding: '12px 22px',
-            font: `500 12px ${TYPE.body}`,
-            letterSpacing: '0.10em', textTransform: 'uppercase',
-            textDecoration: 'none',
-          }}
-        >
-          How it works
-        </a>
-      </div>
-    </div>
-
-    <div
-      style={{
-        position: 'absolute', left: 0, right: 0, bottom: 36,
-        textAlign: 'center', zIndex: 2,
-        animation: 'shadeFadeUp 1.2s ease-out 1.4s both',
-        pointerEvents: 'none',
-      }}
-    >
       <div
         style={{
-          display: 'inline-block',
-          font: `700 10px ${TYPE.bodyMono}`,
-          letterSpacing: '0.22em', textTransform: 'uppercase',
-          color: 'rgba(232,226,212,0.45)', marginBottom: 10,
-          paddingLeft: '0.22em',
+          marginTop: 38,
+          font: `500 10.5px "Hanken Grotesk", system-ui, sans-serif`,
+          letterSpacing: '0.5em', textTransform: 'uppercase',
+          color: 'rgba(232,226,212,0.4)', paddingLeft: '0.5em',
+          animation: 'shadeFadeIn 2.8s ease-out 1.2s both',
         }}
       >
-        Shade 0.4.2
-      </div>
-      <div
-        style={{
-          font: `500 11px ${TYPE.bodyMono}`,
-          letterSpacing: '0.45em', textTransform: 'uppercase',
-          color: 'rgba(232,226,212,0.45)',
-          paddingLeft: '0.45em',
-        }}
-      >
-        Live · Browser · Open Source
+        Work in progress
       </div>
     </div>
   </section>
@@ -1018,7 +1001,7 @@ const CodePanel = () => (
 <span style={{ color: SHADE.catDistort }}>uniform</span> <span style={{ color: SHADE.catShape }}>vec2</span>  uResolution;{'\n'}
 <span style={{ color: SHADE.catDistort }}>uniform</span> <span style={{ color: SHADE.catShape }}>float</span> uTime;{'\n'}
 {'\n'}
-<span style={{ color: 'rgba(254,231,199,0.4)' }}>{'// Block 02 — RIPPLE (animating: frequency)\n'}</span>
+<span style={{ color: 'rgba(254,231,199,0.4)' }}>{'// Block 02: RIPPLE (animating: frequency)\n'}</span>
 <span style={{ color: SHADE.catShape }}>vec2</span> <span style={{ color: SHADE.catColor }}>ripple</span>(<span style={{ color: SHADE.catShape }}>vec2</span> p) {'{'}{'\n'}
 {'  '}<span style={{ color: SHADE.catShape }}>float</span> f = <span style={{ color: SHADE.gold }}>0.482</span> + <span style={{ color: SHADE.gold }}>0.30</span>*<span style={{ color: SHADE.catColor }}>sin</span>(uTime);{'\n'}
 {'  '}<span style={{ color: SHADE.catShape }}>float</span> a = <span style={{ color: SHADE.cream }}>0.165</span>;{'\n'}
@@ -1097,11 +1080,11 @@ const FAQ = () => {
   const items = [
     { q: 'Is the output real GLSL?', a: "Yes. Real GLSL ES fragment source, no Shaddy wrapper around it. Paste it into Shadertoy, Bonzomatic, or your own WebGL pipeline and it runs." },
     { q: 'Do I need to know shader math?', a: "Not at all. Most people start by snapping blocks until something pretty happens, then read the code drawer to figure out which line did what. The blocks teach the maths by sitting next to it." },
-    { q: 'Does it run on mobile?', a: "Yep. Palette and properties slide up as bottom sheets so the canvas stays the hero. I tested on a four-year-old phone — still 60 fps for most recipes." },
+    { q: 'Does it run on mobile?', a: "Yep. Palette and properties slide up as bottom sheets so the canvas stays the hero. I tested on a four-year-old phone and still got 60 fps for most recipes." },
     { q: 'Will I get a fast GPU on my laptop?', a: "Almost certainly. Any laptop made since 2018 has a usable GPU and Shaddy renders through WebGL 2. The mobile path downscales the drawing buffer when the framerate drops; the desktop path renders at full devicePixelRatio." },
-    { q: 'Can I import existing shaders?', a: "Paste GLSL into the Ask Claude panel and the AI pulls out the blocks it recognises. It won't always be a clean round-trip — but you get a starting chain to edit, which is the hard part." },
-    { q: 'How do I get the GLSL out?', a: "Copy from the code drawer. The output is real GLSL ES 3.0 fragment source — paste it into Shadertoy or your own WebGL pipeline and it runs. The drawer is read-write: edit the code, the Ask Claude panel translates the edits back into cards." },
-    { q: 'Is the code open source?', a: "MIT-licensed on GitHub. Renderer, card library, AI import — same repo, no proprietary bits hiding anywhere." },
+    { q: 'Can I import existing shaders?', a: "Paste GLSL into the Ask Claude panel and the AI pulls out the blocks it recognises. It won't always be a clean round-trip, but you get a starting chain to edit, which is the hard part." },
+    { q: 'How do I get the GLSL out?', a: "Copy from the code drawer. The output is real GLSL ES 3.0 fragment source. Paste it into Shadertoy or your own WebGL pipeline and it runs. The drawer is read-write: edit the code, and the Ask Claude panel translates the edits back into cards." },
+    { q: 'Is the code open source?', a: "MIT-licensed on GitHub. Renderer, card library, AI import, all in one repo, with no proprietary bits hiding anywhere." },
   ];
   return (
     <div style={{ maxWidth: 720, margin: '3rem auto 0', display: 'flex', flexDirection: 'column' }}>
@@ -1242,7 +1225,6 @@ export const Landing = () => {
       <LandingNav />
       <PageTOC />
       <Hero />
-      <RoamingMascot />
       <SectionShell
         id="how"
         eyebrow="How it works"
@@ -1281,7 +1263,7 @@ export const Landing = () => {
             body={
               <>
                 The code drawer is the actual GLSL the GPU runs. Copy it,
-                paste it into Shadertoy or your own WebGL page — it just
+                paste it into Shadertoy or your own WebGL page, and it just
                 works. Edit the code in place and Ask Claude reparses your
                 edits back into cards. Hit S to copy a share URL with the
                 whole recipe in the hash. Plain text in, plain text out.
@@ -1315,9 +1297,9 @@ export const Landing = () => {
               color: 'rgba(232,226,212,0.62)', lineHeight: 1.6,
             }}
           >
-            Pick a template. Drag a slider. The annotations point at the
-            specific trick — &ldquo;this is the bit where sin meets length&rdquo; — so
-            you actually learn the move, not just admire the pixels.
+            Pick a template. Drag a slider. The annotations point at the exact
+            trick (&ldquo;this is the bit where sin meets length&rdquo;) so you
+            actually learn the move, not just admire the pixels.
           </p>
         </div>
         <TemplatesGrid />
@@ -1340,7 +1322,7 @@ export const Landing = () => {
         id="code"
         eyebrow="GLSL underneath"
         title={<>The code and<br />the canvas are<br />the same thing.</>}
-        subtitle="Drag a block — the corresponding line in the code drawer scrolls into view and flashes lime. Edit a number in the code — the slider in the panel jumps to match. No black boxes between you and the GPU."
+        subtitle="Drag a block and the matching line in the code drawer scrolls into view and flashes lime. Edit a number in the code and the slider in the panel jumps to match. No black boxes between you and the GPU."
       >
         <CodePanel />
       </SectionShell>
@@ -1407,30 +1389,9 @@ export const Landing = () => {
               justifySelf: 'end',
             }}
           >
+            {/* Transparent fractal on the bare page background — no box, no
+                backdrop; it reads as a silhouette floating in the dark. */}
             <FractalEntity />
-            <div
-              style={{
-                position: 'absolute', left: 4, top: 0,
-                font: `700 9.5px ${TYPE.bodyMono}`,
-                color: 'rgba(254,231,199,0.55)',
-                letterSpacing: '0.22em', textTransform: 'uppercase',
-                mixBlendMode: 'difference',
-                pointerEvents: 'none',
-              }}
-            >
-              // raymarched_fractal · pulse
-            </div>
-            <div
-              style={{
-                position: 'absolute', right: 4, bottom: 0,
-                font: `500 10px ${TYPE.bodyMono}`,
-                color: 'rgba(254,231,199,0.45)',
-                letterSpacing: '0.20em', textTransform: 'uppercase',
-                pointerEvents: 'none',
-              }}
-            >
-              live · GLSL · 60 fps
-            </div>
           </div>
         </div>
       </section>

@@ -127,13 +127,10 @@ void main(){
   vec2 res = march(camPos, rayDir);
 
   // res.y == 1.0 means we hit; 0.0 means we ran out of steps / max-distance.
-  // Debug: on miss, render a faint warm gradient so we can see the canvas IS
-  // rendering even when no rays converge. Once we confirm hits work, this
-  // can be replaced with vec4(0) for true transparency.
+  // On miss the pixel is fully transparent so the fractal silhouette sits
+  // directly on the page background (no dark box behind it).
   if (res.y < 0.5) {
-    float fade = smoothstep(1.5, 0.2, length(uv));
-    vec3 dbg = mix(vec3(0.020, 0.018, 0.025), vec3(0.20, 0.12, 0.05), fade);
-    gl_FragColor = vec4(dbg, 1.0);
+    gl_FragColor = vec4(0.0);
     return;
   }
 
@@ -305,6 +302,11 @@ export const FractalEntity = ({ style }: { style?: CSSProperties }) => {
       if (canvasIsReady && visible) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+        // Re-assert iResolution every frame — StrictMode runs the effect twice
+        // on the same canvas, and the size-change-guarded set in resize() would
+        // skip the second (drawing) program, leaving iResolution at 0 → all
+        // rays miss → the fractal renders fully transparent.
+        gl.uniform2f(Rloc, canvas.width, canvas.height);
         gl.uniform1f(Tloc, (performance.now() - start) / 1000);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }

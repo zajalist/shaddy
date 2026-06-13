@@ -53,8 +53,14 @@ export function formatParameterAsGlslLiteral(value: ParameterValue): string {
   return glslFloat(value);
 }
 
-function glslFloat(n: number): string {
-  // GLSL requires a decimal point on float literals (otherwise it's int).
+/** THE canonical number → GLSL float literal. Every emission site (uniform
+ *  defaults, baked macro literals, composition alpha, …) MUST route through
+ *  this so the same value always spells the same bytes — the byte-identical
+ *  invariant the reverse parser relies on. Rounds to 6 fractional digits
+ *  (deterministic), forces a decimal point, and guards non-finite values so a
+ *  NaN/Infinity never leaks into the shader as invalid GLSL. */
+export function glslFloat(n: number): string {
+  if (!Number.isFinite(n)) return '0.0';
   const s = Number(n.toFixed(6)).toString();
   return s.includes('.') ? s : `${s}.0`;
 }

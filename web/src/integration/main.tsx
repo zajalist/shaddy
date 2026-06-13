@@ -18,6 +18,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MascotDemo } from '@/ux/Mascot';
 import { DesignApp } from '@/design';
 import { Landing } from '@/design/Landing';
+import { IconGallery } from '@/design/IconGallery';
 import { AuthCallback } from '@/auth';
 import { lazy, Suspense } from 'react';
 import '@/index.css';
@@ -78,6 +79,7 @@ createRoot(rootEl).render(
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/mascot" element={<MascotDemo />} />
+          <Route path="/icons" element={<IconGallery />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       </Suspense>

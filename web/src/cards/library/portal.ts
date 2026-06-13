@@ -27,4 +27,8 @@ export const PORTAL: CardDef = {
   // compiler additionally short-circuits portal emission so the marker
   // comment + this body line are all that hits the source.
   snippetTemplate: '// portal — row break for the visual chain editor',
+  // Deprecated: portals were superseded by named reroutes. Kept in the engine
+  // as a no-op shim so any saved recipe referencing 'portal' still compiles,
+  // but hidden from the palette / search so it's no longer authorable.
+  hidden: true,
 };

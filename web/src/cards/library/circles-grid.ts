@@ -8,6 +8,9 @@ export const CIRCLES_GRID: CardDef = {
   category: 'shape',
   friendlyName: 'Circles grid',
   description: 'Grid of circles via fract+length (Book of Shaders).',
+  // Deprecated: make grids compositionally with `ring`/`circle` + `repeat`.
+  // Kept (hidden) so existing recipes referencing this type still compile.
+  hidden: true,
   icon: '⊙',
   params: {
     density: { kind: 'float', label: 'density', default: 6, min: 1, max: 30, step: 0.1 },

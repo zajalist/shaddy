@@ -8,6 +8,8 @@ import type { CardDef } from '../types';
 
 // ── marker cards (no GLSL contribution) ──
 import { PORTAL } from './portal';
+import { REROUTE_DECL } from './reroute-decl';
+import { REROUTE_USE } from './reroute-use';
 
 // ── existing 15 (PR #65 + earlier follow-ups) ──
 import { GLOW } from './glow';
@@ -47,6 +49,7 @@ import { WORLEY_EDGES } from './worley-edges';
 import { BRICK_WALL } from './brick-wall';
 import { CAUSTICS } from './caustics';
 import { CONCENTRIC_RINGS } from './concentric-rings';
+import { CONCENTRIC } from './concentric';
 import { DIAMOND_GRID } from './diamond-grid';
 import { GRADIENT_CONIC } from './gradient-conic';
 import { GRADIENT_LINEAR } from './gradient-linear';
@@ -214,6 +217,8 @@ import { TORUS_3D } from './torus-3d';
 export {
   // marker cards (no GLSL contribution)
   PORTAL,
+  // named reroutes (special-cased by the compiler, like PORTAL)
+  REROUTE_DECL, REROUTE_USE,
   // existing
   GLOW, GRAIN, HUE_CYCLE, NOISE_FIELD, PALETTE, RADIAL_GRADIENT, REPEAT, RING, RIPPLE,
   STRIPES, SWIRL, TRIPLE_GRADIENT, VIGNETTE, VORONOI_CELLS, WAVE_WARP,
@@ -224,7 +229,7 @@ export {
   // new shapes — noise
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
   // new shapes — math / patterns / polar
-  BRICK_WALL, CAUSTICS, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
+  BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
   SPIRAL_ARMS, SUNBURST, TRIANGLE_GRID, TRUCHET,
   // Book of Shaders — patterns & curves
@@ -269,12 +274,11 @@ export {
 } from './wildcard';
 
 export {
-  GLSL_HELPERS,
-  HELPER_DEPS,
-  HELPER_EMISSION_ORDER,
-  HELPERS_AFTER_SCENE,
+  HELPERS,
+  orderedHelpers,
   resolveHelperClosure,
 } from './helpers';
+export type { HelperDef, HelperPhase, OrderedHelper } from './helpers';
 
 // Order matters for the UI's "+ add card" sheet: items within a category
 // list in the order they appear here. Grouped by sub-theme inside each
@@ -300,9 +304,11 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Fractals
   JULIA, MANDELBROT, MANDELBULB_2D, BURNING_SHIP, NEWTON, SIERPINSKI, ORBIT_TRAP_CIRCLE,
   // Polar / radial
-  CONCENTRIC_RINGS, SUNBURST, ROSE_CURVE, ROSE_PETALS, CARDIOID_SHAPE,
-  LEMNISCATE, CONCENTRIC_POLYGONS, POLAR_GRID, METABALLS,
+  CONCENTRIC, SUNBURST, ROSE_CURVE, ROSE_PETALS, CARDIOID_SHAPE,
+  LEMNISCATE, POLAR_GRID, METABALLS,
   SECTOR, SPIRAL_ARMS,
+  // deprecated/hidden — kept in the registry so existing recipes still compile
+  CONCENTRIC_RINGS, CONCENTRIC_POLYGONS,
   // Gradients
   GRADIENT_LINEAR, GRADIENT_CONIC,
 
@@ -375,6 +381,9 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Zero-param utility cards that the UI special-cases (no shader effect).
   // Kept at the end so palette browsability isn't disrupted.
   PORTAL,
+  // Named reroutes — declaration captures the chain output under a name; usage
+  // (hidden) reads it back as a source. Both special-cased in the compiler.
+  REROUTE_DECL, REROUTE_USE,
 ];
 
 export const CARD_LIBRARY: Record<string, CardDef> = Object.fromEntries(

@@ -25,6 +25,10 @@ export type Recipe = {
    *  `sample_buffer_{a,b,c,d}` cards. Omit the field for a single-pass
    *  recipe (the back-compat default). */
   passes?: Pass[];
+  /** OPTIONAL user-built animation chains. Each is a reusable scalar signal a
+   *  param can bind to via `animation: { type: 'custom', ref: <id> }`. Shared
+   *  across all passes. Omit when no custom animations exist. See AnimChain. */
+  animations?: AnimChain[];
 };
 
 /** One render pass in a multi-pass recipe. The image pass is always present
@@ -64,6 +68,19 @@ export const BLEND_MODES: readonly BlendMode[] = [
   'normal', 'add', 'multiply', 'screen', 'lighten', 'darken',
 ] as const;
 
+/** A scoped attribute — another library card attached to a host block whose
+ *  GLSL is applied ONLY to that block. By category: distortion attrs
+ *  save→mutate→restore the block's `uv`; colour/effect attrs post-process its
+ *  `col`; shape attrs combine into its `d`. `type` is a library card type used
+ *  as the modifier; `params` override that card's defaults exactly like a
+ *  normal card. Optional everywhere for back-compat with pre-attribute JSON. */
+export type CardAttribute = {
+  id: string;
+  type: string;
+  enabled: boolean;
+  params: Record<string, Parameter>;
+};
+
 export type TypedCard = {
   kind: 'typed';
   id: string;
@@ -75,6 +92,28 @@ export type TypedCard = {
   alpha?: number;
   /** Default 'normal'. Same optional-for-back-compat rule as `alpha`. */
   blendMode?: BlendMode;
+  /** Scoped modifier attributes attached to this block. Optional / default
+   *  empty so pre-attribute recipes load unchanged. */
+  attributes?: CardAttribute[];
+  /** Present only on macro cards (`type === 'macro'`). The macro inline-expands
+   *  to these sub-blocks at compile time (UE5 material-function style). Carried
+   *  on the card so the recipe stays self-contained. */
+  macro?: MacroDef;
+};
+
+/** A reusable "function" block: a named sequence of blocks that compiles by
+ *  inline-expanding to its sub-blocks' GLSL (with their params baked as literal
+ *  constants, so the result is self-contained and compressible). */
+export type MacroDef = {
+  name: string;
+  blocks: TypedCard[];
+  /** When set, the compiler emits minimal byte-identical GLSL for the macro
+   *  body (constant-fold + CSE via the compiler normalizer). */
+  compress?: boolean;
+  /** Optional curated icon key (see design/macro-icons). Purely cosmetic —
+   *  picks the glyph shown for this macro in the palette / canvas / inspector.
+   *  Undefined falls back to the default ▣ mark. */
+  icon?: string;
 };
 
 export type WildcardCard = {
@@ -92,14 +131,81 @@ export type WildcardCard = {
 
 export type Parameter = {
   value: ParameterValue;
-  /** PR #2 fills this with the Animation tagged union. */
-  animation: null;
+  /** When set, the param's value is driven per-frame from u_time / u_mouse
+   *  instead of being a static uniform. The compiler emits a GLSL local for it
+   *  and the endpoints (min/max/speed/…) become live uniforms so they stay
+   *  editable. null = a plain static value (the default for every param). */
+  animation: Animation | null;
   /** For media-backed params (kind: 'image' | 'video'), the live source the
    *  renderer should sample as a sampler2D. The Recipe.value stays a string
    *  (a data URL for images, an opaque tag like 'webcam' for video) so the
    *  Recipe remains serialisable; the integration layer carries the actual
    *  element across compile cycles via this field. */
   sourceRef?: MediaSourceRef | null;
+};
+
+/** Per-parameter animation. Time-driven kinds read `u_time` (seconds since
+ *  mount); `mouse` reads `u_mouse`. Endpoints are stored on the Animation (and
+ *  emitted as live uniforms) so dragging them is a cheap setUniform, not a
+ *  recompile. float-valued: sine | pulse | noise | mouse; vec3-valued:
+ *  color_cycle. */
+export type Animation =
+  | { type: 'sine'; min: number; max: number; speed: number; phase: number }
+  | { type: 'pulse'; min: number; max: number; speed: number; duty: number }
+  | { type: 'noise'; min: number; max: number; speed: number }
+  | { type: 'mouse'; min: number; max: number; axis: 'x' | 'y' }
+  | { type: 'color_cycle'; colorA: ColorRgb; colorB: ColorRgb; speed: number }
+  /** A user-built animation: the param's value comes from a shared
+   *  `Recipe.animations[].id` chain (see AnimChain). Many params can `ref`
+   *  the same chain — the compiler emits the chain once and references it. */
+  | { type: 'custom'; ref: string };
+
+/** The animation kinds valid for a float param vs a colour param. 'custom' is
+ *  float-valued in v1 (the chain folds to a scalar). */
+export const FLOAT_ANIM_TYPES = ['sine', 'pulse', 'noise', 'mouse', 'custom'] as const;
+export const COLOR_ANIM_TYPES = ['color_cycle'] as const;
+
+// ─── Custom animation chains (built from animation blocks) ───────────────
+
+/** A shared, reusable animation: an ordered chain of animation blocks that
+ *  fold left→right into one scalar value-over-time. Lives on the same canvas
+ *  as composer blocks but is a distinct species (cannot puzzle-connect to
+ *  them). Stored on the Recipe so it serialises + rides Share URLs, and so a
+ *  single chain can drive many params. See cards/anim-blocks.ts. */
+export type AnimChain = {
+  id: string;
+  /** User-facing name shown in the inspector ∼-menu and on the canvas. */
+  name: string;
+  /** The blocks, in fold order. The first block is typically a source
+   *  (Time/Mouse); the rest transform the running value. */
+  blocks: AnimBlock[];
+};
+
+/** One animation block instance inside an AnimChain. `type` keys into
+ *  ANIM_BLOCKS (the AnimBlockDef library); `params` mirrors the Card model. */
+export type AnimBlock = {
+  id: string;
+  type: string;
+  params: Record<string, Parameter>;
+};
+
+/** Library definition for an animation block — the AnimBlockDef analogue of
+ *  CardDef, but it emits a single GLSL expression that transforms a running
+ *  scalar value `v`. See cards/anim-blocks.ts. */
+export type AnimBlockDef = {
+  type: string;
+  label: string;
+  icon: string;
+  description: string;
+  /** A `source` block ignores the incoming `v` and produces a fresh value
+   *  (Time → u_time, Mouse → u_mouse). A non-source block reads `{{v}}`. */
+  source?: boolean;
+  params: Record<string, ParamDef>;
+  /** GLSL expression producing the new value. `{{v}}` = the running value so
+   *  far; `{{paramKey}}` = that param (a baked literal in v1). */
+  transform: string;
+  /** Helper functions the transform depends on (e.g. 'noise2'). */
+  helpers?: string[];
 };
 
 /** Live media a sampler2D param is bound to. */
@@ -118,6 +224,16 @@ export type MediaParamValue = string;
 // ─── Card library schema ────────────────────────────────────────────────
 
 export type CardCategory = 'shape' | 'distortion' | 'color' | 'effect';
+
+/** A pipeline register a card's GLSL reads from / writes to. The compiler
+ *  threads exactly these three mutable vars (see MAIN_PRELUDE). */
+export type Register = 'uv' | 'd' | 'col';
+
+/** Which registers a card touches. The compiler reasons about ordering/tiling
+ *  from this instead of inferring from `category`. Optional on CardDef: when
+ *  absent it's DERIVED from `category` (see `cardIO`), so existing cards need no
+ *  annotation; a card can declare it to override the category default. */
+export type CardIO = { reads: readonly Register[]; writes: readonly Register[] };
 
 export type ParamDef =
   | { kind: 'float'; label: string; default: number; min: number; max: number; step?: number }
@@ -144,7 +260,11 @@ export type ParamDef =
    *  the consumer pass is the same as the producer). Stored as a string
    *  literal of the target buffer id ('a' | 'b' | 'c' | 'd') so the Recipe
    *  round-trips through JSON. */
-  | { kind: 'buffer'; label: string; default: 'a' | 'b' | 'c' | 'd' };
+  | { kind: 'buffer'; label: string; default: 'a' | 'b' | 'c' | 'd' }
+  /** A free-text string (e.g. a named-reroute label). COMPILE-ONLY: the value
+   *  is inlined into the GLSL as a sanitized identifier, never emitted as a
+   *  uniform. Stored as a string so the Recipe round-trips through JSON. */
+  | { kind: 'text'; label: string; default: string };
 
 /** A 3D card's contribution to the raymarched scene. Used by cards with
  *  `mode: '3d'`. The compiler walks 3D cards in recipe order and threads
@@ -182,6 +302,10 @@ export type CardDef = {
   friendlyName: string;
   description: string;
   icon: string;
+  /** Which pipeline registers this card reads/writes. Optional — derived from
+   *  `category` when omitted (see `cardIO`). Declared only when a card breaks
+   *  its category's default (e.g. a distortion that also writes `d`). */
+  io?: CardIO;
   params: Record<string, ParamDef>;
   /** GLSL body emitted into main() for this card. `{{paramKey}}` placeholders
    *  are substituted with a uniform reference (e.g. `u_card3_softness`).
@@ -196,6 +320,10 @@ export type CardDef = {
   mode?: ShaderTemplate;
   /** Required when mode === '3d'. */
   contribution3d?: Card3DContribution;
+  /** Deprecated cards: kept in the library so existing recipes still compile,
+   *  but hidden from the palette/search. e.g. the old "grid" shape cards that
+   *  are now made compositionally with `shape + repeat`. */
+  hidden?: boolean;
 };
 
 // ─── Compiler output ────────────────────────────────────────────────────

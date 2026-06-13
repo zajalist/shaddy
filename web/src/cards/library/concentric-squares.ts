@@ -7,6 +7,9 @@ export const CONCENTRIC_SQUARES: CardDef = {
   category: 'shape',
   friendlyName: 'Concentric squares',
   description: 'Square bands from origin.',
+  // Folded into the generic `concentric` card (type = Squares). Kept hidden
+  // for back-compat with existing recipes.
+  hidden: true,
   icon: '◫',
   params: {
     count: { kind: 'float', label: 'count', default: 8, min: 1, max: 30, step: 0.5 },
