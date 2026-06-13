@@ -28,6 +28,10 @@ export type MiniRecipeCanvasProps = {
   /** When true, 3D thumbnails orbit slowly so the preview isn't a still frame.
    *  Defaults to true; pass false for snapshot-only contexts later. */
   autoOrbit?: boolean;
+  /** Fires once after the first successful compile + a frame, handing back a
+   *  thin renderer handle so callers (e.g. the publish modal) can grab a
+   *  thumbnail. Additive — existing callers ignore it. */
+  onReady?: (api: Pick<RendererAPI, 'snapshot' | 'snapshotAt'>) => void;
   style?: CSSProperties;
   className?: string;
 };
@@ -39,12 +43,16 @@ const ORBIT_PERIOD_S = 24;
 export const MiniRecipeCanvas = ({
   recipe,
   autoOrbit = true,
+  onReady,
   style,
   className,
 }: MiniRecipeCanvasProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererAPI | null>(null);
   const structuralKeyRef = useRef<string>('');
+  const readyFiredRef = useRef(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   const compiled: CompiledShader = useMemo(() => compile(recipe), [recipe]);
   const is3d = recipe.mode === '3d';
@@ -136,6 +144,12 @@ export const MiniRecipeCanvas = ({
       // float/vec3 path.
       if (typeof u.value === 'string') continue;
       r.setUniform(u.name, toRendererUniform(u.value));
+    }
+    // Hand a thumbnail handle back once, after a frame so the first draw lands.
+    if (!readyFiredRef.current && onReadyRef.current) {
+      readyFiredRef.current = true;
+      const fire = onReadyRef.current;
+      requestAnimationFrame(() => requestAnimationFrame(() => fire(r)));
     }
   }, [compiled]);
 

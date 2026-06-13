@@ -37,6 +37,8 @@ const lazyOrSoon = (loader: () => Promise<{ default: React.ComponentType }>) =>
 const Library = lazyOrSoon(() => import('@/design/pages/Library'));
 const Learn   = lazyOrSoon(() => import('@/design/pages/Learn').then(m => ({ default: (m as { default?: React.ComponentType; Learn?: React.ComponentType }).default ?? (m as { Learn: React.ComponentType }).Learn })));
 const Gallery = lazyOrSoon(() => import('@/design/pages/Gallery'));
+const GalleryDetail = lazyOrSoon(() => import('@/design/pages/GalleryDetail'));
+const AuthorProfile = lazyOrSoon(() => import('@/design/pages/AuthorProfile'));
 const Docs    = lazyOrSoon(() => import('@/design/pages/Docs'));
 
 const ComingSoon = () => (
@@ -77,6 +79,8 @@ createRoot(rootEl).render(
           <Route path="/library" element={<Library />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/s/:id" element={<GalleryDetail />} />
+          <Route path="/u/:handle" element={<AuthorProfile />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/mascot" element={<MascotDemo />} />
           <Route path="/icons" element={<IconGallery />} />

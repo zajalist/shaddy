@@ -75,6 +75,7 @@ import { Icon } from './icons';
 import { MacroIcon } from './macro-icons';
 import { PropSectionHeader, PropertySlider } from './components';
 import { categoryToBlock, normalizedToParam, paramToNormalized } from './card-adapter';
+import { PublishModal } from './pages/gallery/PublishModal';
 
 export type RightTab = 'block' | 'canvas';
 
@@ -1600,6 +1601,7 @@ const GlobalProps = ({ fps = 0 }: { fps?: number }) => {
   const setCanvas = useCardsStore((s) => s.setCanvas);
   const exportSize = resolveExportSize(recipe.canvasAspect, canvas.exportLongEdge);
   const [bgOpen, setBgOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   return (
     <>
       <PropSectionHeader title="Recipe" />
@@ -1764,6 +1766,8 @@ const GlobalProps = ({ fps = 0 }: { fps?: number }) => {
       <PropSectionHeader title="Share" />
       <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button
+          type="button"
+          onClick={() => setPublishOpen(true)}
           style={{
             background: SHADE.gold, color: '#1a1208',
             border: `1px solid ${SHADE.goldDeep}`, borderRadius: 3, padding: '11px 12px',
@@ -1775,6 +1779,7 @@ const GlobalProps = ({ fps = 0 }: { fps?: number }) => {
           <Icon name="share" size={13} color="#1a1208" /> Publish to gallery
         </button>
       </div>
+      <PublishModal open={publishOpen} onClose={() => setPublishOpen(false)} />
       <div style={{ flex: 1 }} />
       <div
         style={{
