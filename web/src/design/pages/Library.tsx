@@ -16,21 +16,21 @@
 // match are hidden via `display:none` so anchor links + IntersectionObserver
 // continue to work (the DOM stays intact).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { SHADE, TYPE } from '../tokens';
-import { useIsMobile } from '../useIsMobile';
 import { Article } from './library/Article';
+import { P, Inline, Strong, Table } from './library/atoms';
 import { CodeSnippet } from './library/CodeSnippet';
-import { Diagram } from './library/Diagram';
-import { TOC } from './library/TOC';
+import { Diagram } from './library/diagrams';
+import { Layout } from './library/Layout';
 import type { TocGroup } from './library/TOC';
+import { useLibrarySearch } from './library/useLibrarySearch';
+import { FONT_LINK_ID, FONTS_HREF, LIBRARY_GRID_CSS, LIB_TYPE, inkCard } from './library/style';
 
 // ─── fonts + body chrome ───────────────────────────────────────────────
-const FONT_LINK_ID = 'shade-design-fonts';
-const FONTS_HREF =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Geist+Mono:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap';
 const KEYFRAMES_ID = 'shade-library-keyframes';
 
 const useLibraryChrome = () => {
@@ -48,6 +48,7 @@ const useLibraryChrome = () => {
       style.textContent = `
         @keyframes libFadeIn { from { opacity: 0 } to { opacity: 1 } }
         .lib-article-hidden { display: none !important; }
+        ${LIBRARY_GRID_CSS}
       `;
       document.head.appendChild(style);
     }
@@ -68,87 +69,12 @@ const useLibraryChrome = () => {
   }, []);
 };
 
-// ─── tiny styled atoms ─────────────────────────────────────────────────
-
-const P = ({ children }: { children: React.ReactNode }) => (
-  <p style={{ margin: '0 0 14px', color: SHADE.text, lineHeight: 1.7 }}>
-    {children}
-  </p>
-);
-
-const Inline = ({ children }: { children: React.ReactNode }) => (
-  <code style={{
-    fontFamily: TYPE.bodyMono,
-    fontSize: '0.92em',
-    background: SHADE.surface3,
-    color: SHADE.text,
-    padding: '1px 6px',
-    borderRadius: 4,
-    border: `1px solid ${SHADE.border}`,
-  }}>{children}</code>
-);
-
-const Strong = ({ children }: { children: React.ReactNode }) => (
-  <strong style={{ color: SHADE.text, fontWeight: 700 }}>{children}</strong>
-);
-
-const Table = ({ head, rows }: { head: string[]; rows: string[][] }) => (
-  <div style={{
-    margin: '18px 0',
-    border: `1.5px solid ${SHADE.inkLine}`,
-    borderRadius: 10,
-    boxShadow: `0 3px 0 ${SHADE.inkLine}`,
-    overflow: 'hidden',
-    background: SHADE.surface1,
-  }}>
-    <table style={{
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontFamily: TYPE.body,
-      fontSize: 13.5,
-    }}>
-      <thead>
-        <tr style={{ background: SHADE.surface2 }}>
-          {head.map((h) => (
-            <th key={h} style={{
-              padding: '10px 12px',
-              textAlign: 'left',
-              fontFamily: TYPE.bodyMono,
-              fontSize: 10.5,
-              fontWeight: 700,
-              color: SHADE.textDim,
-              letterSpacing: TYPE.trackEyebrow,
-              textTransform: 'uppercase',
-              borderBottom: `1.5px solid ${SHADE.inkLine}`,
-            }}>{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => (
-          <tr key={i} style={{
-            background: i % 2 === 0 ? SHADE.surface1 : SHADE.surface2,
-          }}>
-            {row.map((cell, j) => (
-              <td key={j} style={{
-                padding: '8px 12px',
-                color: SHADE.text,
-                borderTop: i === 0 ? 'none' : `1px dashed ${SHADE.border}`,
-              }}>{cell}</td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-
 // ─── article registry ──────────────────────────────────────────────────
 // Single source of truth: each article exports its `id` + `title` here.
 // The TOC sidebar lists them; the body renders them; the search filter
 // matches on title.
 
-type ArticleMeta = { id: string; title: string };
+type ArticleMeta = { id: string; title: string; keywords?: string };
 type Group = {
   label: string;
   color: string;
@@ -160,78 +86,78 @@ const GROUPS: Group[] = [
     label: 'Fundamentals',
     color: SHADE.gold,
     articles: [
-      { id: 'what-is-a-shader',      title: 'What IS a shader?' },
-      { id: 'fragment-pipeline',     title: 'The fragment shader pipeline' },
-      { id: 'why-gpus-fast',         title: 'Why GPUs are fast' },
-      { id: 'glsl-vs-the-others',    title: 'GLSL vs HLSL vs WGSL vs Metal' },
+      { id: 'what-is-a-shader',      title: 'What IS a shader?',                  keywords: 'gpu pixel parallel fragment program colour maths in colour out per pixel' },
+      { id: 'fragment-pipeline',     title: 'The fragment shader pipeline',       keywords: 'vertex rasterize rasterizer fragment quad full-screen triangles raster' },
+      { id: 'why-gpus-fast',         title: 'Why GPUs are fast',                  keywords: 'simt parallel cores warp wavefront branches divergence threads' },
+      { id: 'glsl-vs-the-others',    title: 'GLSL vs HLSL vs WGSL vs Metal',      keywords: 'glsl hlsl wgsl metal webgl directx webgpu unity godot shading language' },
     ],
   },
   {
     label: 'Math you need',
     color: SHADE.catShape,
     articles: [
-      { id: 'uv-coordinates',     title: 'UV coordinates' },
-      { id: 'trig-in-shaders',    title: 'Trig in shaders' },
-      { id: 'vectors-dot',        title: 'Vectors + dot product' },
-      { id: 'smoothstep-mix',     title: 'Smoothstep + mix' },
-      { id: 'hash-noise',         title: 'Hash + noise' },
-      { id: 'fbm-ridged',         title: 'fBm + ridged + turbulence' },
+      { id: 'uv-coordinates',     title: 'UV coordinates',           keywords: 'uv gl_fragcoord resolution normalised centred aspect ratio origin' },
+      { id: 'trig-in-shaders',    title: 'Trig in shaders',          keywords: 'sin cos sine cosine oscillator phase frequency amplitude wave' },
+      { id: 'vectors-dot',        title: 'Vectors + dot product',    keywords: 'dot product projection cos theta normalize lighting term fresnel grazing' },
+      { id: 'smoothstep-mix',     title: 'Smoothstep + mix',         keywords: 'smoothstep mix step lerp blend cubic hermite ramp gradient' },
+      { id: 'hash-noise',         title: 'Hash + noise',             keywords: 'hash random fract sin value noise gradient perlin simplex bilinear' },
+      { id: 'fbm-ridged',         title: 'fBm + ridged + turbulence', keywords: 'fbm fractal brownian motion octaves ridged turbulence clouds terrain marble' },
     ],
   },
   {
     label: 'SDFs',
     color: SHADE.catDistort,
     articles: [
-      { id: 'sdf-intro',          title: "What's an SDF?" },
-      { id: 'sdf-2d',             title: '2D SDF primitives' },
-      { id: 'sdf-3d',             title: '3D SDF primitives' },
-      { id: 'sdf-combinators',    title: 'SDF combinators' },
-      { id: 'domain-operators',   title: 'Domain operators' },
-      { id: 'raymarching',        title: 'Raymarching' },
+      { id: 'sdf-intro',          title: "What's an SDF?",           keywords: 'sdf signed distance field iso-lines raymarching anti-alias smoothstep' },
+      { id: 'sdf-2d',             title: '2D SDF primitives',        keywords: 'sdf circle box triangle hexagon iq primitives 2d sdcircle sdbox' },
+      { id: 'sdf-3d',             title: '3D SDF primitives',        keywords: 'sdf sphere box torus capsule 3d sdsphere sdtorus sdcapsule length' },
+      { id: 'sdf-combinators',    title: 'SDF combinators',          keywords: 'union intersection subtract min max smin smooth-min smoothmin blend boolean' },
+      { id: 'domain-operators',   title: 'Domain operators',         keywords: 'domain mirror abs mod tile repeat polar twist isometric warp' },
+      { id: 'raymarching',        title: 'Raymarching',              keywords: 'raymarch sphere tracing ray camera step under-relax march hit' },
     ],
   },
   {
     label: 'Lighting',
     color: SHADE.catColor,
     articles: [
-      { id: 'surface-normals',    title: 'Surface normals' },
-      { id: 'lambert',            title: 'Lambert (diffuse)' },
-      { id: 'phong-specular',     title: 'Phong / Blinn-Phong specular' },
-      { id: 'fresnel',            title: 'Fresnel' },
-      { id: 'ao',                 title: 'Ambient occlusion' },
-      { id: 'soft-shadows',       title: 'Soft shadows' },
+      { id: 'surface-normals',    title: 'Surface normals',                    keywords: 'normal gradient cross product central difference perpendicular calcnormal' },
+      { id: 'lambert',            title: 'Lambert (diffuse)',                  keywords: 'lambert diffuse dot n l brightness ambient max clamp' },
+      { id: 'phong-specular',     title: 'Phong / Blinn-Phong specular',       keywords: 'phong blinn specular highlight half-vector shininess exponent metal' },
+      { id: 'fresnel',            title: 'Fresnel',                            keywords: 'fresnel schlick grazing angle reflection f0 fifth power snell' },
+      { id: 'ao',                 title: 'Ambient occlusion',                  keywords: 'ao ambient occlusion crevice march normal tap darkening' },
+      { id: 'soft-shadows',       title: 'Soft shadows',                       keywords: 'soft shadow penumbra iq ratio occluder hardness falloff k' },
     ],
   },
   {
     label: 'Color',
     color: SHADE.catEffect,
     articles: [
-      { id: 'linear-srgb',        title: 'Linear vs sRGB' },
-      { id: 'tonemapping',        title: 'Tonemapping' },
-      { id: 'palettes',           title: 'Palettes' },
-      { id: 'hsv',                title: 'HSV' },
+      { id: 'linear-srgb',        title: 'Linear vs sRGB',     keywords: 'linear srgb gamma curve 2.2 pow convert colour space' },
+      { id: 'tonemapping',        title: 'Tonemapping',        keywords: 'tonemap reinhard aces filmic uncharted2 hdr squash range' },
+      { id: 'palettes',           title: 'Palettes',           keywords: 'palette cosine iq gradient abcd hue rotate vec3 colour' },
+      { id: 'hsv',                title: 'HSV',                keywords: 'hsv hue saturation value rgb conversion branchless rainbow' },
     ],
   },
   {
     label: 'Fractals',
     color: SHADE.ember,
     articles: [
-      { id: 'mandelbrot-julia',   title: 'Mandelbrot / Julia escape-time' },
-      { id: 'burning-ship',       title: 'Burning Ship' },
-      { id: 'newton',             title: 'Newton fractals' },
-      { id: 'ifs',                title: 'IFS (iterated function systems)' },
-      { id: 'mandelbulb',         title: 'Mandelbulb' },
+      { id: 'mandelbrot-julia',   title: 'Mandelbrot / Julia escape-time',     keywords: 'mandelbrot julia escape time iterate complex plane z squared c' },
+      { id: 'burning-ship',       title: 'Burning Ship',                       keywords: 'burning ship mandelbrot variant absolute value silhouette' },
+      { id: 'newton',             title: 'Newton fractals',                    keywords: 'newton method root finding complex polynomial z cubed roots' },
+      { id: 'ifs',                title: 'IFS (iterated function systems)',    keywords: 'ifs iterated function system sierpinski chaos game contraction attractor' },
+      { id: 'mandelbulb',         title: 'Mandelbulb',                         keywords: 'mandelbulb 3d spherical power distance estimator orbit trap raymarch' },
     ],
   },
   {
     label: 'Recipes',
     color: SHADE.goldDeep,
     articles: [
-      { id: 'three-card-starter', title: 'The 3-card starter' },
-      { id: 'reaction-diffusion', title: 'Reaction-diffusion' },
-      { id: 'plasma',             title: 'Plasma demoscene effect' },
-      { id: 'voronoi',            title: 'Voronoi tessellation' },
-      { id: 'domain-warping',     title: 'Domain warping' },
+      { id: 'three-card-starter', title: 'The 3-card starter',         keywords: 'shape palette vignette radial gradient starter recipe smoothstep' },
+      { id: 'reaction-diffusion', title: 'Reaction-diffusion',         keywords: 'reaction diffusion gray-scott turing ping-pong texture state spots stripes' },
+      { id: 'plasma',             title: 'Plasma demoscene effect',    keywords: 'plasma demoscene sine waves interference cyclic palette rainbow' },
+      { id: 'voronoi',            title: 'Voronoi tessellation',       keywords: 'voronoi cell seed nearest f1 f2 tessellation worley grid' },
+      { id: 'domain-warping',     title: 'Domain warping',             keywords: 'domain warp fbm iq cloud turbulent ridges organic' },
     ],
   },
 ];
@@ -591,11 +517,65 @@ vec2 r = vec2(fbm(p + 4.0*q + vec2(1.7,9.2)),
               fbm(p + 4.0*q + vec2(8.3,2.8)));
 float v = fbm(p + 4.0 * r);`;
 
+// ─── search index ───────────────────────────────────────────────────────
+// id -> the code snippet(s) shown in that article. Folded into SEARCH_TEXT
+// so searches like "smoothstep" or "schlick" hit the code, not just prose.
+const CODE_BY_ID: Record<string, string> = {
+  'what-is-a-shader': `${CODE_CPU_VS_GPU}\n${CODE_HELLO_FRAG}`,
+  'uv-coordinates': CODE_UV_BASICS,
+  'trig-in-shaders': CODE_TRIG,
+  'vectors-dot': CODE_DOT,
+  'smoothstep-mix': CODE_SMOOTHSTEP,
+  'hash-noise': CODE_HASH,
+  'fbm-ridged': CODE_FBM,
+  'sdf-2d': CODE_SDF_CIRCLE,
+  'sdf-3d': CODE_SDF_3D,
+  'sdf-combinators': CODE_SDF_BOOL,
+  'domain-operators': CODE_DOMAIN_OPS,
+  'raymarching': CODE_RAYMARCH,
+  'surface-normals': CODE_NORMAL,
+  'lambert': CODE_LAMBERT,
+  'phong-specular': CODE_PHONG,
+  'fresnel': CODE_FRESNEL,
+  'ao': CODE_AO,
+  'soft-shadows': CODE_SOFT_SHADOW,
+  'linear-srgb': CODE_GAMMA,
+  'tonemapping': CODE_TONEMAP,
+  'palettes': CODE_COSINE_PAL,
+  'hsv': CODE_HSV,
+  'mandelbrot-julia': CODE_MANDELBROT,
+  'burning-ship': CODE_BURNING_SHIP,
+  'newton': CODE_NEWTON,
+  'ifs': CODE_IFS,
+  'mandelbulb': CODE_MANDELBULB,
+  'three-card-starter': CODE_3_CARD_STARTER,
+  'reaction-diffusion': CODE_RD,
+  'plasma': CODE_PLASMA,
+  'voronoi': CODE_VORONOI,
+  'domain-warping': CODE_DOMAIN_WARP,
+};
+
+// articleId -> concatenated lowercased searchable text (title + curated
+// keywords + code). Built once at module scope; the search hook matches a
+// debounced substring against it. Title always contributes.
+const SEARCH_TEXT: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  GROUPS.forEach((g) =>
+    g.articles.forEach((a) => {
+      map[a.id] = [a.title, a.keywords ?? '', CODE_BY_ID[a.id] ?? '']
+        .join(' ')
+        .toLowerCase();
+    }),
+  );
+  return map;
+})();
+
 // ─── hero ──────────────────────────────────────────────────────────────
 
 const Hero = ({
   query, setQuery, articleCount, groupCount,
 }: {
+  /** Immediate (un-debounced) input value. */
   query: string;
   setQuery: (v: string) => void;
   articleCount: number;
@@ -628,21 +608,16 @@ const Hero = ({
       <div aria-hidden style={stripe} />
       <div style={inner}>
         <span style={{
-          fontFamily: TYPE.bodyMono,
-          fontSize: 10.5,
-          fontWeight: 600,
+          ...LIB_TYPE.eyebrow,
           color: SHADE.ember,
-          letterSpacing: TYPE.trackEyebrow,
-          textTransform: 'uppercase',
         }}>the library</span>
         <h1 style={{
           margin: '10px 0 12px',
-          fontFamily: TYPE.display,
-          fontSize: 'clamp(34px, 5vw, 60px)',
-          fontWeight: 700,
+          ...LIB_TYPE.display,
+          fontSize: LIB_TYPE.h1.fontSize,
           letterSpacing: TYPE.trackTighter,
           color: SHADE.text,
-          lineHeight: 1.02,
+          lineHeight: LIB_TYPE.h1.lineHeight,
           maxWidth: 880,
         }}>
           The Library &mdash; everything I wish<br />someone had told me about shaders.
@@ -660,15 +635,11 @@ const Hero = ({
           estimators. Read it straight through, or use the search on the left
           to find the one trick you came for.
         </p>
-        <label style={{
+        <label style={inkCard({
           display: 'flex', alignItems: 'center', gap: 10,
           maxWidth: 460,
           padding: '10px 14px',
-          background: SHADE.surface1,
-          border: `1.5px solid ${SHADE.inkLine}`,
-          borderRadius: 10,
-          boxShadow: `0 3px 0 ${SHADE.inkLine}`,
-        }}>
+        })}>
           <svg width={18} height={18} viewBox="0 0 24 24" fill="none" aria-hidden>
             <circle cx="11" cy="11" r="6.5" stroke={SHADE.textDim} strokeWidth="2" />
             <line x1="16" y1="16" x2="20.5" y2="20.5"
@@ -704,24 +675,24 @@ const Hero = ({
 
 export const Library = () => {
   useLibraryChrome();
-  const [query, setQuery] = useState('');
-  const q = query.trim().toLowerCase();
-
-  // Articles whose title doesn't include the query get `display: none`
-  // applied. We build a set of visible IDs once per query change.
-  const visibleIds = useMemo<Set<string>>(() => {
-    const s = new Set<string>();
-    GROUPS.forEach((g) => g.articles.forEach((a) => {
-      if (q === '' || a.title.toLowerCase().includes(q)) s.add(a.id);
-    }));
-    return s;
-  }, [q]);
+  const [params, setParams] = useSearchParams();
+  const { raw, setRaw, q, visibleIds } = useLibrarySearch(SEARCH_TEXT);
 
   const tocGroups: TocGroup[] = GROUPS.map((g) => ({
     label: g.label,
     color: g.color,
     entries: g.articles,
   }));
+
+  // Clicking a TOC entry writes the `#id` into the URL while preserving the
+  // current `?q=` (replace history so the back button isn't spammed).
+  const onNavigate = (id: string) => {
+    const next = new URLSearchParams(params);
+    const search = next.toString();
+    setParams(next, { replace: true });
+    const url = `${search ? `?${search}` : ''}#${id}`;
+    window.history.replaceState(window.history.state, '', url);
+  };
 
   // Helper — wrap each Article in a hideable container based on visibleIds.
   const wrapArt = (id: string, node: React.ReactNode) => (
@@ -736,13 +707,24 @@ export const Library = () => {
       fontFamily: TYPE.body,
     }}>
       <Hero
-        query={query} setQuery={setQuery}
+        query={raw} setQuery={setRaw}
         articleCount={ARTICLE_COUNT}
         groupCount={GROUPS.length}
       />
 
-      <BodyLayout tocGroups={tocGroups} q={q}>
-        <main style={{ flex: 1, minWidth: 0, maxWidth: 900 }}>
+      <Layout tocGroups={tocGroups} q={q} onNavigate={onNavigate}>
+        <main className="lib-article">
+          {visibleIds.size === 0 && (
+            <p style={{
+              padding: '40px 0',
+              fontFamily: TYPE.body,
+              fontSize: 15,
+              color: SHADE.textFaint,
+              lineHeight: 1.6,
+            }}>
+              no matches — clear the search to see everything.
+            </p>
+          )}
           {/* ============================================================
               GROUP 1 — Fundamentals
               ============================================================ */}
@@ -1498,65 +1480,7 @@ export const Library = () => {
             </Article>
           ))}
         </main>
-      </BodyLayout>
-    </div>
-  );
-};
-
-// Body layout — desktop renders sticky TOC sidebar + article column side-by-
-// side; mobile collapses the TOC into a top-of-page <details> drawer so the
-// article isn't squeezed into a one-word-per-line ribbon.
-const BodyLayout = ({
-  tocGroups, q, children,
-}: { tocGroups: TocGroup[]; q: string; children: React.ReactNode }) => {
-  const isMobile = useIsMobile();
-  if (isMobile) {
-    return (
-      <div style={{
-        margin: '0 auto',
-        padding: '16px 16px 80px',
-        maxWidth: '100%',
-      }}>
-        <details style={{
-          marginBottom: 20,
-          background: SHADE.surface1,
-          border: `1.5px solid ${SHADE.inkLine}`,
-          borderRadius: 10,
-          boxShadow: `0 3px 0 ${SHADE.inkLine}`,
-        }}>
-          <summary style={{
-            cursor: 'pointer',
-            padding: '14px 16px',
-            font: `700 12px ${TYPE.bodyMono}`,
-            letterSpacing: TYPE.trackEyebrow,
-            textTransform: 'uppercase',
-            color: SHADE.text,
-            outline: 'none',
-            userSelect: 'none',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span>Contents</span>
-            <span style={{ marginLeft: 'auto', color: SHADE.textFaint }}>▾</span>
-          </summary>
-          <div style={{ padding: '4px 8px 14px' }}>
-            <TOC groups={tocGroups} filter={q} />
-          </div>
-        </details>
-        {children}
-      </div>
-    );
-  }
-  return (
-    <div style={{
-      maxWidth: 1240,
-      margin: '0 auto',
-      padding: '24px 24px 80px',
-      display: 'flex',
-      gap: 36,
-      alignItems: 'flex-start',
-    }}>
-      <TOC groups={tocGroups} filter={q} />
-      {children}
+      </Layout>
     </div>
   );
 };

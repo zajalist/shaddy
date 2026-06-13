@@ -5,16 +5,23 @@
 // Active-state detection uses IntersectionObserver with a top-biased
 // rootMargin so the highlight matches the article currently in the
 // reader's eye-line rather than waiting for it to scroll off the top.
+// The observer is rebuilt whenever the filter changes — filtering hides
+// articles via `display:none`, which stops them intersecting, so a stale
+// observer would otherwise keep pointing at a hidden article.
 //
 // The list is filtered by the page's live search query (passed in as
 // `filter`): entries whose title doesn't contain the query are hidden,
-// and groups with no visible entries collapse entirely. This keeps the
-// TOC useful as an in-page search affordance.
+// and groups with no visible entries collapse entirely.
+//
+// Clicking an entry smooth-scrolls (auto under prefers-reduced-motion) and
+// calls `onNavigate(id)` so the page can write the `#id` into the URL via
+// React Router (instead of a raw history.replaceState that bypasses it).
 
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { SHADE, TYPE } from '../../tokens';
 import { useIsMobile } from '../../useIsMobile';
+import { TOC_ROOT_MARGIN, TOC_OBSERVER_THRESHOLD, inkCard } from './style';
 
 export type TocEntry = { id: string; title: string };
 export type TocGroup = { label: string; color: string; entries: TocEntry[] };
@@ -23,14 +30,23 @@ export type TOCProps = {
   groups: TocGroup[];
   /** Lower-cased search query — empty string means "show all". */
   filter: string;
+  /** Called when an entry is clicked, with that entry's id. The page wires
+   *  this to setSearchParams/navigate so the `#id` lands in the URL. */
+  onNavigate?: (id: string) => void;
 };
 
-export const TOC = ({ groups, filter }: TOCProps) => {
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export const TOC = ({ groups, filter, onNavigate }: TOCProps) => {
   const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Watch every article in the DOM. When more than one is visible at once,
-  // pick the one closest to the top of the viewport.
+  // Watch every (currently visible) article in the DOM. When more than one
+  // is visible at once, pick the one closest to the top of the viewport.
+  // Rebuilt when `filter` changes so hidden articles drop out of the spy.
   useEffect(() => {
     const articles = Array.from(
       document.querySelectorAll<HTMLElement>('[data-article-id]'),
@@ -60,10 +76,28 @@ export const TOC = ({ groups, filter }: TOCProps) => {
         });
         setActiveId(bestId);
       },
-      { rootMargin: '-80px 0px -70% 0px', threshold: [0, 0.1, 0.5, 1] },
+      { rootMargin: TOC_ROOT_MARGIN, threshold: TOC_OBSERVER_THRESHOLD },
     );
     articles.forEach((a) => obs.observe(a));
     return () => obs.disconnect();
+  }, [filter]);
+
+  // Honour an incoming #id on mount: set it active and scroll into view
+  // after first paint, respecting prefers-reduced-motion.
+  useEffect(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
+    if (!hash) return;
+    const target = document.getElementById(hash);
+    if (!target) return;
+    setActiveId(hash);
+    const id = window.requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+    // Mount-only — intentionally empty deps.
   }, []);
 
   // Hide entries whose title doesn't include the filter (case-insensitive).
@@ -87,7 +121,7 @@ export const TOC = ({ groups, filter }: TOCProps) => {
         border: 'none',
         boxShadow: 'none',
       }
-    : {
+    : inkCard({
         position: 'sticky',
         top: 24,
         alignSelf: 'flex-start',
@@ -95,12 +129,8 @@ export const TOC = ({ groups, filter }: TOCProps) => {
         maxHeight: 'calc(100vh - 48px)',
         overflowY: 'auto',
         padding: '18px 16px 24px',
-        background: SHADE.surface1,
-        border: `1.5px solid ${SHADE.inkLine}`,
-        borderRadius: 10,
-        boxShadow: `0 3px 0 ${SHADE.inkLine}`,
         flex: '0 0 auto',
-      };
+      });
   const heading: CSSProperties = {
     fontFamily: TYPE.bodyMono,
     fontSize: 10.5,
@@ -159,13 +189,16 @@ export const TOC = ({ groups, filter }: TOCProps) => {
             <a key={e.id} href={`#${e.id}`}
               style={link(activeId === e.id)}
               onClick={(ev) => {
-                // Smooth scroll without polluting history.
                 ev.preventDefault();
                 const target = document.getElementById(e.id);
                 if (target) {
-                  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  history.replaceState(null, '', `#${e.id}`);
+                  target.scrollIntoView({
+                    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+                    block: 'start',
+                  });
                 }
+                setActiveId(e.id);
+                onNavigate?.(e.id);
               }}>
               {e.title.toLowerCase()}
             </a>

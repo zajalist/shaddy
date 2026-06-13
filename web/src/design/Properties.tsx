@@ -1779,7 +1779,7 @@ const GlobalProps = ({ fps = 0 }: { fps?: number }) => {
           <Icon name="share" size={13} color="#1a1208" /> Publish to gallery
         </button>
       </div>
-      <PublishModal open={publishOpen} onClose={() => setPublishOpen(false)} />
+      {publishOpen && <PublishModal open onClose={() => setPublishOpen(false)} />}
       <div style={{ flex: 1 }} />
       <div
         style={{

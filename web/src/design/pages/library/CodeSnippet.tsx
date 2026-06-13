@@ -12,6 +12,7 @@
 import type { CSSProperties } from 'react';
 import { SHADE, TYPE } from '../../tokens';
 import { GlslHighlight } from '../../GlslHighlight';
+import { inkCard, LIB_TYPE, BLOCK_GAP } from './style';
 
 export type CodeSnippetLang = 'glsl' | 'ts' | 'text' | 'math';
 
@@ -23,16 +24,14 @@ export type CodeSnippetProps = {
 };
 
 export const CodeSnippet = ({ source, lang = 'text', caption }: CodeSnippetProps) => {
-  const wrap: CSSProperties = {
+  const wrap: CSSProperties = inkCard({
     position: 'relative',
     background: SHADE.surface4,
-    border: `1.5px solid ${SHADE.inkLine}`,
     borderRadius: 8,
-    boxShadow: `0 3px 0 ${SHADE.inkLine}`,
     padding: '14px 16px 14px 16px',
-    margin: '18px 0',
+    margin: `${BLOCK_GAP}px 0`,
     overflowX: 'auto',
-  };
+  });
   const pre: CSSProperties = {
     margin: 0,
     font: `13px/1.6 ${TYPE.bodyMono}`,
@@ -51,13 +50,13 @@ export const CodeSnippet = ({ source, lang = 'text', caption }: CodeSnippetProps
   };
   const cap: CSSProperties = {
     margin: '6px 2px 0',
-    font: `500 11.5px ${TYPE.bodyMono}`,
-    letterSpacing: '0.04em',
+    font: `500 ${LIB_TYPE.caption.fontSize}px ${TYPE.bodyMono}`,
+    letterSpacing: LIB_TYPE.caption.letterSpacing,
     color: SHADE.textFaint,
   };
 
   return (
-    <figure style={{ margin: '18px 0' }}>
+    <figure style={{ margin: `${BLOCK_GAP}px 0` }}>
       <div style={wrap}>
         <span style={tag}>{lang}</span>
         <pre style={pre}>

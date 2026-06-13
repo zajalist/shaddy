@@ -5,7 +5,8 @@
 // scroll-into-view and IntersectionObserver can track the active section.
 
 import type { CSSProperties, ReactNode } from 'react';
-import { SHADE, TYPE } from '../../tokens';
+import { SHADE } from '../../tokens';
+import { LIB_TYPE, SCROLL_MARGIN_TOP } from './style';
 
 export type ArticleProps = {
   id: string;
@@ -23,16 +24,12 @@ export const Article = ({ id, group, groupColor, title, children }: ArticleProps
   const wrap: CSSProperties = {
     padding: '36px 0 28px',
     borderBottom: `1.5px dashed ${SHADE.border}`,
-    scrollMarginTop: 96,
+    scrollMarginTop: SCROLL_MARGIN_TOP,
   };
   const eyebrow: CSSProperties = {
     display: 'inline-block',
-    fontFamily: TYPE.bodyMono,
-    fontSize: 10.5,
-    fontWeight: 600,
+    ...LIB_TYPE.eyebrow,
     color: colour,
-    letterSpacing: TYPE.trackEyebrow,
-    textTransform: 'uppercase',
     marginBottom: 8,
   };
   const underline: CSSProperties = {
@@ -47,19 +44,14 @@ export const Article = ({ id, group, groupColor, title, children }: ArticleProps
   };
   const heading: CSSProperties = {
     margin: 0,
-    fontFamily: TYPE.display,
-    fontSize: 30,
-    fontWeight: 700,
-    letterSpacing: TYPE.trackTight,
+    ...LIB_TYPE.display,
+    fontSize: LIB_TYPE.h2.fontSize,
     color: SHADE.text,
-    lineHeight: 1.1,
+    lineHeight: LIB_TYPE.h2.lineHeight,
   };
   const body: CSSProperties = {
     marginTop: 14,
-    fontFamily: TYPE.body,
-    fontSize: 16,
-    lineHeight: 1.7,
-    letterSpacing: '-0.005em',
+    ...LIB_TYPE.body,
     color: SHADE.text,
   };
 

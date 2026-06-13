@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`library/CodeSnippet > matches a stable snapshot 1`] = `
+<figure
+  style="margin: 18px 0px;"
+>
+  <div
+    style="background: rgb(26, 24, 21); border: 1.5px solid rgb(43, 42, 37); border-radius: 8px; box-shadow: 0 3px 0 #2b2a25; position: relative; padding: 14px 16px 14px 16px; margin: 18px 0px; overflow-x: auto;"
+  >
+    <span
+      style="position: absolute; top: 6px; right: 10px; font-style: normal; font-variant: 600; font-weight: 600; font-size: 9.5px; line-height: 600; font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace; font: 600 9.5px "Geist Mono", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.18em; color: rgb(138, 131, 119); text-transform: uppercase;"
+    >
+      ts
+    </span>
+    <pre
+      style="margin: 0px; font-style: normal; font-variant: normal; font-weight: normal; font-size: 13px; line-height: 1.6; font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace; font: 13px / 1.6 "Geist Mono", "JetBrains Mono", ui-monospace, monospace; color: rgb(254, 231, 199); white-space: pre; tab-size: 2;"
+    >
+      const a = 1;
+    </pre>
+  </div>
+</figure>
+`;

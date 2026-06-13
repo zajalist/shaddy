@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`library/style — inkCard > matches a stable snapshot 1`] = `
+{
+  "background": "#f1ebdd",
+  "border": "1.5px solid #2b2a25",
+  "borderRadius": 10,
+  "boxShadow": "0 3px 0 #2b2a25",
+}
+`;
