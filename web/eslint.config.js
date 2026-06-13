@@ -108,6 +108,22 @@ export default tseslint.config(
     ]),
   },
 
+  // api/ — the backend seam. A near-leaf: may import @/cards (entry, for the
+  // Recipe type), @/auth (entry, for the JWT), and @/shared. Must NOT import
+  // renderer/ux/design/compiler/integration — a network boundary stays thin.
+  {
+    files: ['src/api/**/*.{ts,tsx}'],
+    rules: restrict([
+      xModule('renderer', 'api/ is a leaf seam to the backend'),
+      xModule('ux', 'api/ is a leaf seam to the backend'),
+      xModule('design', 'api/ must not depend on the composer UI'),
+      xModule('compiler', 'api/ is a leaf seam to the backend'),
+      xModule('integration', 'api/ is composed by design/integration, not the reverse'),
+      deepSibling('cards'),
+      deepSibling('auth'),
+    ]),
+  },
+
   // cards/ — may import @/editor (entry, for AST helpers); must not import
   // @/renderer / @/ux / @/integration. The renderer is consumed by the
   // integration layer; cards/ produces GLSL strings + uniform bindings as

@@ -270,13 +270,42 @@ This is where:
 
 ---
 
+## 6. API ↔ design/integration
+
+**Module:** `web/src/api/` (`@/api`)
+**Owners:** both
+
+The single seam to the FastAPI backend (spec 02/03). It maps the backend's
+snake_case wire shapes (under `/api/shaders/*`, `/api/users/*`) to the
+camelCase types the UI consumes, and attaches the Supabase JWT (`getAccessToken`
+from `@/auth`) on every write.
+
+Public surface (`web/src/api/index.ts` only — never deep-import `client.ts` /
+`serialize.ts`):
+
+- Types: `GalleryMode`, `GallerySort`, `GalleryAuthor`, `GalleryListItem`,
+  `GalleryDetail`, `GalleryPage`, `ListParams`, `PublishInput`, `AuthorProfile`,
+  `ApiError`.
+- Reads (public, no token): `listGallery`, `getGalleryItem`, `listByAuthor`,
+  `getAuthor`.
+- Writes (attach JWT): `publish`, `like`, `unlike`, `report`, `softDelete`.
+- Guard: `isApiError`.
+
+**Hard rules:** `api/` is a near-leaf. It may import `@/cards` (entry, for
+`Recipe`), `@/auth` (entry, for the token), and `@/shared`. It must NOT import
+`@/renderer`, `@/ux`, `@/design`, `@/compiler`, or `@/integration`. `design/`
+and `integration/` may import `@/api`. (Enforced by the `src/api/**` block in
+`eslint.config.js`.)
+
+---
+
 ## Dependency direction (enforced by ESLint — see `web/eslint.config.js`)
 
 ```
 integration/ ──────────────────────┐
    │                                │
    ▼                                ▼
-design/  ──►  ux/  cards/  renderer/  auth/  shared/
+design/  ──►  ux/  cards/  renderer/  auth/  api/  shared/
                          (public entries only — no deep imports)
 ```
 
