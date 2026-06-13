@@ -25,6 +25,7 @@ import {
   getPassCards,
   lookupCardDef,
   STARTER_RECIPES,
+  resolveExportSize,
   useCardsStore,
   type Card,
   type PassId,
@@ -48,7 +49,7 @@ import {
   Palette, TopBar, TogglePill, DotGridBg, CanvasToolBtn, fullscreenBtnStyle,
 } from './components';
 import { PropertiesPanel } from './Properties';
-import { RecipeCanvas } from './RecipeCanvas';
+import { RecipeCanvas, type RecipeCanvasHandle } from './RecipeCanvas';
 import { BlockEditor } from './BlockEditor';
 import { TranslateStatus, translateGlslToRecipe, type TranslateState } from './AskClaude';
 
@@ -1063,8 +1064,23 @@ const PencilIcon = ({ size = 14, color = '#fff' }: { size?: number; color?: stri
 );
 
 const PreviewPanel = ({
-  blocks = 0, tempo = 120, onFullscreen,
-}: { blocks?: number; tempo?: number; onFullscreen?: () => void }) => (
+  blocks = 0, tempo = 120, onFullscreen, onFpsChange,
+}: { blocks?: number; tempo?: number; onFullscreen?: () => void; onFpsChange?: (fps: number) => void }) => {
+  const canvasRef = useRef<RecipeCanvasHandle>(null);
+  const [fps, setFps] = useState(0);
+
+  useEffect(() => {
+    const tick = () => {
+      const next = canvasRef.current?.getFps() ?? 0;
+      setFps(next);
+      onFpsChange?.(next);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [onFpsChange]);
+
+  return (
   <div
     style={{
       flex: '0 0 auto',
@@ -1084,7 +1100,7 @@ const PreviewPanel = ({
         Preview
       </span>
       <span style={{ marginLeft: 'auto', font: `500 10px ${TYPE.bodyMono}`, color: SHADE.textDim }}>
-        {tempo} bpm · {blocks} blocks
+        {tempo} bpm · {blocks} blocks · {Math.max(0, Math.round(fps))} fps
       </span>
       <button title="Open fullscreen" onClick={onFullscreen} style={fullscreenBtnStyle}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1099,16 +1115,17 @@ const PreviewPanel = ({
         aspectRatio: '1 / 1', position: 'relative', background: '#000',
       }}
     >
-      <RecipeCanvas style={{ position: 'absolute', inset: 0 }} />
+      <RecipeCanvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
       <div style={{ position: 'absolute', left: 8, top: 8, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
         <TogglePill active>1080²</TogglePill>
-        <TogglePill active>60 fps</TogglePill>
+        <TogglePill active>{Math.max(0, Math.round(fps))} fps</TogglePill>
       </div>
       {/* Play button removed — animations always run; the affordance suggested
           a paused state that never exists. */}
     </div>
   </div>
-);
+  );
+};
 
 const RightColumn = ({
   width = 304, selectedCard, selectedIndex, blocks = 0, tempo = 120, onFullscreen,
@@ -1119,20 +1136,23 @@ const RightColumn = ({
   blocks?: number;
   tempo?: number;
   onFullscreen?: () => void;
-}) => (
-  <div
-    style={{
-      width, flex: '0 0 auto',
-      background: SHADE.surface2,
-      borderLeft: `1px solid ${SHADE.border}`,
-      display: 'flex', flexDirection: 'column',
-      minHeight: 0, overflow: 'hidden',
-    }}
-  >
-    <PreviewPanel blocks={blocks} tempo={tempo} onFullscreen={onFullscreen} />
-    <PropertiesPanel selectedCard={selectedCard} selectedIndex={selectedIndex} />
-  </div>
-);
+}) => {
+  const [fps, setFps] = useState(0);
+  return (
+    <div
+      style={{
+        width, flex: '0 0 auto',
+        background: SHADE.surface2,
+        borderLeft: `1px solid ${SHADE.border}`,
+        display: 'flex', flexDirection: 'column',
+        minHeight: 0, overflow: 'hidden',
+      }}
+    >
+      <PreviewPanel blocks={blocks} tempo={tempo} onFullscreen={onFullscreen} onFpsChange={setFps} />
+      <PropertiesPanel selectedCard={selectedCard} selectedIndex={selectedIndex} fps={fps} />
+    </div>
+  );
+};
 
 const FullscreenChromeBtn = ({ children, title, onClick }: { children: ReactNode; title: string; onClick?: () => void }) => (
   <button
@@ -1160,6 +1180,7 @@ const FullscreenChromeBtn = ({ children, title, onClick }: { children: ReactNode
 const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: string }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasOuterRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<RecipeCanvasHandle>(null);
   const [transform, setTransform] = useState({ tx: 0, ty: 0, scale: 1 });
   const [recording, setRecording] = useState(false);
   const [recElapsedMs, setRecElapsedMs] = useState(0);
@@ -1168,17 +1189,23 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
   const chunksRef = useRef<Blob[]>([]);
   const recStartRef = useRef(0);
   const recTickRef = useRef<number | null>(null);
+  const [, setFps] = useState(0);
   // Pan state: middle-button OR space+drag.
   const spaceDownRef = useRef(false);
   const panningRef = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
 
   // Find the underlying WebGL canvas inside our wrapper. Used by screenshot
   // and record — both need the raw HTMLCanvasElement, not the wrapping div.
-  const getCanvas = (): HTMLCanvasElement | null => {
-    const root = canvasOuterRef.current;
-    if (!root) return null;
-    return root.querySelector('canvas');
-  };
+  const getCanvas = (): HTMLCanvasElement | null => canvasRef.current?.getCanvas() ?? null;
+
+  useEffect(() => {
+    const tick = () => {
+      setFps(canvasRef.current?.getFps() ?? 0);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Quick visible flash overlay after a screenshot fires.
   const triggerFlash = () => {
@@ -1187,26 +1214,43 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
   };
 
   const handleScreenshot = useCallback(() => {
-    const canvas = getCanvas();
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
+    const handle = canvasRef.current;
+    if (!handle) return;
+    const { recipe, canvas } = useCardsStore.getState();
+    const { width, height } = resolveExportSize(recipe.canvasAspect, canvas.exportLongEdge);
+    void handle.snapshotPng(width, height, { alpha: canvas.transparentExport }).then((url) => {
       const a = document.createElement('a');
       a.href = url;
       a.download = `shaddy-${tsTag()}.png`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
       triggerFlash();
-    }, 'image/png');
+    });
   }, []);
 
   const handleStartRecord = useCallback(() => {
+    const handle = canvasRef.current;
     const canvas = getCanvas();
-    if (!canvas || typeof canvas.captureStream !== 'function') return;
-    const stream = canvas.captureStream(60);
+    if (!handle || !canvas || typeof canvas.captureStream !== 'function') return;
+    const { recipe, canvas: canvasSettings } = useCardsStore.getState();
+    const { width, height } = resolveExportSize(recipe.canvasAspect, canvasSettings.exportLongEdge);
+    const prevWidth = canvas.width;
+    const prevHeight = canvas.height;
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true;
+      handle.resize(prevWidth, prevHeight);
+    };
+    handle.resize(width, height);
+    let stream: MediaStream;
+    try {
+      stream = canvas.captureStream(60);
+    } catch {
+      restore();
+      return;
+    }
     // Prefer VP9 for size, fall back to default webm encoder.
     const opts: MediaRecorderOptions = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? { mimeType: 'video/webm;codecs=vp9' }
@@ -1217,6 +1261,7 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
     try {
       recorder = new MediaRecorder(stream, opts);
     } catch {
+      restore();
       return;
     }
     chunksRef.current = [];
@@ -1224,6 +1269,7 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
       if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      restore();
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1408,7 +1454,7 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
               willChange: 'transform',
             }}
           >
-            <RecipeCanvas style={{ position: 'absolute', inset: 0 }} />
+            <RecipeCanvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
           </div>
         </div>
 

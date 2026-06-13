@@ -46,6 +46,18 @@ export interface RendererAPI {
   /** Resize the drawing buffer. Caller decides device-pixel-ratio policy. */
   resize(width: number, height: number): void;
 
+  /** Paint a backdrop before the shader when the caller wants one. */
+  setClearColor(color: { r: number; g: number; b: number; a: number } | null): void;
+
+  /** Cap the live render loop. 0 keeps native requestAnimationFrame cadence. */
+  setFpsCap(fps: number): void;
+
+  /** Record the caller's preferred live render scale. */
+  setRenderScale(scale: number): void;
+
+  /** Snapshot the scene at an exact pixel size. */
+  snapshotAt(width: number, height: number, opts?: { alpha?: boolean }): Promise<string>;
+
   /** Read back the current frame as PNG data URL. For thumbnails & share preview. */
   snapshot(): Promise<string>;
 
@@ -198,9 +210,9 @@ export const STARTER_RECIPES: StarterRecipe[];
 
 // + types: ColorRgb, CardCategory, ParamDef, CardDef, Span, UniformBinding,
 //          ReparseEvent, ReparseResult, CodeViewHandle, CodeViewProps,
-//          CardsState, StarterRecipe
+//          CardsState, CanvasSettings, StarterRecipe
 // + helpers: lookupCardDef, useCardsStore, cloneRecipeWithFreshIds,
-//            generateCardId, isColor, formatParameterForDisplay,
+//            generateCardId, resolveExportSize, isColor, formatParameterForDisplay,
 //            formatParameterAsGlslLiteral, normalizeGlsl, validateRecipe,
 //            uniformNameFor, MARKER_PREFIX, END_MARKER
 ```

@@ -13,6 +13,7 @@ import { lookupCardDef } from './library';
 import type {
   BlendMode,
   Card,
+  ColorRgb,
   MediaSourceRef,
   Parameter,
   ParameterValue,
@@ -109,12 +110,42 @@ export const DEFAULT_CAMERA: CameraView = {
   up: [0, 1, 0],
 };
 
+export type CanvasSettings = {
+  exportLongEdge: 1080 | 1440 | 2160 | 4320;
+  background: ColorRgb;
+  backgroundAlpha: number;
+  transparentExport: boolean;
+  fpsCap: 0 | 30 | 60;
+  renderScale: 0.25 | 0.5 | 0.75 | 1;
+};
+
+export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
+  exportLongEdge: 2160,
+  background: [0, 0, 0],
+  backgroundAlpha: 1,
+  transparentExport: false,
+  fpsCap: 0,
+  renderScale: 1,
+};
+
+export function resolveExportSize(
+  aspect: Recipe['canvasAspect'],
+  longEdge: number,
+): { width: number; height: number } {
+  if (aspect === 'square') return { width: longEdge, height: longEdge };
+  if (aspect === 'portrait') return { width: Math.round(longEdge * (9 / 16)), height: longEdge };
+  return { width: Math.round(longEdge * (16 / 9)), height: longEdge };
+}
+
 export type CardsState = {
   recipe: Recipe;
   /** View-only camera for the 3D preview. Mutated by RecipeCanvas's mouse
    *  / wheel / WASD controller; read by the per-frame uniform pusher. */
   camera: CameraView;
   setCamera: (cam: CameraView) => void;
+
+  canvas: CanvasSettings;
+  setCanvas: (patch: Partial<CanvasSettings>) => void;
 
   /** UI state — which pass the chain editor currently operates on. All
    *  structural mutations (insertTypedCard, removeCard, reorder, …) target
@@ -220,6 +251,9 @@ export const useCardsStore = create<CardsState>((set, get) => {
   recipe: EMPTY_RECIPE,
   camera: DEFAULT_CAMERA,
   setCamera: (camera) => set({ camera }),
+
+  canvas: DEFAULT_CANVAS_SETTINGS,
+  setCanvas: (patch) => set((s) => ({ canvas: { ...s.canvas, ...patch } })),
 
   activePassId: 'image',
   setActivePassId: (id) => set({ activePassId: id }),

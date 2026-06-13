@@ -883,6 +883,7 @@ export const SliderRail = ({
 }: { value: number; animated?: boolean; onChange?: (v: number) => void; height?: number }) => {
   const v = Math.max(0, Math.min(1, value));
   const handleSize = 16;
+  const draggingRef = useRef(false);
   const onPointer = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!onChange) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -891,12 +892,32 @@ export const SliderRail = ({
   };
   return (
     <div
-      onPointerDown={onPointer}
-      onPointerMove={(e) => (e.buttons & 1 ? onPointer(e) : undefined)}
+      onPointerDown={(e) => {
+        draggingRef.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        onPointer(e);
+      }}
+      onPointerMove={(e) => {
+        if (!draggingRef.current) return;
+        onPointer(e);
+      }}
+      onPointerUp={(e) => {
+        draggingRef.current = false;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      }}
+      onPointerCancel={(e) => {
+        draggingRef.current = false;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      }}
       style={{
         position: 'relative', height: handleSize + 4,
         cursor: onChange ? 'pointer' : 'default',
         userSelect: 'none',
+        touchAction: 'none',
       }}
     >
       {/* rail base */}

@@ -43,13 +43,15 @@ export {
   generateCardId,
   cloneRecipeWithFreshIds,
   DEFAULT_CAMERA,
+  DEFAULT_CANVAS_SETTINGS,
   getPassCards,
   setPassCards,
   addBufferPass,
   removeBufferPass,
   renameBufferPass,
+  resolveExportSize,
 } from './state';
-export type { CardsState, CameraView, CameraVec3 } from './state';
+export type { CardsState, CameraView, CameraVec3, CanvasSettings } from './state';
 
 export { STARTER_RECIPES } from './starter-recipes';
 export type { StarterRecipe } from './starter-recipes';
