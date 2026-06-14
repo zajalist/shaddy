@@ -527,7 +527,9 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('  float d = 0.0;');
   lines.push('  if (hit) {');
   lines.push('    vec3 p = ro + rd * t;');
-  lines.push('    vec3 n = sceneNormal3(p);');
+  // Distance-scaled normal epsilon — kills firefly sparkle on height-fields as
+  // the surface recedes (matches the Seascape technique).
+  lines.push('    vec3 n = sceneNormal3(p, max(0.0015, t * 0.0022));');
   lines.push(`    vec3 alb = ${albedo};`);
   lines.push('    vec3 lcol = vec3(0.0);');
   for (const l of shadeLines) lines.push(l);

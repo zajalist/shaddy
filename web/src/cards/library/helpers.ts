@@ -121,6 +121,24 @@ const BODIES: Record<string, string> = {
   return h;
 }`,
 
+  // Eroded ridged-multifractal terrain height (IQ-style): each octave is a
+  // sharpened noise ridge, dampened by the previous octave so detail collects on
+  // ridges and valleys stay smooth — reads as water-carved/eroded terrain.
+  terrainFbm: `float terrainFbm(vec2 p){
+  mat2 m = mat2(1.6, -1.2, 1.2, 1.6);
+  float a = 0.0, b = 1.0, prev = 1.0;
+  for (int i = 0; i < 6; i++) {
+    float n = noise2(p);
+    float rn = 1.0 - abs(n * 2.0 - 1.0);
+    rn = rn * rn;
+    a += b * rn * mix(1.0, prev, 0.65);
+    prev = rn;
+    b *= 0.5;
+    p = m * p;
+  }
+  return a;
+}`,
+
   // Common SDF primitives (return signed distance — negative inside).
   sdfBox: `float sdfBox(vec2 p, vec2 b) {
   vec2 d = abs(p) - b;
@@ -352,8 +370,10 @@ const BODIES: Record<string, string> = {
 }`,
 
   // Numerical-gradient surface normal — assumes sdScene exists at emit time.
-  sceneNormal3: `vec3 sceneNormal3(vec3 p) {
-  vec2 e = vec2(0.001, 0.0);
+  // `ne` is the sample epsilon: pass a DISTANCE-SCALED value (bigger far away)
+  // so noisy height-fields don't alias into firefly sparkles at the horizon.
+  sceneNormal3: `vec3 sceneNormal3(vec3 p, float ne) {
+  vec2 e = vec2(ne, 0.0);
   return normalize(vec3(
     sdScene(p + e.xyy) - sdScene(p - e.xyy),
     sdScene(p + e.yxy) - sdScene(p - e.yxy),
@@ -395,6 +415,7 @@ const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = 
   oc_noise: { deps: ['oc_hash'] },
   oc_octave: { deps: ['oc_noise', 'oc_hash'] },
   seaHeight: { deps: ['oc_octave', 'oc_noise', 'oc_hash'] },
+  terrainFbm: { deps: ['noise2', 'hash21'] },
   sceneNormal3: { phase: 'post' },
   softShadow3: { phase: 'post' },
 };

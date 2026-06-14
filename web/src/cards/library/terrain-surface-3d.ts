@@ -11,13 +11,14 @@ export const TERRAIN_SURFACE_3D: CardDef = {
   description: 'fbm height-field landscape — a raymarched terrain.',
   icon: '⛰',
   mode: '3d',
-  helpers: ['fbm2'],
+  helpers: ['terrainFbm'],
   params: {
     scale: { kind: 'float', label: 'scale', default: 0.4, min: 0.1, max: 2, step: 0.01 },
-    height: { kind: 'float', label: 'height', default: 2.5, min: 0.2, max: 8, step: 0.1 },
+    height: { kind: 'float', label: 'height', default: 2.2, min: 0.2, max: 8, step: 0.1 },
   },
   snippetTemplate: '// terrain_surface_3d (3D) scale={{scale}} height={{height}}',
   contribution3d: {
-    sdfExpr: '(p.y - (fbm2(p.xz * {{scale}}) * 2.0 - 1.0) * {{height}}) * 0.5',
+    // Eroded ridged height-field. *0.5 keeps it a conservative march bound.
+    sdfExpr: '(p.y - terrainFbm(p.xz * {{scale}}) * {{height}}) * 0.5',
   },
 };

@@ -315,7 +315,7 @@ describe('3D compile', () => {
     expect(out.glsl).toContain('sdSmoothMin(d, length(p - vec3(u_card0_cx, u_card0_cy, u_card0_cz)) - u_card0_r, k);');
     // Raymarch helpers present.
     expect(out.glsl).toContain('float sdSmoothMin(float a, float b, float k)');
-    expect(out.glsl).toContain('vec3 sceneNormal3(vec3 p)');
+    expect(out.glsl).toContain('vec3 sceneNormal3(vec3 p, float ne)');
     expect(out.glsl).toContain('float softShadow3(vec3 ro, vec3 rd, float mint, float maxt, float w)');
     // Span covers the sphere card.
     expect(out.spans).toHaveLength(1);
