@@ -254,27 +254,6 @@ const LandingNav = () => {
         </div>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10, position: 'relative', zIndex: 1 }}>
-        {!isMobile && (
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="GitHub"
-            data-tip="GitHub"
-            className="oct-btn icon-tip"
-            style={{
-              width: 34, height: 34,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              color: SHADE.topbarText, textDecoration: 'none',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
-            }}
-          >
-            <span className="oct-svg" style={{ display: 'inline-flex' }}>
-              <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
-            </span>
-          </a>
-        )}
         {!isMobile && <SignInButton />}
         <a
           href="/design"
@@ -354,21 +333,6 @@ const LandingNav = () => {
             </a>
           ))}
           <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="GitHub"
-              style={{
-                width: 44, height: 44,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                color: SHADE.topbarText, textDecoration: 'none',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
-              }}
-            >
-              <Icon name="github-octocat" size={20} color={SHADE.cream} cream={SHADE.topbar} />
-            </a>
             <SignInButton />
           </div>
         </div>
@@ -1097,18 +1061,18 @@ const CodePanel = () => {
 
 // ─── Templates preview grid (12 starter templates teaser) ───────────────
 const TEMPLATES: Template[] = [
-  { name: 'Plasma',   hint: 'sin · cos · sum',  variant: 'plasma' },
-  { name: 'Ripples',  hint: 'sin · length',     variant: 'ripples' },
-  { name: 'Voronoi',  hint: 'distance · cell',  variant: 'voronoi' },
-  { name: 'Caustics', hint: 'ray · refract',    variant: 'caustics' },
-  { name: 'Stripes',  hint: 'mod · gradient',   variant: 'stripes' },
-  { name: 'Kaleido',  hint: 'atan · mirror',    variant: 'kaleido' },
-  { name: 'Warp',     hint: 'noise · displace', variant: 'warp' },
-  { name: 'Glow',     hint: 'pow · radial',     variant: 'glow' },
-  { name: 'Bloom',    hint: 'threshold · blur', variant: 'bloom' },
-  { name: 'Feedback', hint: 'sample · decay',   variant: 'feedback' },
-  { name: 'Reaction', hint: 'turing · anti-d',  variant: 'reaction' },
-  { name: 'Tunnel',   hint: 'march · rotate',   variant: 'tunnel' },
+  { name: 'Terrain',   hint: 'fbm · erosion',     variant: 'terrain' },
+  { name: 'Nebula',    hint: 'noise · stars',     variant: 'nebula' },
+  { name: 'DNA',       hint: 'sin · helix',       variant: 'dna' },
+  { name: 'Ocean',     hint: 'waves · caustics',  variant: 'ocean' },
+  { name: 'Lava',      hint: 'turbulence · heat', variant: 'lava' },
+  { name: 'Molecule',  hint: 'metaballs · bonds', variant: 'molecule' },
+  { name: 'Galaxy',    hint: 'spiral · stars',    variant: 'galaxy' },
+  { name: 'Aurora',    hint: 'curtains · noise',  variant: 'aurora' },
+  { name: 'Fire',      hint: 'turbulence · rise',  variant: 'fire' },
+  { name: 'Crystals',  hint: 'voronoi · cells',   variant: 'crystals' },
+  { name: 'Wormhole',  hint: 'polar · depth',     variant: 'wormhole' },
+  { name: '3D Ball',   hint: 'raymarch · light',  variant: 'raymarch' },
 ];
 
 const TemplatesGrid = () => <TemplatesShared templates={TEMPLATES} />;
@@ -1370,7 +1334,7 @@ export const Landing = () => {
               color: SHADE.cream, letterSpacing: TYPE.trackTighter, lineHeight: 1.12,
             }}
           >
-            Twelve doors. Each one<br />a different bit of maths.
+            Real things, made of maths.<br />Terrain, DNA, galaxies, fire.
           </h2>
           <p
             style={{
@@ -1379,9 +1343,10 @@ export const Landing = () => {
               color: 'rgba(232,226,212,0.62)', lineHeight: 1.6,
             }}
           >
-            Pick a template. Drag a slider. The annotations point at the exact
-            trick (&ldquo;this is the bit where sin meets length&rdquo;) so you
-            actually learn the move, not just admire the pixels.
+            Open a template and take it apart. Each one builds something you
+            recognise — a planet&apos;s terrain, a DNA helix, a lava flow — from
+            a handful of blocks, with the exact trick labelled so you learn the
+            move, not just admire the pixels.
           </p>
         </div>
         <TemplatesGrid />
