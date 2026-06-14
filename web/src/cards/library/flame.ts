@@ -17,11 +17,16 @@ export const FLAME: CardDef = {
   },
   snippetTemplate: `{
     float _t = u_time * {{speed}};
+    // noise scrolls upward; two octaves lick at different rates
     vec2 _p = vec2(uv.x * {{width}}, uv.y);
-    float _n = fbm2(_p * {{scale}} + vec2(0.0, -_t * 1.6));
-    _n += 0.5 * fbm2(_p * {{scale}} * 2.0 - vec2(0.0, _t * 2.4));
-    float _env = 1.0 - smoothstep(0.0, 1.1, length(vec2(uv.x * 1.7, uv.y + 0.5)));
-    d = clamp(_n * _env * 1.8, 0.0, 1.0);
+    float _n = fbm2(_p * {{scale}} + vec2(0.0, -_t * 1.8));
+    _n += 0.5 * fbm2(_p * {{scale}} * 2.1 + vec2(0.3, -_t * 3.0));
+    _n *= 0.62;
+    // tall column envelope: wide base tapering to a narrow tip
+    float _w = mix(0.62, 0.14, smoothstep(-0.85, 0.95, uv.y));
+    float _horiz = smoothstep(_w, 0.0, abs(uv.x));
+    float _vert = smoothstep(1.05, -0.75, uv.y) * smoothstep(-1.0, -0.75, uv.y);
+    d = clamp((_n + 0.28) * _horiz * _vert * 1.7, 0.0, 1.0);
   }`,
   helpers: ['fbm2'],
 };

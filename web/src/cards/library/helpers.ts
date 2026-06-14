@@ -21,7 +21,9 @@ const BODIES: Record<string, string> = {
   noise2: `float noise2(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
+  // Quintic fade (6f^5-15f^4+10f^3) — C2-continuous, so the noise AND its
+  // screen-space slope (used by relief_light) are smooth, no grid artifacts.
+  vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
   float a = hash21(i + vec2(0.0, 0.0));
   float b = hash21(i + vec2(1.0, 0.0));
   float c = hash21(i + vec2(0.0, 1.0));

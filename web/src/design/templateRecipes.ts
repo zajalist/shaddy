@@ -50,28 +50,32 @@ const driftChains = (prefix: string, amp: number, speed = 1) => ({
 });
 
 export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
-  // ── terrain: ridged height → elevation colour → relief light ──
-  const terDrift = driftChains('ter', 0.1, 0.25);
+  // ── terrain: smooth fbm height → elevation colour (water→grass→rock→snow)
+  //    → gentle relief. fbm (not ridged) keeps broad tops HIGH so peaks read as
+  //    rock/snow, not water; the lower scale + soft relief avoids dFdx speckle. ──
+  const terDrift = driftChains('ter', 0.08, 0.22);
   const terrain = recipe([
     t('translate', {}, { x: ref('ter_dx'), y: ref('ter_dy') }),
-    t('ridged', { scale: 2.6 }),
-    t('four_gradient', { color_a: [0.04, 0.18, 0.45], color_b: [0.82, 0.72, 0.46], color_c: [0.16, 0.43, 0.18], color_d: [0.96, 0.97, 1.0] }),
-    t('relief_light', { strength: 12, light_x: -0.5, light_y: 0.6, amount: 0.9 }),
+    t('fbm', { scale: 1.8 }),
+    t('power_curve', { gamma: 1.25 }),
+    t('four_gradient', { color_a: [0.04, 0.16, 0.38], color_b: [0.20, 0.45, 0.20], color_c: [0.46, 0.37, 0.27], color_d: [0.97, 0.98, 1.0] }),
+    t('relief_light', { strength: 6, light_x: -0.5, light_y: 0.6, amount: 0.7 }),
     t('vignette', { inner: 0.6, outer: 1.5, strength: 0.6 }),
   ], [terDrift.x, terDrift.y]);
 
-  // ── nebula: drifting domain-warped gas → space ramp → bloom → stars ──
-  const nebDrift = driftChains('neb', 0.14, 0.18);
-  const nebBreathe = chain('neb_br', 'breathe', [aTime(0.3), aOsc(1, 0), aRemap(1.3, 2.3)]);
+  // ── nebula: domain-warped gas that BREATHES in place (no uv translate, so
+  //    the starfield stays fixed) → 4-stop space palette → cloud relief →
+  //    bloom → static stars ──
+  const nebBreathe = chain('neb_br', 'breathe', [aTime(0.3), aOsc(1, 0), aRemap(1.2, 2.4)]);
   const nebula = recipe([
-    t('translate', {}, { x: ref('neb_dx'), y: ref('neb_dy') }),
     t('domain_warp', { scale: 2.0 }, { warp: ref('neb_br') }),
-    t('power_curve', { gamma: 1.6 }),
-    t('triple_gradient', { color_a: [0.02, 0.01, 0.08], color_b: [0.45, 0.1, 0.6], color_c: [0.2, 0.55, 0.98] }),
-    t('bloom', { threshold: 0.4, intensity: 1.0 }),
+    t('power_curve', { gamma: 1.5 }),
+    t('four_gradient', { color_a: [0.02, 0.01, 0.06], color_b: [0.35, 0.07, 0.5], color_c: [0.78, 0.22, 0.55], color_d: [0.55, 0.72, 1.0] }),
+    t('relief_light', { strength: 5, light_x: -0.4, light_y: 0.6, amount: 0.4 }),
+    t('bloom', { threshold: 0.4, intensity: 1.3 }),
     t('starfield', { density: 80, coverage: 0.05, size: 0.08, twinkle: 2.5, color: [0.9, 0.95, 1.0] }),
     t('vignette', { inner: 0.5, outer: 1.5, strength: 0.7 }),
-  ], [nebDrift.x, nebDrift.y, nebBreathe]);
+  ], [nebBreathe]);
 
   // ── dna: twisting helix → palette → glow → slow hue cycle ──
   const dnaHue = chain('dna_hue', 'hue cycle', [aTime(0.2), aOsc(1, 0), aRemap(-0.05, 0.05)]);
@@ -82,28 +86,30 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('hue_shift', {}, { shift: ref('dna_hue') }),
   ], [dnaHue]);
 
-  // ── ocean: drifting caustic water → deep ramp → wave relief → sparkle ──
-  const ocnDrift = driftChains('ocn', 0.1, 0.3);
+  // ── ocean: smooth domain-warped swell that BREATHES → deep-blue ramp (no
+  //    blown-out white) → gentle wave relief (clean now via quintic) ──
+  const ocnSwell = chain('ocn_sw', 'swell', [aTime(0.25), aOsc(1, 0), aRemap(0.7, 1.5)]);
   const ocean = recipe([
-    t('translate', {}, { x: ref('ocn_dx'), y: ref('ocn_dy') }),
-    t('caustics', { scale: 4, speed: 0.5 }),
-    t('triple_gradient', { color_a: [0.02, 0.10, 0.22], color_b: [0.1, 0.4, 0.5], color_c: [0.75, 0.95, 1.0] }),
-    t('relief_light', { strength: 7, light_x: 0.0, light_y: 0.7, amount: 0.5 }),
-    t('bloom', { threshold: 0.6, intensity: 0.7 }),
+    t('domain_warp', { scale: 3.0 }, { warp: ref('ocn_sw') }),
+    t('triple_gradient', { color_a: [0.02, 0.12, 0.24], color_b: [0.06, 0.34, 0.46], color_c: [0.40, 0.68, 0.78] }),
+    t('relief_light', { strength: 5, light_x: 0.0, light_y: 0.7, amount: 0.45 }),
+    t('bloom', { threshold: 0.78, intensity: 0.3 }),
     t('vignette', { inner: 0.5, outer: 1.5, strength: 0.5 }),
-  ], [ocnDrift.x, ocnDrift.y]);
+  ], [ocnSwell]);
 
-  // ── lava: drifting turbulence → crack contrast → heat ramp → relief → glow ──
-  const lavaDx = chain('lav_dx', 'flow x', [aTime(0.2), aOsc(1, 0), aRemap(-0.08, 0.08)]);
-  const lavaDy = chain('lav_dy', 'rise', [aTime(0.15), aOsc(1, 1.5708), aRemap(-0.22, 0.0)]);
+  // ── lava: churning domain-warp (smooth, not blocky) that also rises
+  //    continuously → crack contrast → heat ramp → molten relief → glow.
+  //    Motion = morph (churn) + continuous upward scroll, not a fake sway. ──
+  const lavaChurn = chain('lav_ch', 'churn', [aTime(0.4), aOsc(1, 0), aRemap(0.9, 1.8)]);
+  const lavaRise = chain('lav_rise', 'rise', [aTime(0.06)]);
   const lava = recipe([
-    t('translate', {}, { x: ref('lav_dx'), y: ref('lav_dy') }),
-    t('turbulence', { scale: 3.2 }),
-    t('power_curve', { gamma: 1.4 }),
-    t('heat_ramp', { gain: 1.1 }),
-    t('relief_light', { strength: 10, light_x: -0.4, light_y: 0.6, amount: 0.6 }),
+    t('translate', {}, { y: ref('lav_rise') }),
+    t('domain_warp', { scale: 2.2 }, { warp: ref('lav_ch') }),
+    t('power_curve', { gamma: 1.5 }),
+    t('heat_ramp', { gain: 1.15 }),
+    t('relief_light', { strength: 7, light_x: -0.4, light_y: 0.6, amount: 0.5 }),
     t('glow', { threshold: 0.55, intensity: 1.3 }),
-  ], [lavaDx, lavaDy]);
+  ], [lavaRise, lavaChurn]);
 
   // ── molecule: pulsing metaballs → blue ramp → round relief → bloom ──
   const molPulse = chain('mol_p', 'pulse', [aTime(0.4), aOsc(1, 0), aRemap(0.14, 0.24)]);
@@ -115,26 +121,34 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('vignette', { inner: 0.5, outer: 1.4, strength: 0.6 }),
   ], [molPulse]);
 
-  // ── galaxy: winding twirl → spiral arms → ramp → warm core (add) → bloom → stars ──
+  // ── galaxy: winding twirl + noise-warped ragged arms, coloured ADDITIVELY
+  //    over black (transparent gaps) + warm core, then the rotation is UNDONE
+  //    so the starfield stays fixed (no drifting dots). ──
   const galRot = chain('gal_rot', 'wind', [aTime(0.15), aOsc(1, 0), aRemap(0.5, 2.0)]);
+  const galRn = chain('gal_rn', 'unwind', [aTime(0.15), aOsc(1, 0), aRemap(-0.5, -2.0)]);
   const galaxy = recipe([
     t('twirl', { cx: 0, cy: 0, radius: 1.4 }, { strength: ref('gal_rot') }),
-    t('spiral_arms', { arms: 2, twist: 5, softness: 0.5 }),
-    t('triple_gradient', { color_a: [0.02, 0.02, 0.08], color_b: [0.5, 0.2, 0.6], color_c: [1.0, 0.8, 0.5] }),
+    t('noise_warp', { scale: 3, strength: 0.12 }),
+    t('spiral_arms', { arms: 2, twist: 5, softness: 0.55 }),
+    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.7, 0.4, 0.85] }, {}, { blend: 'add' }),
     t('radial_gradient', { softness: 2.2 }),
-    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [1.0, 0.85, 0.55] }, {}, { blend: 'add' }),
-    t('bloom', { threshold: 0.45, intensity: 1.2 }),
+    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [1.0, 0.82, 0.5] }, {}, { blend: 'add' }),
+    t('bloom', { threshold: 0.45, intensity: 1.1 }),
+    t('twirl', { cx: 0, cy: 0, radius: 1.4 }, { strength: ref('gal_rn') }),
     t('starfield', { density: 90, coverage: 0.04, size: 0.07, twinkle: 2, color: [1.0, 0.95, 0.85] }),
     t('vignette', { inner: 0.4, outer: 1.3, strength: 0.7 }),
-  ], [galRot]);
+  ], [galRot, galRn]);
 
-  // ── aurora: drifting curtains → green ramp → glow → stars ──
+  // ── aurora: starry sky FIRST, then curtains added with composition opacity
+  //    over it (color_a black + 'add' blend + alpha) so the night sky shows
+  //    through the gaps instead of a flat gradient filling the frame. ──
   const aurThk = chain('aur_t', 'sway', [aTime(0.3), aOsc(1, 0), aRemap(0.3, 0.5)]);
   const aurora = recipe([
-    t('aurora', { speed: 0.4, scale: 2.0, sway: 1.1 }, { thickness: ref('aur_t') }),
-    t('triple_gradient', { color_a: [0.02, 0.04, 0.1], color_b: [0.15, 0.85, 0.5], color_c: [0.5, 0.4, 0.95] }),
-    t('glow', { threshold: 0.4, intensity: 1.3 }),
     t('starfield', { density: 80, coverage: 0.045, size: 0.07, twinkle: 1.8, color: [0.85, 0.9, 1.0] }),
+    t('aurora', { speed: 0.4, scale: 2.0, sway: 1.1 }, { thickness: ref('aur_t') }),
+    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.18, 0.95, 0.55] }, {}, { blend: 'add', alpha: 0.9 }),
+    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.45, 0.22, 0.9] }, {}, { blend: 'add', alpha: 0.4 }),
+    t('glow', { threshold: 0.4, intensity: 1.2 }),
     t('vignette', { inner: 0.6, outer: 1.5, strength: 0.5 }),
   ], [aurThk]);
 
@@ -159,10 +173,11 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('vignette', { inner: 0.5, outer: 1.4, strength: 0.6 }),
   ], [crysDrift.x, crysDrift.y]);
 
-  // ── wormhole: polar warp → animated plasma rings → rainbow ramp → glow ──
+  // ── wormhole: polar REPEAT (angular wedges — no hard atan seam line that
+  //    polar_warp produced) → animated plasma rings rushing in → rainbow ramp. ──
   const wormZoom = chain('worm_z', 'pulse', [aTime(0.3), aOsc(1, 0), aRemap(5.0, 8.0)]);
   const wormhole = recipe([
-    t('polar_warp', { radial_scale: 1.0 }),
+    t('polar_repeat', { count: 6 }),
     t('plasma', { speed: 1.0 }, { scale: ref('worm_z') }),
     t('triple_gradient', { color_a: [0.1, 0.0, 0.3], color_b: [0.9, 0.2, 0.6], color_c: [0.3, 0.9, 1.0] }),
     t('glow', { threshold: 0.5, intensity: 1.2 }),
