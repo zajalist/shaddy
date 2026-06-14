@@ -14,6 +14,7 @@ import {
   cloneRecipeWithFreshIds,
   compile,
   getPassCards,
+  setPassCards,
   lookupCardDef,
   reparse,
   STARTER_RECIPES,
@@ -2317,18 +2318,27 @@ export const DesktopApp = () => {
     // Intentionally one-shot: only seed when the recipe is empty on mount.
   }, []);
 
-  // Compile recipe → GLSL for the code drawer (the renderer itself compiles
-  // separately inside RecipeCanvas).
-  const compiled = useMemo(() => compile(recipe), [recipe]);
+  // Compile the ACTIVE pass → GLSL for the code drawer, so each buffer (Image,
+  // A, B…) shows and edits its own code (Shadertoy-style). The renderer itself
+  // compiles separately inside RecipeCanvas.
+  const activeRecipe = useMemo(
+    () => (activePassId === 'image' ? recipe : { ...recipe, cards: activeCards }),
+    [recipe, activePassId, activeCards],
+  );
+  const compiled = useMemo(() => compile(activeRecipe), [activeRecipe]);
   const wrappedGlsl = useMemo(
     () => `${FRAGMENT_PREAMBLE}\n${compiled.glsl}`,
     [compiled.glsl],
   );
 
-  // Mirror the live recipe so the translate flow can hand Claude the
-  // last-good Recipe alongside the edited GLSL.
+  // Mirror the live recipe + active-pass recipe so the translate/reparse flow
+  // operates on (and writes back to) the pass the user is actually editing.
   const recipeRef = useRef(recipe);
   useEffect(() => { recipeRef.current = recipe; }, [recipe]);
+  const activeRecipeRef = useRef(activeRecipe);
+  useEffect(() => { activeRecipeRef.current = activeRecipe; }, [activeRecipe]);
+  const activePassIdRef = useRef(activePassId);
+  useEffect(() => { activePassIdRef.current = activePassId; }, [activePassId]);
 
   // ─── Compile validator (transient offscreen renderer) ─────────────
   // The on-screen RecipeCanvas owns its own renderer and we can't touch
@@ -2430,12 +2440,16 @@ export const DesktopApp = () => {
     //    instantly, with no network round-trip. Only genuine STRUCTURAL changes
     //    (added / removed / reordered blocks → markers no longer match) fall
     //    through to the AI path below.
+    const passId = activePassIdRef.current;
     try {
-      const prevRecipe = recipeRef.current;
-      const compiled = compile(prevRecipe);
-      const res = reparse(prevRecipe, compiled, editSource);
+      // Reparse against the ACTIVE pass's recipe, then write the recovered
+      // cards back into that pass — so editing Buffer A's code updates Buffer A,
+      // never the Image pass.
+      const prevActive = activeRecipeRef.current;
+      const compiledActive = compile(prevActive);
+      const res = reparse(prevActive, compiledActive, editSource);
       if (!res.syntaxPending) {
-        setRecipe(res.recipe);
+        setRecipe(setPassCards(recipeRef.current, passId, res.recipe.cards));
         setTranslateStatus({ kind: 'ok' });
         setCompileStatus({ kind: 'translated' });
         setEditMode(false);
@@ -2443,11 +2457,13 @@ export const DesktopApp = () => {
       }
     } catch { /* fall through to the AI path */ }
 
-    // 2) STRUCTURAL change — hand the edited GLSL + last-good Recipe to Claude.
+    // 2) STRUCTURAL change — hand the edited GLSL + last-good (active pass)
+    //    Recipe to Claude, then write its cards back into the active pass.
     setTranslateStatus({ kind: 'loading' });
     try {
-      const newRecipe = await translateGlslToRecipe(editSource, recipeRef.current);
-      setRecipe(cloneRecipeWithFreshIds(newRecipe));
+      const newRecipe = await translateGlslToRecipe(editSource, activeRecipeRef.current);
+      const fresh = cloneRecipeWithFreshIds(newRecipe);
+      setRecipe(setPassCards(recipeRef.current, passId, fresh.cards));
       setTranslateStatus({ kind: 'ok' });
       setCompileStatus({ kind: 'translated' });
       setEditMode(false);
