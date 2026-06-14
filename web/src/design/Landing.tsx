@@ -55,6 +55,14 @@ const useLandingChrome = () => {
           from { opacity: 0; }
           to   { opacity: 1; }
         }
+        @keyframes shadeBlink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+        @keyframes shadeLineIn {
+          from { opacity: 0; transform: translateY(2px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         @keyframes shadeDotPulse {
           0%, 100% { opacity: 0.45; transform: scale(1); }
           50%      { opacity: 1;    transform: scale(1.3); }
@@ -375,75 +383,6 @@ const NavLink = ({ href, children }: { href: string; children: ReactNode }) => (
 // Replaces the older gold-circle-on-cream rule that read poorly: stronger
 // inkLine rules + a small filled diamond motif with a halo so the eye locks
 // on it without the separator getting loud.
-const SectionSeparator = () => (
-  <div
-    aria-hidden
-    style={{
-      maxWidth: 880, margin: '0 auto',
-      padding: '0 2rem',
-      display: 'flex', alignItems: 'center', gap: 18,
-      opacity: 0.85,
-    }}
-  >
-    <span
-      style={{
-        flex: 1, height: 1,
-        background:
-          `linear-gradient(90deg, rgba(252,180,39,0) 0%, ${SHADE.gold} 22%, ${SHADE.goldDeep} 78%, rgba(150,107,23,0) 100%)`,
-      }}
-    />
-    {/* chunky filled-diamond motif with a soft halo so it pops on either bg */}
-    <span
-      style={{
-        position: 'relative',
-        width: 18, height: 18,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute', inset: -6,
-          background: `radial-gradient(circle, ${SHADE.gold}30 0%, transparent 70%)`,
-          borderRadius: '50%',
-        }}
-      />
-      <span
-        style={{
-          position: 'relative',
-          width: 10, height: 10,
-          background: SHADE.gold,
-          border: `1px solid ${SHADE.goldDeep}`,
-          transform: 'rotate(45deg)',
-          boxShadow: `0 1px 0 ${SHADE.cream}40 inset, 0 2px 4px rgba(0,0,0,0.45)`,
-        }}
-      />
-      <span
-        aria-hidden
-        style={{
-          position: 'absolute', left: -16, top: '50%',
-          width: 3, height: 3, borderRadius: '50%',
-          background: SHADE.goldDeep, transform: 'translateY(-50%)',
-        }}
-      />
-      <span
-        aria-hidden
-        style={{
-          position: 'absolute', right: -16, top: '50%',
-          width: 3, height: 3, borderRadius: '50%',
-          background: SHADE.goldDeep, transform: 'translateY(-50%)',
-        }}
-      />
-    </span>
-    <span
-      style={{
-        flex: 1, height: 1,
-        background:
-          `linear-gradient(90deg, rgba(150,107,23,0) 0%, ${SHADE.goldDeep} 22%, ${SHADE.gold} 78%, rgba(252,180,39,0) 100%)`,
-      }}
-    />
-  </div>
-);
-
 // ─── Fixed left page TOC (hayba style) ──────────────────────────────────
 type TocItem = { id: string; label: string };
 const TOC: TocItem[] = [
@@ -883,11 +822,25 @@ const ComposerShowcase = () => {
         minHeight: isMobile ? 'auto' : 380,
       }}>
         {!isMobile && (
-        <div style={{ background: SHADE.bg, borderRight: `1px solid ${SHADE.border}`, padding: 14 }}>
-          <CategoryHeader color={SHADE.catShape}   label="Shapes" />
-          <CategoryHeader color={SHADE.catDistort} label="Distort" />
-          <CategoryHeader color={SHADE.catColor}   label="Colors" />
-          <CategoryHeader color={SHADE.catEffect}  label="Effects" />
+        <div style={{ background: SHADE.bg, borderRight: `1px solid ${SHADE.border}`, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* mode tabs — 2D / 3D / Anim, mirroring the real palette */}
+          <div style={{ display: 'flex', gap: 3, background: SHADE.surface1, border: `1px solid ${SHADE.border}`, borderRadius: 6, padding: 3 }}>
+            {['2D', '3D', 'ANIM'].map((t, i) => (
+              <span key={t} style={{
+                flex: 1, textAlign: 'center', padding: '5px 0', borderRadius: 4,
+                font: `700 10px ${TYPE.bodyMono}`, letterSpacing: '0.08em',
+                background: i === 0 ? SHADE.gold : 'transparent', color: i === 0 ? '#1a1208' : SHADE.textDim,
+              }}>{t}</span>
+            ))}
+          </div>
+          {/* search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: SHADE.surface1, border: `1px solid ${SHADE.border}`, borderRadius: 6, font: `400 11px ${TYPE.bodyMono}`, color: SHADE.textFaint }}>
+            <span aria-hidden>⌕</span> search blocks
+          </div>
+          <CategoryHeader color={SHADE.catShape}   label="Shapes"      count={78} />
+          <CategoryHeader color={SHADE.catDistort} label="Distortions" count={35} />
+          <CategoryHeader color={SHADE.catColor}   label="Colors"      count={17} />
+          <CategoryHeader color={SHADE.catEffect}  label="Effects"     count={38} />
         </div>
         )}
         <div
@@ -921,15 +874,26 @@ const ComposerShowcase = () => {
             })}
           </div>
         </div>
-        <div style={{ background: SHADE.surface2, borderLeft: `1px solid ${SHADE.border}` }}>
+        <div style={{ background: SHADE.surface2, borderLeft: `1px solid ${SHADE.border}`, display: 'flex', flexDirection: 'column' }}>
+          {/* live preview */}
           <div
             style={{
-              margin: 14, borderRadius: 3, overflow: 'hidden',
+              margin: 14, marginBottom: 10, borderRadius: 3, overflow: 'hidden',
               border: `1px solid ${SHADE.inkLine}`,
               aspectRatio: '1 / 1', background: '#000',
             }}
           >
-            <ShadeCanvas variant="ripple" />
+            <ShadeCanvas variant="flow" />
+          </div>
+          {/* Block / Canvas inspector tabs, mirroring the real right bar */}
+          <div style={{ display: 'flex', gap: 3, margin: '0 14px 12px', background: SHADE.surface1, border: `1px solid ${SHADE.border}`, borderRadius: 6, padding: 3 }}>
+            {['Block', 'Canvas'].map((t, i) => (
+              <span key={t} style={{
+                flex: 1, textAlign: 'center', padding: '5px 0', borderRadius: 4,
+                font: `700 9.5px ${TYPE.body}`, letterSpacing: '0.12em', textTransform: 'uppercase',
+                background: i === 0 ? SHADE.gold : 'transparent', color: i === 0 ? '#1a1208' : SHADE.textDim,
+              }}>{t}</span>
+            ))}
           </div>
           <div style={{ padding: '0 14px 14px' }}>
             <div style={{ font: `700 10px ${TYPE.body}`, color: SHADE.textDim, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -945,71 +909,179 @@ const ComposerShowcase = () => {
   );
 };
 
-const CategoryHeader = ({ color, label }: { color: string; label: string }) => (
+const CategoryHeader = ({ color, label, count }: { color: string; label: string; count?: number }) => (
   <div
     style={{
-      display: 'flex', alignItems: 'center', gap: 9,
-      margin: '0 0 8px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 9,
+      margin: 0,
       padding: '6px 10px',
       background: `${color}12`, border: `1px solid ${color}38`,
       borderRadius: 3,
       font: `700 10.5px ${TYPE.body}`, color, letterSpacing: '0.12em', textTransform: 'uppercase',
     }}
   >
-    <span style={{ width: 16, height: 16, borderRadius: 2, background: color }} />
-    {label}
+    <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+      <span style={{ width: 16, height: 16, borderRadius: 2, background: color }} />
+      {label}
+    </span>
+    {count !== undefined && (
+      <span style={{ font: `700 9px ${TYPE.bodyMono}`, color, opacity: 0.75 }}>{count}</span>
+    )}
   </div>
 );
 
 // ─── Code panel ─────────────────────────────────────────────────────────
-const CodePanel = () => (
-  <div
-    style={{
-      maxWidth: 920, margin: '4rem auto 0',
-      background: SHADE.surface4,
-      border: '1px solid rgba(255,255,255,0.06)',
-      borderRadius: 3,
-      overflow: 'hidden',
-    }}
-  >
+// Syntax-token model for the live-compile animation.
+const CODE_COLORS = {
+  kw: SHADE.catDistort,
+  ty: SHADE.catShape,
+  fn: SHADE.catColor,
+  num: SHADE.gold,
+  com: 'rgba(254,231,199,0.42)',
+  tx: SHADE.cream,
+} as const;
+type CodeSeg = [string, keyof typeof CODE_COLORS];
+const CODE_LINES: CodeSeg[][] = [
+  [['#version 100', 'com']],
+  [['precision ', 'kw'], ['highp ', 'kw'], ['float', 'ty'], [';', 'tx']],
+  [['uniform ', 'kw'], ['vec2', 'ty'], ['  uResolution;', 'tx']],
+  [['uniform ', 'kw'], ['float', 'ty'], [' uTime;', 'tx']],
+  [],
+  [['// 5-octave fbm noise', 'com']],
+  [['float ', 'ty'], ['fbm', 'fn'], ['(', 'tx'], ['vec2', 'ty'], [' p) {', 'tx']],
+  [['  float', 'ty'], [' v = ', 'tx'], ['0.0', 'num'], [', a = ', 'tx'], ['0.5', 'num'], [';', 'tx']],
+  [['  for ', 'kw'], ['(', 'tx'], ['int', 'ty'], [' i=', 'tx'], ['0', 'num'], ['; i<', 'tx'], ['5', 'num'], ['; i++) {', 'tx']],
+  [['    v += a*', 'tx'], ['noise', 'fn'], ['(p); p *= ', 'tx'], ['2.0', 'num'], ['; a *= ', 'tx'], ['0.5', 'num'], [';', 'tx']],
+  [['  } ', 'tx'], ['return', 'kw'], [' v;', 'tx']],
+  [['}', 'tx']],
+  [],
+  [['// Block 03: DOMAIN WARP (animating)', 'com']],
+  [['vec2 ', 'ty'], ['warp', 'fn'], ['(', 'tx'], ['vec2', 'ty'], [' uv) {', 'tx']],
+  [['  vec2', 'ty'], [' q = ', 'tx'], ['vec2', 'ty'], ['(', 'tx'], ['fbm', 'fn'], ['(uv + uTime*', 'tx'], ['0.1', 'num'], ['), ', 'tx'], ['fbm', 'fn'], ['(uv + ', 'tx'], ['4.2', 'num'], ['));', 'tx']],
+  [['  return', 'kw'], [' uv + ', 'tx'], ['0.35', 'num'], [' * q;', 'tx']],
+  [['}', 'tx']],
+  [],
+  [['void ', 'ty'], ['main', 'fn'], ['() {', 'tx']],
+  [['  vec3', 'ty'], [' col = ', 'tx'], ['palette', 'fn'], ['(', 'tx'], ['fbm', 'fn'], ['(', 'tx'], ['warp', 'fn'], ['(uv)));', 'tx']],
+  [['  gl_FragColor = ', 'tx'], ['vec4', 'ty'], ['(col, ', 'tx'], ['1.0', 'num'], [');', 'tx']],
+  [['}', 'tx']],
+];
+const CODE_LINE_H = 21;
+
+// ─── Code panel — live "compilation" animation ───────────────────────────
+// Streams the generated GLSL in line by line with a blinking caret, then flips
+// the header to a compiled state and loops. Honors prefers-reduced-motion
+// (renders the whole listing statically). Height is reserved up-front so the
+// page never reflows as lines appear.
+const CodePanel = () => {
+  const reduce =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const total = CODE_LINES.length;
+  const [shown, setShown] = useState(reduce ? total : 0);
+  const [done, setDone] = useState(!!reduce);
+
+  useEffect(() => {
+    if (reduce) return;
+    let n = 0;
+    let timer = 0;
+    const tick = () => {
+      n += 1;
+      setShown(n);
+      if (n < total) {
+        timer = window.setTimeout(tick, 72);
+      } else {
+        setDone(true);
+        timer = window.setTimeout(() => {
+          setDone(false);
+          n = 0;
+          setShown(0);
+          timer = window.setTimeout(tick, 500);
+        }, 2800);
+      }
+    };
+    timer = window.setTimeout(tick, 600);
+    return () => window.clearTimeout(timer);
+  }, [reduce, total]);
+
+  return (
     <div
       style={{
-        padding: '12px 16px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(0,0,0,0.18)',
+        maxWidth: 920, margin: '4rem auto 0',
+        background: SHADE.surface4,
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 3,
+        overflow: 'hidden',
       }}
     >
-      <Icon name="code" size={14} color={SHADE.gold} cream={SHADE.cream} />
-      <span style={{ font: `700 11px ${TYPE.body}`, color: SHADE.cream, letterSpacing: '0.22em', textTransform: 'uppercase' }}>
-        Generated GLSL
-      </span>
-      <span style={{ marginLeft: 'auto', font: `500 10.5px ${TYPE.bodyMono}`, color: 'rgba(254,231,199,0.45)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-        128 lines · auto-compile
-      </span>
+      <div
+        style={{
+          padding: '12px 16px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(0,0,0,0.18)',
+        }}
+      >
+        <Icon name="code" size={14} color={SHADE.gold} cream={SHADE.cream} />
+        <span style={{ font: `700 11px ${TYPE.body}`, color: SHADE.cream, letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+          Generated GLSL
+        </span>
+        <span
+          style={{
+            marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 7,
+            font: `600 10.5px ${TYPE.bodyMono}`, letterSpacing: '0.16em', textTransform: 'uppercase',
+            color: done ? '#8fd14f' : 'rgba(254,231,199,0.5)',
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: done ? '#8fd14f' : SHADE.gold,
+              animation: done ? undefined : 'shadeBlink 1s steps(1) infinite',
+            }}
+          />
+          {done ? `compiled · ${total} lines · 0 errors` : `compiling… ${shown}/${total}`}
+        </span>
+      </div>
+      <div
+        style={{
+          margin: 0, padding: '16px 20px',
+          font: `500 13px ${TYPE.bodyMono}`,
+          lineHeight: `${CODE_LINE_H}px`,
+          overflowX: 'auto',
+          minHeight: total * CODE_LINE_H + 32,
+        }}
+      >
+        {CODE_LINES.slice(0, shown).map((segs, i) => (
+          <div
+            key={i}
+            style={{
+              whiteSpace: 'pre', minHeight: CODE_LINE_H,
+              animation: reduce ? undefined : 'shadeLineIn 220ms ease both',
+            }}
+          >
+            {segs.length === 0
+              ? ' '
+              : segs.map(([t, c], j) => (
+                  <span key={j} style={{ color: CODE_COLORS[c] }}>{t}</span>
+                ))}
+            {!done && i === shown - 1 && (
+              <span
+                aria-hidden
+                style={{
+                  display: 'inline-block', width: 7, height: 14, marginLeft: 2,
+                  verticalAlign: 'text-bottom', background: SHADE.gold,
+                  animation: 'shadeBlink 1s steps(1) infinite',
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
-    <pre
-      style={{
-        margin: 0, padding: '18px 20px',
-        font: `500 13px ${TYPE.bodyMono}`,
-        color: SHADE.cream, lineHeight: 1.7,
-        whiteSpace: 'pre', overflowX: 'auto',
-      }}
-    >
-<span style={{ color: 'rgba(254,231,199,0.4)' }}>{'#version 100\n'}</span>
-<span style={{ color: SHADE.catDistort }}>precision</span> <span style={{ color: SHADE.catDistort }}>highp</span> <span style={{ color: SHADE.catShape }}>float</span>;{'\n'}
-<span style={{ color: SHADE.catDistort }}>uniform</span> <span style={{ color: SHADE.catShape }}>vec2</span>  uResolution;{'\n'}
-<span style={{ color: SHADE.catDistort }}>uniform</span> <span style={{ color: SHADE.catShape }}>float</span> uTime;{'\n'}
-{'\n'}
-<span style={{ color: 'rgba(254,231,199,0.4)' }}>{'// Block 02: RIPPLE (animating: frequency)\n'}</span>
-<span style={{ color: SHADE.catShape }}>vec2</span> <span style={{ color: SHADE.catColor }}>ripple</span>(<span style={{ color: SHADE.catShape }}>vec2</span> p) {'{'}{'\n'}
-{'  '}<span style={{ color: SHADE.catShape }}>float</span> f = <span style={{ color: SHADE.gold }}>0.482</span> + <span style={{ color: SHADE.gold }}>0.30</span>*<span style={{ color: SHADE.catColor }}>sin</span>(uTime);{'\n'}
-{'  '}<span style={{ color: SHADE.catShape }}>float</span> a = <span style={{ color: SHADE.cream }}>0.165</span>;{'\n'}
-{'  '}<span style={{ color: SHADE.catDistort }}>return</span> p + a*<span style={{ color: SHADE.catColor }}>sin</span>(<span style={{ color: SHADE.catColor }}>length</span>(p)*f - uTime*<span style={{ color: SHADE.gold }}>1.7</span>) * <span style={{ color: SHADE.catColor }}>normalize</span>(p);{'\n'}
-{'}'}
-    </pre>
-  </div>
-);
+  );
+};
 
 // ─── Templates preview grid (12 starter templates teaser) ───────────────
 const TEMPLATES: Template[] = [
@@ -1303,18 +1375,16 @@ export const Landing = () => {
         <TemplatesGrid />
       </section>
 
-      <SectionSeparator />
 
       <SectionShell
         id="compose"
         eyebrow="The composer"
-        title={<>Like Ableton<br />for fragment shaders.</>}
+        title={<>A composer<br />for fragment shaders.</>}
         subtitle="Chunky puzzle blocks in the middle. Live preview top-right. Properties on the right. Double-click any block to see the rest of its knobs."
       >
         <ComposerShowcase />
       </SectionShell>
 
-      <SectionSeparator />
 
       <SectionShell
         id="code"
@@ -1325,7 +1395,6 @@ export const Landing = () => {
         <CodePanel />
       </SectionShell>
 
-      <SectionSeparator />
 
       <section id="stats" style={{ padding: 'clamp(4rem, 8vw, 7rem) clamp(1.25rem, 4vw, 2rem) 6rem', position: 'relative' }}>
         <div
@@ -1394,7 +1463,6 @@ export const Landing = () => {
         </div>
       </section>
 
-      <SectionSeparator />
 
       <SectionShell
         id="faq"
