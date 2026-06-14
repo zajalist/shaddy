@@ -25,7 +25,7 @@ export const STARFIELD: CardDef = {
     float _star = step(1.0 - {{coverage}}, _hh);
     vec2 _off = (hash22(_si) - 0.5) * 0.7;
     float _dd = length(_sf - _off);
-    float _tw = 0.55 + 0.45 * sin(u_time * {{twinkle}} + _hh * 6.2831);
+    float _tw = 0.84 + 0.16 * sin(u_time * {{twinkle}} + _hh * 6.2831);
     col += {{color}} * _star * smoothstep({{size}}, 0.0, _dd) * _tw;
   }`,
   helpers: ['hash21', 'hash22'],

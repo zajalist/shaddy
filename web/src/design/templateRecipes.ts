@@ -73,7 +73,7 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('four_gradient', { color_a: [0.02, 0.01, 0.06], color_b: [0.35, 0.07, 0.5], color_c: [0.78, 0.22, 0.55], color_d: [0.55, 0.72, 1.0] }),
     t('relief_light', { strength: 5, light_x: -0.4, light_y: 0.6, amount: 0.4 }),
     t('bloom', { threshold: 0.4, intensity: 1.3 }),
-    t('starfield', { density: 80, coverage: 0.05, size: 0.08, twinkle: 2.5, color: [0.9, 0.95, 1.0] }),
+    t('starfield', { density: 80, coverage: 0.05, size: 0.08, twinkle: 0, color: [0.9, 0.95, 1.0] }),
     t('vignette', { inner: 0.5, outer: 1.5, strength: 0.7 }),
   ], [nebBreathe]);
 
@@ -135,7 +135,7 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [1.0, 0.82, 0.5] }, {}, { blend: 'add' }),
     t('bloom', { threshold: 0.45, intensity: 1.1 }),
     t('twirl', { cx: 0, cy: 0, radius: 1.4 }, { strength: ref('gal_rn') }),
-    t('starfield', { density: 90, coverage: 0.04, size: 0.07, twinkle: 2, color: [1.0, 0.95, 0.85] }),
+    t('starfield', { density: 90, coverage: 0.04, size: 0.07, twinkle: 0, color: [1.0, 0.95, 0.85] }),
     t('vignette', { inner: 0.4, outer: 1.3, strength: 0.7 }),
   ], [galRot, galRn]);
 
@@ -144,7 +144,7 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
   //    through the gaps instead of a flat gradient filling the frame. ──
   const aurThk = chain('aur_t', 'sway', [aTime(0.3), aOsc(1, 0), aRemap(0.3, 0.5)]);
   const aurora = recipe([
-    t('starfield', { density: 80, coverage: 0.045, size: 0.07, twinkle: 1.8, color: [0.85, 0.9, 1.0] }),
+    t('starfield', { density: 80, coverage: 0.045, size: 0.07, twinkle: 0, color: [0.85, 0.9, 1.0] }),
     t('aurora', { speed: 0.4, scale: 2.0, sway: 1.1 }, { thickness: ref('aur_t') }),
     t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.18, 0.95, 0.55] }, {}, { blend: 'add', alpha: 0.9 }),
     t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.45, 0.22, 0.9] }, {}, { blend: 'add', alpha: 0.4 }),
