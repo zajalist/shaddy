@@ -146,6 +146,15 @@ const useLandingChrome = () => {
           opacity: 1;
           transform: translateX(-50%) translateY(0);
         }
+        /* Edge buttons: right-anchor the tip so it isn't clipped off-screen
+           (body has overflow-x: hidden). */
+        .icon-tip.tip-right[data-tip]::after {
+          left: auto; right: 0;
+          transform: translateX(0) translateY(-4px);
+        }
+        .icon-tip.tip-right[data-tip]:hover::after {
+          transform: translateX(0) translateY(0);
+        }
         /* Auth pills — subtle hover lift */
         .auth-pill { transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.18s; }
         .auth-pill:hover { transform: translateY(-1px); }
@@ -271,7 +280,7 @@ const LandingNav = () => {
           href="/design"
           aria-label="Open composer"
           data-tip={isMobile ? undefined : 'Open composer'}
-          className="comp-btn icon-tip"
+          className="comp-btn icon-tip tip-right"
           style={{
             width: isMobile ? 44 : 34, height: isMobile ? 44 : 34,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -282,11 +291,11 @@ const LandingNav = () => {
           }}
         >
           <span className="comp-svg" style={{ display: 'inline-flex' }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="3" width="8" height="8" rx="2.2" fill="#1a1208" />
-              <rect x="13" y="3" width="8" height="8" rx="2.2" fill="#1a1208" opacity="0.5" />
-              <rect x="3" y="13" width="8" height="8" rx="2.2" fill="#1a1208" opacity="0.5" />
-              <rect x="13" y="13" width="8" height="8" rx="2.2" fill="#1a1208" />
+            {/* "open / launch" — arrow lifting out of a window */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1208" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
+              <path d="M14 4h6v6" />
+              <path d="M20 4l-9 9" />
             </svg>
           </span>
         </a>
