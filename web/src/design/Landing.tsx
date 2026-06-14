@@ -843,7 +843,7 @@ const FeatureCanvas = () => (
       background: '#000', position: 'relative',
     }}
   >
-    <ShadeCanvas variant="ripple" />
+    <ShadeCanvas variant="flow" />
   </div>
 );
 
@@ -1273,8 +1273,6 @@ export const Landing = () => {
           />
         </div>
       </SectionShell>
-
-      <SectionSeparator />
 
       <section id="templates" style={{ padding: 'clamp(4rem, 8vw, 7rem) clamp(1.25rem, 4vw, 2rem) clamp(3.5rem, 7vw, 6rem)', position: 'relative' }}>
         <div style={{ maxWidth: 880, margin: '0 auto', textAlign: 'center' }}>
