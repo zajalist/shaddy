@@ -41,6 +41,23 @@ export function SignInButton({ className }: SignInButtonProps): React.ReactEleme
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // Inject the dropdown's :placeholder / :hover / :focus styles once — inline
+  // styles can't express pseudo-classes.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('shaddy-auth-style')) return;
+    const el = document.createElement('style');
+    el.id = 'shaddy-auth-style';
+    el.textContent = `
+      .shaddy-auth-pop input::placeholder { color: #8b8579; }
+      .shaddy-auth-pop input:focus { outline: none; border-color: #fcb427; background: rgba(255,255,255,0.08); }
+      .shaddy-auth-pop .prov:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.30); }
+      .shaddy-auth-pop .gold:hover { filter: brightness(1.07); }
+      .shaddy-auth-menu .item:hover { background: rgba(255,255,255,0.08); }
+    `;
+    document.head.appendChild(el);
+  }, []);
+
   // Click-outside to close.
   useEffect(() => {
     if (!open) return;
@@ -121,22 +138,24 @@ export function SignInButton({ className }: SignInButtonProps): React.ReactEleme
       {open ? (
         <div
           role="menu"
+          className="shaddy-auth-menu"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
+            top: 'calc(100% + 8px)',
             right: 0,
-            minWidth: 160,
-            background: '#fff',
-            border: '1px solid #d8cfbf',
-            borderRadius: 8,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.08)',
-            padding: '0.25rem',
+            minWidth: 168,
+            background: '#16181b',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 10,
+            boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+            padding: '0.3rem',
             zIndex: 1000,
           }}
         >
           <button
             type="button"
             role="menuitem"
+            className="item"
             onClick={() => {
               setOpen(false);
               void signOut().catch((err) => {
@@ -150,9 +169,11 @@ export function SignInButton({ className }: SignInButtonProps): React.ReactEleme
               border: 'none',
               borderRadius: 6,
               background: 'transparent',
+              color: '#f1ece1',
               cursor: 'pointer',
               textAlign: 'left',
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
+              fontWeight: 500,
             }}
           >
             Sign out
@@ -235,32 +256,34 @@ function SignedOutPicker({
       {open ? (
         <div
           role="menu"
+          className="shaddy-auth-pop"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
+            top: 'calc(100% + 8px)',
             right: 0,
-            width: 248,
-            background: '#fff',
-            border: '1px solid #d8cfbf',
-            borderRadius: 8,
-            padding: '0.6rem',
+            width: 256,
+            background: '#16181b',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 12,
+            boxShadow: '0 18px 44px rgba(0,0,0,0.55)',
+            padding: '0.7rem',
             zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
           }}
         >
-          <button type="button" onClick={() => oauth('google')} style={providerBtn}>
+          <button type="button" className="prov" onClick={() => oauth('google')} style={providerBtn}>
             Continue with Google
           </button>
-          <button type="button" onClick={() => oauth('github')} style={providerBtn}>
+          <button type="button" className="prov" onClick={() => oauth('github')} style={providerBtn}>
             Continue with GitHub
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '2px 0' }}>
-            <span style={{ flex: 1, height: 1, background: '#e5dccc' }} />
-            <span style={{ fontSize: '0.7rem', color: '#9a8f7c' }}>or</span>
-            <span style={{ flex: 1, height: 1, background: '#e5dccc' }} />
+            <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.12)' }} />
+            <span style={{ fontSize: '0.7rem', color: '#8b8579' }}>or</span>
+            <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.12)' }} />
           </div>
 
           <form onSubmit={submitPassword} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -280,7 +303,7 @@ function SignedOutPicker({
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               style={fieldStyle}
             />
-            <button type="submit" disabled={busy} style={{ ...providerBtn, opacity: busy ? 0.6 : 1 }}>
+            <button type="submit" className="gold" disabled={busy} style={{ ...goldBtn, opacity: busy ? 0.6 : 1 }}>
               {busy ? 'Working…' : mode === 'signup' ? 'Create account' : 'Sign in'}
             </button>
           </form>
@@ -295,17 +318,18 @@ function SignedOutPicker({
               border: 'none',
               background: 'transparent',
               cursor: 'pointer',
-              fontSize: '0.72rem',
-              color: '#6b6256',
+              fontSize: '0.74rem',
+              fontWeight: 600,
+              color: '#e7b34b',
               textAlign: 'center',
-              padding: 0,
+              padding: '2px 0',
             }}
           >
             {mode === 'signin' ? 'New here? Create an account' : 'Have an account? Sign in'}
           </button>
 
           {error ? (
-            <div style={{ fontSize: '0.72rem', color: '#a02020', lineHeight: 1.4 }}>{error}</div>
+            <div style={{ fontSize: '0.72rem', color: '#ff7a6b', lineHeight: 1.4 }}>{error}</div>
           ) : null}
         </div>
       ) : null}
@@ -315,22 +339,40 @@ function SignedOutPicker({
 
 const providerBtn: React.CSSProperties = {
   width: '100%',
-  padding: '0.5rem 0.75rem',
-  border: '1px solid #d8cfbf',
-  borderRadius: 6,
-  background: '#faf6ef',
+  padding: '0.55rem 0.75rem',
+  border: '1px solid rgba(255,255,255,0.16)',
+  borderRadius: 8,
+  background: 'rgba(255,255,255,0.06)',
+  color: '#f1ece1',
   cursor: 'pointer',
-  fontSize: '0.8rem',
-  fontWeight: 500,
+  fontSize: '0.82rem',
+  fontWeight: 600,
   textAlign: 'center',
+  transition: 'background 140ms ease, border-color 140ms ease',
+};
+
+const goldBtn: React.CSSProperties = {
+  width: '100%',
+  padding: '0.55rem 0.75rem',
+  border: '1px solid #b97f12',
+  borderRadius: 8,
+  background: '#fcb427',
+  color: '#1a1208',
+  cursor: 'pointer',
+  fontSize: '0.82rem',
+  fontWeight: 700,
+  textAlign: 'center',
+  transition: 'filter 140ms ease',
 };
 
 const fieldStyle: React.CSSProperties = {
   width: '100%',
-  padding: '0.45rem 0.6rem',
-  border: '1px solid #d8cfbf',
-  borderRadius: 6,
-  background: '#fff',
-  fontSize: '0.8rem',
+  padding: '0.5rem 0.65rem',
+  border: '1px solid rgba(255,255,255,0.16)',
+  borderRadius: 8,
+  background: 'rgba(255,255,255,0.05)',
+  color: '#f1ece1',
+  fontSize: '0.82rem',
   boxSizing: 'border-box',
+  transition: 'border-color 140ms ease, background 140ms ease',
 };
