@@ -50,18 +50,17 @@ const driftChains = (prefix: string, amp: number, speed = 1) => ({
 });
 
 export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
-  // ── terrain: smooth fbm height → elevation colour (water→grass→rock→snow)
-  //    → gentle relief. fbm (not ridged) keeps broad tops HIGH so peaks read as
-  //    rock/snow, not water; the lower scale + soft relief avoids dFdx speckle. ──
-  const terDrift = driftChains('ter', 0.08, 0.22);
+  // ── terrain: a raymarched landscape built FROM BLOCKS —
+  //    Camera → Terrain surface (fbm height-field) → Texture: height
+  //    (grass→rock→snow) → Sky → Sun → Fog. ──
   const terrain = recipe([
-    t('translate', {}, { x: ref('ter_dx'), y: ref('ter_dy') }),
-    t('fbm', { scale: 1.8 }),
-    t('power_curve', { gamma: 1.25 }),
-    t('four_gradient', { color_a: [0.04, 0.16, 0.38], color_b: [0.20, 0.45, 0.20], color_c: [0.46, 0.37, 0.27], color_d: [0.97, 0.98, 1.0] }),
-    t('relief_light', { strength: 6, light_x: -0.5, light_y: 0.6, amount: 0.7 }),
-    t('vignette', { inner: 0.6, outer: 1.5, strength: 0.6 }),
-  ], [terDrift.x, terDrift.y]);
+    t('camera_3d', { eye_x: 0, eye_y: 3.6, eye_z: 5.5, tgt_x: 0, tgt_y: 1.2, tgt_z: -5, fov: 1.5 }),
+    t('terrain_surface_3d', { scale: 0.45, height: 2.4 }),
+    t('texture_height_3d', { low: [0.16, 0.34, 0.15], mid: [0.44, 0.35, 0.26], high: [0.96, 0.97, 1.0], h0: 0.3, h1: 1.6, h2: 2.6 }),
+    t('sky_3d', { horizon: [0.80, 0.86, 0.94], zenith: [0.34, 0.54, 0.86], ambient: [0.42, 0.47, 0.55] }),
+    t('sun_3d', { dir_x: -0.45, dir_y: 0.7, dir_z: -0.35, color: [1.0, 0.93, 0.78], specular: 0, shininess: 16, soft: 0.12 }),
+    t('fog_3d', { color: [0.80, 0.86, 0.94], density: 0.05 }),
+  ], [], '3d');
 
   // ── nebula: domain-warped gas that BREATHES in place (no uv translate, so
   //    the starfield stays fixed) → 4-stop space palette → cloud relief →
