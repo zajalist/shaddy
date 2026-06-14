@@ -539,48 +539,7 @@ export const TemplatesShared = ({
     let stopped = false;
     let raf = 0;
     const start = performance.now();
-    const STATIC_T = 14.0; // frozen "nice frame" time for un-hovered tiles
-    let prevW = 0;
-    let prevH = 0;
-    let prevHovered: number | null = null;
-    // Tiles needing a one-off static (re)paint. Seeded with all of them; a tile
-    // is re-added when the canvas resizes or when the cursor leaves it.
-    const dirty = new Set<number>();
-    for (let i = 0; i < templates.length; i++) dirty.add(i);
-
-    // Draw one tile into its own scissor region at time `t`. Each tile owns the
-    // best shader available (hero if defined, else the light variant); hero
-    // programs compile lazily here on first paint.
-    const drawTile = (i: number, t: number): void => {
-      const tile = tileRefs.current[i];
-      const tpl = templates[i];
-      if (!tile || !tpl) return;
-      const r = tile.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return;
-      const wr = wrapper.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-      const localX = r.left - wr.left;
-      const localTop = r.top - wr.top;
-      const tileH = r.height;
-      const localBottom = wr.height - localTop - tileH;
-      const x = Math.floor(localX * dpr);
-      const y = Math.floor(localBottom * dpr);
-      const w = Math.max(1, Math.floor(r.width * dpr));
-      const h = Math.max(1, Math.floor(tileH * dpr));
-      const p = getHero(tpl.variant) ?? programs[tpl.variant];
-      if (!p) return;
-      // clear + draw ONLY this tile's region; everything else keeps its frame
-      // (preserveDrawingBuffer is on), so static tiles cost nothing.
-      gl.viewport(x, y, w, h);
-      gl.scissor(x, y, w, h);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(p.prog);
-      if (p.Rloc) gl.uniform2f(p.Rloc, w, h);
-      if (p.Oloc) gl.uniform2f(p.Oloc, x, y);
-      if (p.Tloc) gl.uniform1f(p.Tloc, t);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    };
+    const STATIC_T = 14.0; // frozen "nice frame" time — un-hovered tiles read as still
 
     const tick = () => {
       if (stopped) return;
@@ -590,40 +549,52 @@ export const TemplatesShared = ({
       const wrapperRect = wrapper.getBoundingClientRect();
       const W = Math.max(1, Math.floor(wrapperRect.width * dpr));
       const H = Math.max(1, Math.floor(wrapperRect.height * dpr));
-      if (canvas.width !== W || canvas.height !== H || W !== prevW || H !== prevH) {
+      if (canvas.width !== W || canvas.height !== H) {
         canvas.width = W;
         canvas.height = H;
-        prevW = W;
-        prevH = H;
-        // a resize blows away the preserved buffer → repaint every tile
-        gl.viewport(0, 0, W, H);
-        gl.scissor(0, 0, W, H);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        for (let i = 0; i < templates.length; i++) dirty.add(i);
       }
+
+      // full clear, then redraw every tile into its region.
+      gl.viewport(0, 0, W, H);
+      gl.scissor(0, 0, W, H);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
       const time = (performance.now() - start) / 1000;
       const hov = hoveredRef.current;
 
-      // when the cursor leaves a tile, freeze it back to a clean static frame
-      if (prevHovered !== null && prevHovered !== hov) dirty.add(prevHovered);
-      prevHovered = hov;
+      for (let i = 0; i < templates.length; i++) {
+        const tile = tileRefs.current[i];
+        const tpl = templates[i];
+        if (!tile || !tpl) continue;
+        const r = tile.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
 
-      if (hov !== null) {
-        // animate ONLY the hovered tile — at most one heavy shader per frame
-        drawTile(hov, time);
-      } else if (dirty.size > 0) {
-        // progressive static paint: a couple of tiles per frame so the initial
-        // render never fires a dozen heavy shaders in one frame
-        let n = 0;
-        for (const i of dirty) {
-          drawTile(i, STATIC_T);
-          dirty.delete(i);
-          if (++n >= 2) break;
-        }
+        // canvas/WebGL y is bottom-up; CSS rect.top is top-down.
+        const localX = r.left - wrapperRect.left;
+        const localTop = r.top - wrapperRect.top;
+        const tileH = r.height;
+        const localBottom = wrapperRect.height - localTop - tileH;
+
+        const x = Math.floor(localX * dpr);
+        const y = Math.floor(localBottom * dpr);
+        const w = Math.max(1, Math.floor(r.width * dpr));
+        const h = Math.max(1, Math.floor(tileH * dpr));
+
+        // Each tile shows its hero shader when defined, else the light variant.
+        // Non-hovered tiles get a FROZEN time so they read as static; only the
+        // hovered tile animates. Only hero tiles are heavy, so at most a couple
+        // of heavy shaders draw per frame.
+        const p = getHero(tpl.variant) ?? programs[tpl.variant];
+        if (!p) continue;
+        gl.useProgram(p.prog);
+        gl.viewport(x, y, w, h);
+        gl.scissor(x, y, w, h);
+        if (p.Rloc) gl.uniform2f(p.Rloc, w, h);
+        if (p.Oloc) gl.uniform2f(p.Oloc, x, y);
+        if (p.Tloc) gl.uniform1f(p.Tloc, i === hov ? time : STATIC_T);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
-      // idle (no hover, nothing dirty) → no draws at all; tiles stay frozen.
     };
     tick();
 
