@@ -50,6 +50,13 @@ import { AURORA } from './aurora';
 import { FLAME } from './flame';
 import { HELIX } from './helix';
 import { TERRAIN } from './terrain';
+import { NEBULA } from './nebula';
+import { GALAXY } from './galaxy';
+import { WORMHOLE } from './wormhole';
+import { MOLTEN } from './molten';
+import { ATOMS } from './atoms';
+import { GEMFIELD } from './gemfield';
+import { SEA } from './sea';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -239,7 +246,7 @@ export {
   // new shapes — noise
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
   // composite scene shapes
-  AURORA, FLAME, HELIX, TERRAIN,
+  AURORA, FLAME, HELIX, TERRAIN, NEBULA, GALAXY, WORMHOLE, MOLTEN, ATOMS, GEMFIELD, SEA,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -313,8 +320,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   ZELLIGE_GRID, KUFIC_GRID, ARABESQUE_CURLS,
   // Noise family
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
-  // Composite scenes — fuller looks from one block (terrain, aurora, fire, DNA)
-  TERRAIN, AURORA, FLAME, HELIX,
+  // Composite scenes — fuller looks from one block (terrain, space, fire, DNA…)
+  TERRAIN, NEBULA, GALAXY, WORMHOLE, MOLTEN, ATOMS, GEMFIELD, SEA, AURORA, FLAME, HELIX,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals

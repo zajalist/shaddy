@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { SHADE, TYPE } from './tokens';
-import { DEFAULT_CAMERA } from '@/cards';
 import type { UniformBinding } from '@/cards';
 import { TEMPLATE_RECIPES } from './templateRecipes';
 import { buildTileFragment, TILE_VERT } from './templateFragment';
@@ -21,11 +20,10 @@ export type { TemplateVariant } from './templateVariants';
 
 const STATIC_T = 14.0; // frozen "nice frame" time — un-hovered tiles read as still
 
-// Camera orbit radius in the xz plane for the hovered 3D tile.
-const CAM_DIST = Math.hypot(
-  DEFAULT_CAMERA.eye[0] - DEFAULT_CAMERA.target[0],
-  DEFAULT_CAMERA.eye[2] - DEFAULT_CAMERA.target[2],
-);
+// Camera rig for 3D tiles — closer than the editor default so the shape fills
+// the small preview, targeting the scene centre (origin).
+const CAM_DIST = 3.0;
+const CAM_EYE_Y = 1.1;
 
 type ProgEntry = {
   prog: WebGLProgram;
@@ -190,11 +188,11 @@ export const TemplatesShared = ({
       if (p.uTime) gl.uniform1f(p.uTime, tSec);
       if (p.is3d) {
         const theta = hovered ? tSec * 0.5 : 0.6;
-        const ex = DEFAULT_CAMERA.target[0] + Math.sin(theta) * CAM_DIST;
-        const ez = DEFAULT_CAMERA.target[2] + Math.cos(theta) * CAM_DIST;
-        if (p.uCamEye) gl.uniform3f(p.uCamEye, ex, DEFAULT_CAMERA.eye[1], ez);
-        if (p.uCamTarget) gl.uniform3f(p.uCamTarget, DEFAULT_CAMERA.target[0], DEFAULT_CAMERA.target[1], DEFAULT_CAMERA.target[2]);
-        if (p.uCamUp) gl.uniform3f(p.uCamUp, DEFAULT_CAMERA.up[0], DEFAULT_CAMERA.up[1], DEFAULT_CAMERA.up[2]);
+        const ex = Math.sin(theta) * CAM_DIST;
+        const ez = Math.cos(theta) * CAM_DIST;
+        if (p.uCamEye) gl.uniform3f(p.uCamEye, ex, CAM_EYE_Y, ez);
+        if (p.uCamTarget) gl.uniform3f(p.uCamTarget, 0, 0, 0);
+        if (p.uCamUp) gl.uniform3f(p.uCamUp, 0, 1, 0);
       }
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
