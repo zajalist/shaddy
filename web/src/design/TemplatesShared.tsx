@@ -55,6 +55,8 @@ export const TemplatesShared = ({
   const tileRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   // index of the tile under the cursor — only its shader advances in time.
   const hoveredRef = useRef<number | null>(null);
+  // lets the JSX hover handlers kick the render loop (set inside the effect).
+  const wakeRef = useRef<(() => void) | null>(null);
 
   // lazy mount the WebGL context only when the section is near the viewport
   const [active, setActive] = useState(false);
@@ -154,78 +156,102 @@ export const TemplatesShared = ({
 
     let stopped = false;
     let raf = 0;
+    let running = false; // is the per-frame loop active (only while hovering)?
     const start = performance.now();
+    const dprNow = () => Math.min(window.devicePixelRatio || 1, 1.25);
 
-    const tick = () => {
-      if (stopped) return;
-      raf = requestAnimationFrame(tick);
+    // Draw a single tile into its scissored sub-viewport at time tSec. When
+    // clearRegion is true, clears only that tile's rect first (so the rest of
+    // the preserved frame is untouched — used for the per-frame hover redraw).
+    const drawTile = (i: number, tSec: number, wrapperRect: DOMRect, dpr: number, clearRegion: boolean) => {
+      const tile = tileRefs.current[i];
+      const tpl = templates[i];
+      if (!tile || !tpl) return;
+      const r = tile.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      // canvas/WebGL y is bottom-up; CSS rect.top is top-down.
+      const localTop = r.top - wrapperRect.top;
+      const tileH = r.height;
+      const localBottom = wrapperRect.height - localTop - tileH;
+      const x = Math.floor((r.left - wrapperRect.left) * dpr);
+      const y = Math.floor(localBottom * dpr);
+      const w = Math.max(1, Math.floor(r.width * dpr));
+      const h = Math.max(1, Math.floor(tileH * dpr));
+      const p = programs.get(tpl.variant);
+      if (!p) return;
+      gl.viewport(x, y, w, h);
+      gl.scissor(x, y, w, h);
+      if (clearRegion) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); }
+      gl.useProgram(p.prog);
+      const hovered = i === hoveredRef.current;
+      if (p.uRes) gl.uniform2f(p.uRes, w, h);
+      if (p.uOrigin) gl.uniform2f(p.uOrigin, x, y);
+      if (p.uMouse) gl.uniform2f(p.uMouse, 0.5, 0.5);
+      if (p.uTime) gl.uniform1f(p.uTime, tSec);
+      if (p.is3d) {
+        const theta = hovered ? tSec * 0.5 : 0.6;
+        const ex = DEFAULT_CAMERA.target[0] + Math.sin(theta) * CAM_DIST;
+        const ez = DEFAULT_CAMERA.target[2] + Math.cos(theta) * CAM_DIST;
+        if (p.uCamEye) gl.uniform3f(p.uCamEye, ex, DEFAULT_CAMERA.eye[1], ez);
+        if (p.uCamTarget) gl.uniform3f(p.uCamTarget, DEFAULT_CAMERA.target[0], DEFAULT_CAMERA.target[1], DEFAULT_CAMERA.target[2]);
+        if (p.uCamUp) gl.uniform3f(p.uCamUp, DEFAULT_CAMERA.up[0], DEFAULT_CAMERA.up[1], DEFAULT_CAMERA.up[2]);
+      }
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    // Full repaint of every tile. Also (re)sizes the canvas. Non-hovered tiles
+    // are frozen at STATIC_T so they read as still.
+    const drawAll = () => {
+      const dpr = dprNow();
       const wrapperRect = wrapper.getBoundingClientRect();
       const W = Math.max(1, Math.floor(wrapperRect.width * dpr));
       const H = Math.max(1, Math.floor(wrapperRect.height * dpr));
-      if (canvas.width !== W || canvas.height !== H) {
-        canvas.width = W;
-        canvas.height = H;
-      }
-
+      if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
       gl.viewport(0, 0, W, H);
       gl.scissor(0, 0, W, H);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-
       const time = (performance.now() - start) / 1000;
       const hov = hoveredRef.current;
-
       for (let i = 0; i < templates.length; i++) {
-        const tile = tileRefs.current[i];
-        const tpl = templates[i];
-        if (!tile || !tpl) continue;
-        const r = tile.getBoundingClientRect();
-        if (r.width <= 0 || r.height <= 0) continue;
-
-        // canvas/WebGL y is bottom-up; CSS rect.top is top-down.
-        const localX = r.left - wrapperRect.left;
-        const localTop = r.top - wrapperRect.top;
-        const tileH = r.height;
-        const localBottom = wrapperRect.height - localTop - tileH;
-
-        const x = Math.floor(localX * dpr);
-        const y = Math.floor(localBottom * dpr);
-        const w = Math.max(1, Math.floor(r.width * dpr));
-        const h = Math.max(1, Math.floor(tileH * dpr));
-
-        const p = programs.get(tpl.variant);
-        if (!p) continue;
-
-        gl.useProgram(p.prog);
-        gl.viewport(x, y, w, h);
-        gl.scissor(x, y, w, h);
-        const hovered = i === hov;
-        const tSec = hovered ? time : STATIC_T;
-        if (p.uRes) gl.uniform2f(p.uRes, w, h);
-        if (p.uOrigin) gl.uniform2f(p.uOrigin, x, y);
-        if (p.uMouse) gl.uniform2f(p.uMouse, 0.5, 0.5);
-        if (p.uTime) gl.uniform1f(p.uTime, tSec);
-
-        if (p.is3d) {
-          // Hovered 3D tile orbits; otherwise a fixed default view.
-          const theta = hovered ? time * 0.5 : 0.6;
-          const ex = DEFAULT_CAMERA.target[0] + Math.sin(theta) * CAM_DIST;
-          const ez = DEFAULT_CAMERA.target[2] + Math.cos(theta) * CAM_DIST;
-          if (p.uCamEye) gl.uniform3f(p.uCamEye, ex, DEFAULT_CAMERA.eye[1], ez);
-          if (p.uCamTarget) gl.uniform3f(p.uCamTarget, DEFAULT_CAMERA.target[0], DEFAULT_CAMERA.target[1], DEFAULT_CAMERA.target[2]);
-          if (p.uCamUp) gl.uniform3f(p.uCamUp, DEFAULT_CAMERA.up[0], DEFAULT_CAMERA.up[1], DEFAULT_CAMERA.up[2]);
-        }
-
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        drawTile(i, i === hov ? time : STATIC_T, wrapperRect, dpr, false);
       }
     };
-    tick();
+
+    // Per-frame loop runs ONLY while a tile is hovered, and redraws just that
+    // one tile (the rest persist via preserveDrawingBuffer). Idle = no work.
+    const frame = () => {
+      if (stopped) return;
+      const hov = hoveredRef.current;
+      if (hov === null) { running = false; return; }
+      const dpr = dprNow();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const time = (performance.now() - start) / 1000;
+      drawTile(hov, time, wrapperRect, dpr, true);
+      raf = requestAnimationFrame(frame);
+    };
+
+    // Repaint everything, then start the hover loop if a tile is hovered.
+    const wake = () => {
+      if (stopped) return;
+      drawAll();
+      if (hoveredRef.current !== null && !running) {
+        running = true;
+        raf = requestAnimationFrame(frame);
+      }
+    };
+    wakeRef.current = wake;
+
+    wake(); // initial static paint
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => wake()) : null;
+    if (ro) ro.observe(wrapper);
 
     return () => {
       stopped = true;
+      running = false;
       cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      wakeRef.current = null;
       // No loseContext — DOM removal frees it.
     };
   }, [active, templates]);
@@ -265,8 +291,8 @@ export const TemplatesShared = ({
             key={t.name}
             ref={(el) => { tileRefs.current[i] = el; }}
             href={`/design#${encodeRecipeToHash(TEMPLATE_RECIPES[t.variant])}`}
-            onMouseEnter={() => { hoveredRef.current = i; }}
-            onMouseLeave={() => { if (hoveredRef.current === i) hoveredRef.current = null; }}
+            onMouseEnter={() => { hoveredRef.current = i; wakeRef.current?.(); }}
+            onMouseLeave={() => { if (hoveredRef.current === i) { hoveredRef.current = null; wakeRef.current?.(); } }}
             title="Open in editor — built from blocks"
             style={{
               position: 'relative',
