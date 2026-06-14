@@ -8,12 +8,10 @@ import type { BlockDef } from './tokens';
 import { Icon } from './icons';
 import { Starfield } from './Starfield';
 import { SignInButton } from '@/auth';
-import { PhotoToCardsPopover } from './PhotoToCards';
 import { tagsFor } from './block-tags';
 import { getRecents, getFavorites, pushRecent, isFavorite, toggleFavorite, usePaletteVersion } from './palette-prefs';
 import { getMacros, useMacroVersion, deleteMacro, renameMacro, saveMacro } from './macro-prefs';
 import { MacroIcon, MACRO_ICON_KEYS } from './macro-icons';
-import { recipeShareUrl, encodeRecipeToHash } from './recipe-url';
 
 // DataTransfer mime for dragging a block from the palette onto the canvas.
 // The canvas (Chain, in DesktopApp) reads this on drop to place the new card
@@ -283,43 +281,9 @@ export const TogglePill = ({
 
 // ─── Top bar — mirrors the landing nav so the editor frame feels continuous
 // with the marketing site: mascot mark, starfield, dim links + gold underline,
-// the shared SignInButton, and a gold-gradient CTA. Only real actions: Import
-// (Photo→blocks) and Share (copies the recipe URL — recipes persist in the URL).
+// the shared SignInButton. Navigation only — the Import/Share actions were
+// removed.
 export const TopBar = () => {
-  const photoBtnRef = useRef<HTMLButtonElement | null>(null);
-  const [photoOpen, setPhotoOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [shared, setShared] = useState(false);
-  const [photoAnchor, setPhotoAnchor] = useState<{ top: number; right: number }>({ top: 60, right: 24 });
-
-  const openPhoto = () => {
-    const btn = photoBtnRef.current;
-    if (btn) {
-      const r = btn.getBoundingClientRect();
-      setPhotoAnchor({ top: r.bottom + 8, right: window.innerWidth - r.right });
-    }
-    setImportOpen(false);
-    setPhotoOpen(true);
-  };
-  const [shareErr, setShareErr] = useState(false);
-  const handleShare = async () => {
-    // Build a link that actually restores the composition: the recipe rides in
-    // the URL hash (#r=…). Update the address bar too, so a plain refresh keeps
-    // the shared state.
-    const recipe = useCardsStore.getState().recipe;
-    const url = recipeShareUrl(recipe);
-    try {
-      window.history.replaceState(null, '', `#${encodeRecipeToHash(recipe)}`);
-      await navigator.clipboard.writeText(url);
-      setShared(true);
-      window.setTimeout(() => setShared(false), 1600);
-    } catch {
-      // Clipboard blocked (e.g. insecure context) — the URL is still in the bar.
-      setShareErr(true);
-      window.setTimeout(() => setShareErr(false), 2200);
-    }
-  };
-
   return (
     <div
       style={{
@@ -367,84 +331,11 @@ export const TopBar = () => {
         </nav>
       </div>
 
-      {/* right: Import · Share · Sign in — landing button language */}
+      {/* right: Sign in */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            onClick={() => setImportOpen((o) => !o)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              height: 34, padding: '0 12px', borderRadius: 6,
-              background: importOpen ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid rgba(255,255,255,${importOpen ? 0.22 : 0.12})`,
-              color: SHADE.topbarText, cursor: 'pointer',
-              font: `600 12px ${TYPE.body}`, letterSpacing: '0.02em',
-              transition: 'background 0.14s, border-color 0.14s',
-            }}
-            onMouseEnter={(e) => { if (!importOpen) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; }}
-            onMouseLeave={(e) => { if (!importOpen) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
-          >
-            Import
-            <span aria-hidden style={{ width: 0, height: 0, borderLeft: '3.5px solid transparent', borderRight: '3.5px solid transparent', borderTop: '4px solid rgba(232,226,212,0.55)', transform: importOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.16s' }} />
-          </button>
-          {importOpen && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onMouseDown={() => setImportOpen(false)} />
-              <div
-                style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 41,
-                  minWidth: 190, padding: 5,
-                  background: SHADE.topbarSurface, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                  boxShadow: '0 16px 44px -12px rgba(0,0,0,0.6), 0 3px 10px rgba(0,0,0,0.4)',
-                }}
-              >
-                <button
-                  ref={photoBtnRef}
-                  type="button"
-                  onClick={openPhoto}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9, width: '100%',
-                    padding: '8px 9px', borderRadius: 5, border: 'none', background: 'transparent',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Icon name="tb-photo" size={17} color={SHADE.topbarText} cream={SHADE.gold} />
-                  <span style={{ font: `500 12.5px ${TYPE.body}`, color: SHADE.topbarText }}>Photo → blocks</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => { void handleShare(); }}
-          title="Copy a link that restores this exact recipe (rides in the URL)"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            height: 34, padding: '0 14px', borderRadius: 6,
-            background: `linear-gradient(180deg, ${SHADE.gold} 0%, ${SHADE.goldDeep} 100%)`,
-            border: `1px solid ${SHADE.goldDeep}`,
-            color: '#1a1208', cursor: 'pointer',
-            font: `700 12px ${TYPE.body}`, letterSpacing: '0.03em',
-            boxShadow: '0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 6px rgba(0,0,0,0.35)',
-          }}
-        >
-          {shared
-            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1208" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5 L10 17.5 L19 6.5" /></svg>
-            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1208" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 12.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6.5" /><path d="M12 3.5v11" /><path d="M8 7.5l4-4 4 4" /></svg>}
-          {shared ? 'Copied!' : shareErr ? 'URL updated' : 'Share'}
-        </button>
-
         <SignInButton />
       </div>
 
-      {photoOpen && (
-        <PhotoToCardsPopover anchor={photoAnchor} onClose={() => setPhotoOpen(false)} />
-      )}
       <CommandPalette />
     </div>
   );
