@@ -2306,6 +2306,11 @@ export const DesktopApp = () => {
   // Load a starter recipe once on first mount if the store is empty (so the
   // app boots with something to play with — matches AppShell).
   useEffect(() => {
+    // If the URL carries a shared recipe (#r=…), the hash effect above loads
+    // it — don't seed a starter over it. (Both effects run in the same commit
+    // with `recipe` still empty in this closure, so we must check the hash,
+    // not recipe.cards.length, to avoid clobbering the shared recipe.)
+    if (decodeRecipeFromHash(window.location.hash)) return;
     if (recipe.cards.length === 0) {
       const starter = STARTER_RECIPES.find((s) => s.id === DEFAULT_STARTER_ID) ?? STARTER_RECIPES[0];
       if (starter) {

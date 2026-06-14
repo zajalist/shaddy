@@ -45,6 +45,12 @@ import { RIDGED } from './ridged';
 import { TURBULENCE } from './turbulence';
 import { WORLEY_EDGES } from './worley-edges';
 
+// ── shapes: scenes (composite, on-theme) ──
+import { AURORA } from './aurora';
+import { FLAME } from './flame';
+import { HELIX } from './helix';
+import { TERRAIN } from './terrain';
+
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
 import { CAUSTICS } from './caustics';
@@ -213,6 +219,10 @@ import { REPEAT_3D } from './repeat-3d';
 import { SMOOTH_UNION_3D } from './smooth-union-3d';
 import { SPHERE_3D } from './sphere-3d';
 import { TORUS_3D } from './torus-3d';
+import { TWIST_3D } from './twist-3d';
+
+// ── effects: night-sky ──
+import { STARFIELD } from './starfield';
 
 export {
   // marker cards (no GLSL contribution)
@@ -228,6 +238,8 @@ export {
   CAPSULE, ELLIPSE, HORSESHOE, PARALLELOGRAM, PENTAGON, PIE_SLICE, ROUNDED_BOX, SEGMENT, TRAPEZOID, VESICA,
   // new shapes — noise
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
+  // composite scene shapes
+  AURORA, FLAME, HELIX, TERRAIN,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -263,7 +275,9 @@ export {
   // buffer-pass — multi-pass feedback / cross-buffer sampling
   SAMPLE_BUFFER_A, SAMPLE_BUFFER_B, SAMPLE_BUFFER_C, SAMPLE_BUFFER_D, FEEDBACK_DECAY,
   // 3D — raymarched SDF scene contributions
-  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D,
+  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D, TWIST_3D,
+  // effects — night-sky
+  STARFIELD,
 };
 
 export {
@@ -299,6 +313,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   ZELLIGE_GRID, KUFIC_GRID, ARABESQUE_CURLS,
   // Noise family
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
+  // Composite scenes — fuller looks from one block (terrain, aurora, fire, DNA)
+  TERRAIN, AURORA, FLAME, HELIX,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals
@@ -337,7 +353,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
 
   // ─── EFFECTS ───
   // Lens / atmospheric
-  VIGNETTE, GLOW, BLOOM, GOD_RAYS, RADIAL_BLUR_FAKE, FOG, FOG_EXP,
+  VIGNETTE, GLOW, BLOOM, GOD_RAYS, RADIAL_BLUR_FAKE, FOG, FOG_EXP, STARFIELD,
   SPHERE_AO, RIM_LIGHT, CHROMATIC_ABERRATION,
   // Lighting
   FRESNEL, BLINN_PHONG, AMBIENT_OCCLUSION, SOFT_SHADOW,
@@ -375,7 +391,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // domainExpr / smoothness / material. They're no-ops in a 2D recipe and
   // 2D cards are no-ops in a 3D recipe — the compiler dispatches on
   // Recipe.mode.
-  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D,
+  SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D, TWIST_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).
