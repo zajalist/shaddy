@@ -516,12 +516,14 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push(`  vec3 rd = normalize(uv.x * uu + uv.y * vv + (${camFov}) * ww);`);
   lines.push('  float t = 0.0;');
   lines.push('  bool hit = false;');
-  lines.push('  for (int i = 0; i < 128; i++) {');
+  lines.push('  for (int i = 0; i < 200; i++) {');
   lines.push('    vec3 p = ro + rd * t;');
   lines.push('    float dh = sdScene(p);');
-  lines.push('    if (dh < 0.0008) { hit = true; break; }');
-  lines.push('    t += dh * 0.7;'); // under-relax so height-field surfaces don't overshoot
-  lines.push('    if (t > 60.0) break;');
+  lines.push('    if (dh < 0.0008 * t) { hit = true; break; }'); // distance-relative hit threshold
+  // Capped + under-relaxed step: can't skip past steep height-field slopes
+  // (which would let the sky show THROUGH the surface as speckles).
+  lines.push('    t += clamp(dh * 0.5, 0.01, 0.5);');
+  lines.push('    if (t > 70.0) break;');
   lines.push('  }');
   lines.push('  vec3 col = g_sky(rd);');
   lines.push('  float d = 0.0;');

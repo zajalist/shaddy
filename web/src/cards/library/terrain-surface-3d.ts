@@ -13,8 +13,8 @@ export const TERRAIN_SURFACE_3D: CardDef = {
   mode: '3d',
   helpers: ['terrainFbm'],
   params: {
-    scale: { kind: 'float', label: 'scale', default: 0.4, min: 0.1, max: 2, step: 0.01 },
-    height: { kind: 'float', label: 'height', default: 2.2, min: 0.2, max: 8, step: 0.1 },
+    scale: { kind: 'float', label: 'scale', default: 0.3, min: 0.05, max: 2, step: 0.01 },
+    height: { kind: 'float', label: 'height', default: 2.4, min: 0.2, max: 8, step: 0.1 },
   },
   snippetTemplate: '// terrain_surface_3d (3D) scale={{scale}} height={{height}}',
   contribution3d: {
