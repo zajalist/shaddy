@@ -232,7 +232,156 @@ const PRE: Partial<Record<TemplateVariant, string>> = {
   `,
 };
 
-const fragSrc = (variant: TemplateVariant) => `
+// Hover-to-play: heavy "hero" shaders rendered ONLY for the tile under the
+// cursor (one at a time), so the full-quality raymarchers never run ×12. Each
+// has an optional preamble (HERO_PRE, global functions) + a main body (HERO).
+const HERO_PRE: Partial<Record<TemplateVariant, string>> = {
+  // Full molecular DNA — adapted from "Splitting DNA" by BigWings (CC BY-NC-SA).
+  dna: `
+    #define DNA_STEPS 70
+    #define DNA_MIND 0.1
+    #define DNA_MAXD 1000.
+    #define DNA_PREC 0.1
+    #define HS(x,y,z) smoothstep(x,y,z)
+    #define hsat(x) clamp(x,0.,1.)
+    float dsmth = .6;
+    float dhr = 1.0, dnr = 2.264, dcr = 2.674, dor = 2.102, dpr = 3.453;
+    vec3 dhc = vec3(1.);
+    vec3 dnc = vec3(.1,.1,1.);
+    vec3 dcc = vec3(.1);
+    vec3 doc = vec3(1.,.1,.1);
+    vec3 dpc = vec3(1.,.75,.3);
+    float dtwopi = 6.283185307179586;
+    vec3 dbg = vec3(.1,.5,1.);
+    vec3 d_up = vec3(0.,1.,0.);
+    float dN1(float x){ return fract(sin(x)*5346.1764); }
+    float dN2(float x,float y){ return dN1(x + y*23414.324); }
+    float dN3(vec3 p){ p=fract(p*0.3183099+.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+    struct dray { vec3 o; vec3 d; };
+    struct dcam_t { vec3 p; vec3 forward; vec3 left; vec3 up; vec3 center; vec3 i; dray r; vec3 lookAt; float zoom; };
+    struct drc { vec3 id; vec3 h; vec3 p; vec3 c; };
+    struct dde { float d; float m; vec3 col; vec3 id; float spread; vec3 pos; vec3 nor; };
+    dcam_t dcam;
+    drc dRepeat(vec3 pos, vec3 size){ drc o; o.h=size*.5; o.id=floor(pos/size); o.p=mod(pos,size)-o.h; o.c=o.id*size+o.h; return o; }
+    void dCameraSetup(vec2 uv, vec3 position, vec3 lookAt, float zoom){
+      dcam.p=position; dcam.lookAt=lookAt; dcam.forward=normalize(dcam.lookAt-dcam.p);
+      dcam.left=cross(d_up,dcam.forward); dcam.up=cross(dcam.forward,dcam.left); dcam.zoom=zoom;
+      dcam.center=dcam.p+dcam.forward*dcam.zoom; dcam.i=dcam.center+dcam.left*uv.x+dcam.up*uv.y;
+      dcam.r.o=dcam.p; dcam.r.d=normalize(dcam.i-dcam.p);
+    }
+    float dsmin(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.); return mix(b,a,h)-k*h*(1.-h); }
+    vec2 dsmin2(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.); return vec2(mix(b,a,h)-k*h*(1.-h),h); }
+    float dsmax(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.); return mix(a,b,h)+k*h*(1.-h); }
+    float dSph(vec3 p,vec3 pos,float s){ return (length(p-pos)-s)*.9; }
+    vec3 dBack(vec3 r){ float y=3.14159*0.5-acos(r.y); return dbg*(1.+y); }
+    vec4 dAdenine(vec3 p){
+      float b=dSph(p,vec3(29.52,6.64,3.04),11.019); if(b>0.) return vec4(dbg,b+1.);
+      float h=dSph(p,vec3(22.44,13.63,3.04),dhr); h=min(h,dSph(p,vec3(21.93,0.28,3.04),dhr)); h=min(h,dSph(p,vec3(26.08,-1.19,3.04),dhr)); h=min(h,dSph(p,vec3(39.04,3.98,3.04),dhr));
+      float n=dSph(p,vec3(23.18,7.49,3.04),dnr); n=min(n,dSph(p,vec3(28.39,11.95,3.04),dnr)); n=min(n,dSph(p,vec3(24.43,0.75,3.04),dnr)); n=min(n,dSph(p,vec3(32.79,2.79,3.04),dnr)); n=min(n,dSph(p,vec3(34.93,8.83,3.04),dnr));
+      float c=dSph(p,vec3(24.50,11.22,3.04),dcr); c=min(c,dSph(p,vec3(25.75,4.47,3.04),dcr)); c=min(c,dSph(p,vec3(29.65,5.2,3.04),dcr)); c=min(c,dSph(p,vec3(30.97,8.93,3.04),dcr)); c=min(c,dSph(p,vec3(36.06,5.03,3.04),dcr));
+      vec2 i=dsmin2(h,n,dsmth); vec3 col=mix(dnc,dhc,i.y); i=dsmin2(i.x,c,dsmth); col=mix(dcc,col,i.y); return vec4(col,i.x);
+    }
+    vec4 dThymine(vec3 p){
+      float b=dSph(p,vec3(12.96,5.55,3.04),10.466); if(b>0.) return vec4(dbg,b+1.);
+      float o=dSph(p,vec3(18.171,-.019,3.04),dor); o=min(o,dSph(p,vec3(15.369,13.419,3.04),dor));
+      float h=dSph(p,vec3(19.253,7.218,3.04),dhr); h=min(h,dSph(p,vec3(12.54,-3.449,4.534),dhr)); h=min(h,dSph(p,vec3(7.625,-1.831,4.533),dhr)); h=min(h,dSph(p,vec3(10.083,-2.64,0.052),dhr));
+      float n=dSph(p,vec3(16.77,6.7,3.04),dnr); n=min(n,dSph(p,vec3(10.251,8.846,3.04),dnr));
+      float c=dSph(p,vec3(10.541,-1.636,3.04),dcr); c=min(c,dSph(p,vec3(11.652,2.127,3.04),dcr)); c=min(c,dSph(p,vec3(15.531,2.936,3.04),dcr)); c=min(c,dSph(p,vec3(9.012,5.082,3.04),dcr)); c=min(c,dSph(p,vec3(14.13,9.655,3.04),dcr));
+      vec2 i=dsmin2(h,n,dsmth); vec3 col=mix(dnc,dhc,i.y); i=dsmin2(i.x,c,dsmth); col=mix(dcc,col,i.y); i=dsmin2(i.x,o,dsmth); col=mix(doc,col,i.y); return vec4(col,i.x);
+    }
+    vec4 dCytosine(vec3 p){
+      float b=dSph(p,vec3(14.556,5.484,3.227),10.060); if(b>0.) return vec4(dbg,b+1.);
+      float c=dSph(p,vec3(11.689,1.946,3.067),dcr); c=min(c,dSph(p,vec3(15.577,2.755,3.067),dcr)); c=min(c,dSph(p,vec3(14.176,9.474,3.067),dcr)); c=min(c,dSph(p,vec3(9.058,4.9,3.067),dcr));
+      float n=dSph(p,vec3(18.412,0.342,3.067),dnr); n=min(n,dSph(p,vec3(16.816,6.519,3.067),dnr)); n=min(n,dSph(p,vec3(10.297,8.665,3.067),dnr));
+      float h=dSph(p,vec3(6.526,3.015,3.067),dhr); h=min(h,dSph(p,vec3(10.61,-1.045,3.067),dhr)); h=min(h,dSph(p,vec3(18.805,-2.297,3.067),dhr)); h=min(h,dSph(p,vec3(20.95,0.584,3.067),dhr));
+      float o=dSph(p,vec3(15.415,13.237,3.067),dor);
+      vec2 i=dsmin2(c,n,dsmth); vec3 col=mix(dnc,dcc,i.y); i=dsmin2(i.x,h,dsmth); col=mix(dhc,col,i.y); i=dsmin2(i.x,o,dsmth); col=mix(doc,col,i.y); return vec4(col,i.x);
+    }
+    vec4 dGuanine(vec3 p){
+      float b=dSph(p,vec3(29.389,8.944,3.227),12.067); if(b>0.) return vec4(dbg,b+1.);
+      float c=dSph(p,vec3(24.642,11.602,3.067),dcr); c=min(c,dSph(p,vec3(31.111,9.311,3.067),dcr)); c=min(c,dSph(p,vec3(29.79,5.576,3.067),dcr)); c=min(c,dSph(p,vec3(25.893,4.854,3.067),dcr)); c=min(c,dSph(p,vec3(36.19,5.409,3.067),dcr));
+      float n=dSph(p,vec3(22.56,14.31,3.067),dnr); n=min(n,dSph(p,vec3(23.32,7.867,3.067),dnr)); n=min(n,dSph(p,vec3(28.538,12.325,3.067),dnr)); n=min(n,dSph(p,vec3(32.934,3.164,3.067),dnr)); n=min(n,dSph(p,vec3(35.07,9.209,3.067),dnr));
+      float h=dSph(p,vec3(20.044,14.723,3.04),dhr); h=min(h,dSph(p,vec3(22.852,16.965,3.04),dhr)); h=min(h,dSph(p,vec3(20.856,7.404,3.067),dhr)); h=min(h,dSph(p,vec3(39.187,4.352,3.067),dhr));
+      float o=dSph(p,vec3(24.7,1.893,3.067),dor);
+      vec2 i=dsmin2(c,n,dsmth); vec3 col=mix(dnc,dcc,i.y); i=dsmin2(i.x,h,dsmth); col=mix(dhc,col,i.y); i=dsmin2(i.x,o,dsmth); col=mix(doc,col,i.y); return vec4(col,i.x);
+    }
+    vec4 dBackbone(vec3 p){
+      float b=dSph(p,vec3(0.,7.03,0.),10.572); if(b>0.) return vec4(dbg,b+1.);
+      float c=dSph(p,vec3(1.391,8.476,-0.708),dcr); c=min(c,dSph(p,vec3(5.173,9.661,-0.708),dcr)); c=min(c,dSph(p,vec3(6.342,10.028,3.061),dcr)); c=min(c,dSph(p,vec3(0.222,8.109,3.061),dcr)); c=min(c,dSph(p,vec3(0.658,4.4,4.8871),dcr));
+      float h=dSph(p,vec3(-5.853,0.,2.213),dhr); h=min(h,dSph(p,vec3(5.4512,12.437,-2.216),dhr)); h=min(h,dSph(p,vec3(6.986,7.541,-2.216),dhr)); h=min(h,dSph(p,vec3(-1.726,10.517,4.39),dhr)); h=min(h,dSph(p,vec3(3.203,2.519,4.691),dhr)); h=min(h,dSph(p,vec3(-1.619,3.162,3.063),dhr));
+      float o=dSph(p,vec3(-4.918,1.599,0.344),dor); o=min(o,dSph(p,vec3(-1.471,0.995,-5.1),dor)); o=min(o,dSph(p,vec3(-0.836,6.288,-1.438),dor)); o=min(o,dSph(p,vec3(3.282,9.068,5.391),dor)); o=min(o,dSph(p,vec3(-6.286,5.299,-4.775),dor));
+      float ph=dSph(p,vec3(-3.377,3.544,-2.742),dpr);
+      o=min(o,dSph(p,vec3(-6.286,5.299,6.558),dor)); ph=min(ph,dSph(p,vec3(-3.377,3.544,8.592),dpr));
+      vec2 i=dsmin2(c,h,dsmth); vec3 col=mix(dhc,dcc,i.y); i=dsmin2(i.x,o,dsmth); col=mix(doc,col,i.y); i=dsmin2(i.x,ph,dsmth); col=mix(dpc,col,i.y); return vec4(col,i.x);
+    }
+    vec4 dmap(vec3 p, vec3 id, float spread, float getColor){
+      p.z+=2.4; vec4 col; vec3 bp=p; bp.x=22.5-bp.x; float side=sign(bp.x); bp.x=22.5-abs(bp.x)+spread; bp.z=bp.z*side-min(0.,side)*5.;
+      vec4 b=dBackbone(bp);
+      vec4 c=vec4(1000.); vec4 g=vec4(1000.); vec3 cp=p; vec3 gp=p;
+      float n=dN3(id);
+      if(n<.5){ cp.xz=-cp.xz+vec2(46.,6.); gp.xz=-gp.xz+vec2(46.,6.); }
+      cp.x+=spread; gp.x-=spread;
+      if(mod(floor(n*4.),2.)==0.){ c=dCytosine(cp); g=dGuanine(gp); } else { g=dAdenine(gp); c=dThymine(cp); }
+      col.a=min(b.a,min(c.a,g.a));
+      if(getColor!=0.){ if(col.a==b.a) col.rgb=b.rgb; else if(col.a==c.a) col.rgb=c.rgb; else col.rgb=g.rgb; }
+      return col;
+    }
+    dde dCast(dray r){
+      float t=T*.3; dde o; o.m=-1.0; vec3 p=vec3(0.); float d=DNA_MIND; drc q;
+      vec3 center=vec3(19.12,7.09,3.09); float spread; vec3 grid=vec3(180.,180.,11.331);
+      for(int i=0;i<DNA_STEPS;i++){
+        p=r.o+r.d*d; float oz=p.z;
+        q=dRepeat(p,grid); float sd=length(q.c.xy-center.xy);
+        p.z+=t*200.*HS(800.,100.,sd); float n=dN2(q.id.x,q.id.y);
+        p.y+=sin(n*dtwopi+p.z*.003+t)*50.*HS(300.,500.,sd);
+        q=dRepeat(p,grid);
+        float z2=dsmax(0.,abs(oz*.03)-6.,2.); float s=sin(z2); float cc2=cos(z2);
+        oz*=.012; spread=max(0.,6.-oz*oz); spread*=spread; spread*=HS(250.,1.,length(q.id.xy*grid.xy+q.h.xy-r.o.xy));
+        vec3 rC=((2.*step(0.,r.d)-1.)*q.h-q.p)/r.d; float dC=min(min(rC.x,rC.y),rC.z)+.01;
+        float dS=DNA_MAXD;
+        vec2 bla=q.p.xy-center.xy;
+        if(dot(bla,r.d.xy)>0. && length(bla)>50.){ dC=min(rC.x,rC.y)+1.; }
+        else { q.p-=center; mat2 m=mat2(cc2,-s,s,cc2); q.p.xy*=m; q.p+=center; dC=rC.z+.01; dS=dmap(q.p,q.id,spread,0.).a; }
+        if(dS<DNA_PREC||d>DNA_MAXD) break;
+        d+=min(dS,dC);
+      }
+      if(d<DNA_MAXD){ o.m=1.; o.d=d; o.id=q.id; o.spread=spread; o.pos=q.p; }
+      return o;
+    }
+    vec4 dnmap(dde o, vec3 offs){ return dmap(o.pos+offs,o.id,o.spread,0.); }
+    dde dProps(dde o){
+      vec3 eps=vec3(.001,0.,0.); vec3 p=o.pos-eps.yyx; vec4 c=dmap(p,o.id,o.spread,1.); o.col=c.rgb;
+      vec3 nor=vec3(dnmap(o,eps.xyy).a-dnmap(o,-eps.xyy).a, dnmap(o,eps.yxy).a-dnmap(o,-eps.yxy).a, dnmap(o,eps.yyx).a-c.a);
+      o.nor=normalize(nor); return o;
+    }
+    vec3 dAtomMat(dde o, vec3 rd){
+      o=dProps(o); vec3 R2=reflect(dcam.r.d,o.nor); vec3 ref=dBack(R2);
+      float dif=dot(d_up,o.nor)*.5+.5; dif=mix(.3,1.,dif); vec3 col=o.col*dif;
+      float fres=1.-hsat(dot(o.nor,-rd)); fres=pow(fres,.5);
+      float upd=dot(rd,vec3(0.,1.,0.));
+      col=mix(col,ref,fres*.5*HS(.8,.0,upd)); col*=HS(.9,.2,upd);
+      col=mix(col,dbg,HS(0.,1000.,o.d)); return col;
+    }
+    vec3 dRender(vec2 uv2, dray camRay){
+      dbg=dBack(dcam.r.d); vec3 col=dbg; dde o=dCast(camRay);
+      if(o.m>0.) col=dAtomMat(o,dcam.r.d);
+      return col;
+    }
+  `,
+};
+
+const HERO: Partial<Record<TemplateVariant, string>> = {
+  dna: `
+    vec2 duv = uv * 0.92;
+    float tt = T * 0.2;
+    vec3 camPos = vec3(-60.0 + sin(tt)*180.0, -80.0 + sin(tt*0.5)*250.0, 0.0);
+    vec3 hpos = vec3(-cos(tt)*3.0, -cos(tt*0.5)*3.0, -4.0);
+    dCameraSetup(duv, camPos + hpos, camPos, 1.0);
+    col = dRender(duv, dcam.r);
+  `,
+};
+
+const fragSrc = (variant: TemplateVariant, hero = false) => `
 precision highp float;
 uniform vec2 R;
 uniform vec2 O;   // viewport origin in canvas pixels (this tile's bottom-left)
@@ -253,15 +402,15 @@ float fbm(vec2 p){
 }
 
 // Per-variant global helper functions (Seascape etc. need real functions, which
-// can't live inside main()).
-${PRE[variant] ?? ''}
+// can't live inside main()). Hero (hover) variant uses its own preamble.
+${(hero ? HERO_PRE[variant] : undefined) ?? PRE[variant] ?? ''}
 
 void main(){
   // gl_FragCoord is framebuffer-absolute. Subtract the viewport origin so the
   // tile's center maps to uv=0 instead of the canvas center.
   vec2 uv = (gl_FragCoord.xy - O - 0.5 * R) / R.y;
   vec3 col = vec3(0.0);
-  ${BODY[variant]}
+  ${(hero ? HERO[variant] : undefined) ?? BODY[variant]}
   // gentle edge fade only — keep the tile bright and readable
   col *= 1.0 - 0.30 * smoothstep(0.55, 1.5, length(uv));
   gl_FragColor = vec4(col, 1.0);
@@ -282,6 +431,8 @@ export const TemplatesShared = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<Array<HTMLDivElement | null>>([]);
+  // index of the tile under the cursor — its hero (heavy) shader renders live.
+  const hoveredRef = useRef<number | null>(null);
 
   // lazy mount the WebGL context only when the section is near the viewport
   const [active, setActive] = useState(false);
@@ -338,29 +489,44 @@ export const TemplatesShared = ({
       Tloc: WebGLUniformLocation | null;
       Oloc: WebGLUniformLocation | null;
     };
-    const programs: Partial<Record<TemplateVariant, ProgEntry>> = {};
-
-    const variants = new Set<TemplateVariant>(templates.map((t) => t.variant));
-    for (const v of variants) {
-      const fs = compile(gl.FRAGMENT_SHADER, fragSrc(v), `fragment ${v}`);
-      if (!fs) continue;
+    const buildProgram = (src: string, name: string): ProgEntry | null => {
+      const fs = compile(gl.FRAGMENT_SHADER, src, name);
+      if (!fs) return null;
       const prog = gl.createProgram();
-      if (!prog) continue;
+      if (!prog) return null;
       gl.attachShader(prog, vs);
       gl.attachShader(prog, fs);
       gl.bindAttribLocation(prog, 0, 'p');
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        console.warn(`TemplatesShared link ${v}:`, gl.getProgramInfoLog(prog));
-        continue;
+        console.warn(`TemplatesShared link ${name}:`, gl.getProgramInfoLog(prog));
+        return null;
       }
-      programs[v] = {
+      return {
         prog,
         Rloc: gl.getUniformLocation(prog, 'R'),
         Tloc: gl.getUniformLocation(prog, 'T'),
         Oloc: gl.getUniformLocation(prog, 'O'),
       };
+    };
+
+    const programs: Partial<Record<TemplateVariant, ProgEntry>> = {};
+    const variants = new Set<TemplateVariant>(templates.map((t) => t.variant));
+    for (const v of variants) {
+      const p = buildProgram(fragSrc(v), `fragment ${v}`);
+      if (p) programs[v] = p;
     }
+
+    // Hero (heavy) programs compiled lazily the first time a tile is hovered —
+    // keeps page load cheap and only one hero ever runs at a time.
+    const heroPrograms: Partial<Record<TemplateVariant, ProgEntry | null>> = {};
+    const getHero = (v: TemplateVariant): ProgEntry | null => {
+      if (!HERO[v]) return null;
+      if (heroPrograms[v] === undefined) {
+        heroPrograms[v] = buildProgram(fragSrc(v, true), `hero ${v}`);
+      }
+      return heroPrograms[v] ?? null;
+    };
 
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -411,7 +577,7 @@ export const TemplatesShared = ({
         const w = Math.max(1, Math.floor(r.width * dpr));
         const h = Math.max(1, Math.floor(tileH * dpr));
 
-        const p = programs[tpl.variant];
+        const p = (hoveredRef.current === i ? getHero(tpl.variant) : null) ?? programs[tpl.variant];
         if (!p) continue;
         gl.useProgram(p.prog);
         gl.viewport(x, y, w, h);
@@ -467,6 +633,9 @@ export const TemplatesShared = ({
           <div
             key={t.name}
             ref={(el) => { tileRefs.current[i] = el; }}
+            onMouseEnter={() => { hoveredRef.current = i; }}
+            onMouseLeave={() => { if (hoveredRef.current === i) hoveredRef.current = null; }}
+            title={HERO[t.variant] ? 'Hover to see it live' : undefined}
             style={{
               position: 'relative',
               background: 'transparent',
