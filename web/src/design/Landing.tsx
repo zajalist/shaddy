@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { SHADE, TYPE, blockById } from './tokens';
 import { Icon, ShadeLogo } from './icons';
-import { SignInButton } from '@/auth';
+import { SiteNav, ScrollToTop } from './SiteNav';
 import { Starfield } from './Starfield';
 import { ShadeCanvas } from './ShadeCanvas';
 import { HeroPortal } from './HeroPortal';
@@ -181,179 +181,6 @@ const useLandingChrome = () => {
     };
   }, []);
 };
-
-// ─── Scroll-direction hook (hide on scroll-down, .scrolled after hero) ───
-const useNavScroll = () => {
-  const [hidden, setHidden] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    let lastY = 0;
-    const onScroll = () => {
-      const y = window.scrollY;
-      setHidden(y > lastY && y > 100);
-      setScrolled(y > 80);
-      lastY = y;
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-  return { hidden, scrolled };
-};
-
-// ─── Topbar — sticky, fades on scroll direction ──────────────────────────
-const LandingNav = () => {
-  const { hidden, scrolled } = useNavScroll();
-  const isMobile = useIsMobile();
-  const [menuOpen, setMenuOpen] = useState(false);
-  return (
-    <nav
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80,
-        height: 60, padding: isMobile ? '0 16px' : '0 28px',
-        display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 22,
-        background: scrolled || menuOpen ? 'rgba(11,12,14,0.78)' : 'transparent',
-        backdropFilter: scrolled || menuOpen ? 'blur(14px) saturate(140%)' : 'none',
-        WebkitBackdropFilter: scrolled || menuOpen ? 'blur(14px) saturate(140%)' : 'none',
-        borderBottom: scrolled || menuOpen ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
-        color: SHADE.topbarText,
-        font: `500 12.5px ${TYPE.body}`,
-        // overflow stays visible so dropdowns (sign-in picker, mobile drawer)
-        // that hang below the bar aren't clipped. The Starfield is clipped by
-        // its own wrapper below instead.
-        overflow: 'visible',
-        transform: hidden && !menuOpen ? 'translateY(-100%)' : 'translateY(0)',
-        transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1), background 0.3s, backdrop-filter 0.3s, border-color 0.3s',
-      }}
-    >
-      <span aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
-      </span>
-      {/* Mobile: mascot mark on the left */}
-      {isMobile && (
-        <a href="#top" aria-label="Shaddy home" style={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 1, textDecoration: 'none' }}>
-          <img src="/mascot.svg" alt="Shaddy" style={{ height: 28, width: 'auto', display: 'block' }} />
-        </a>
-      )}
-      {/* Desktop: centred cluster — mascot mark + section links. Everything is
-          centred except the github / sign-in / editor controls on the right. */}
-      {!isMobile && (
-        <div
-          style={{
-            position: 'absolute', left: '50%', top: 0, bottom: 0,
-            transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: 22, zIndex: 1,
-          }}
-        >
-          <a href="#top" aria-label="Shaddy home" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', marginRight: 4 }}>
-            <img src="/mascot.svg" alt="Shaddy" style={{ height: 30, width: 'auto', display: 'block' }} />
-          </a>
-          <NavLink href="#how">How it works</NavLink>
-          <NavLink href="#compose">Compose</NavLink>
-          <NavLink href="#code">Code</NavLink>
-          <NavLink href="#faq">FAQ</NavLink>
-        </div>
-      )}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10, position: 'relative', zIndex: 1 }}>
-        {!isMobile && <SignInButton />}
-        <a
-          href="/design"
-          aria-label="Open composer"
-          data-tip={isMobile ? undefined : 'Open composer'}
-          className="comp-btn icon-tip tip-right"
-          style={{
-            width: isMobile ? 44 : 34, height: isMobile ? 44 : 34,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            background: `linear-gradient(180deg, ${SHADE.gold} 0%, ${SHADE.goldDeep} 100%)`,
-            border: `1px solid ${SHADE.goldDeep}`, borderRadius: 6,
-            textDecoration: 'none',
-            boxShadow: '0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 6px rgba(0,0,0,0.35)',
-          }}
-        >
-          <span className="comp-svg" style={{ display: 'inline-flex' }}>
-            {/* "open / launch" — arrow lifting out of a window */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1208" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
-              <path d="M14 4h6v6" />
-              <path d="M20 4l-9 9" />
-            </svg>
-          </span>
-        </a>
-        {isMobile && (
-          <button
-            type="button"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setMenuOpen((x) => !x)}
-            style={{
-              width: 44, height: 44, padding: 0,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6,
-              color: SHADE.topbarText,
-              cursor: 'pointer',
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {menuOpen ? <path d="M6 6l12 12 M6 18L18 6" /> : <><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></>}
-            </svg>
-          </button>
-        )}
-      </div>
-      {isMobile && menuOpen && (
-        <div
-          style={{
-            position: 'fixed', left: 0, right: 0, top: 60,
-            background: 'rgba(11,12,14,0.96)',
-            backdropFilter: 'blur(14px)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            padding: '12px 16px 18px',
-            display: 'flex', flexDirection: 'column', gap: 4,
-            zIndex: 1,
-          }}
-        >
-          {[
-            { href: '#how', label: 'How it works' },
-            { href: '#compose', label: 'Compose' },
-            { href: '#code', label: 'Code' },
-            { href: '#faq', label: 'FAQ' },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: 'flex', alignItems: 'center',
-                minHeight: 48, padding: '0 8px',
-                color: SHADE.cream, textDecoration: 'none',
-                font: `500 16px ${TYPE.body}`,
-                letterSpacing: '0.01em',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-              }}
-            >
-              {item.label}
-            </a>
-          ))}
-          <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
-            <SignInButton />
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-};
-
-const NavLink = ({ href, children }: { href: string; children: ReactNode }) => (
-  <a
-    href={href}
-    style={{
-      position: 'relative',
-      color: 'rgba(232,226,212,0.7)', textDecoration: 'none',
-      font: `500 12.5px ${TYPE.body}`, padding: '20px 14px',
-      letterSpacing: '0.01em',
-    }}
-  >
-    {children}
-  </a>
-);
 
 // ─── Section separator — chunky filled diamond between sections ─────────
 // Replaces the older gold-circle-on-cream rule that read poorly: stronger
@@ -1270,7 +1097,8 @@ export const Landing = () => {
   };
   return (
     <div ref={mainRef} style={wrap}>
-      <LandingNav />
+      <SiteNav inPage />
+      <ScrollToTop />
       <PageTOC />
       <Hero />
       <SectionShell

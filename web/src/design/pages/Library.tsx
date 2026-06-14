@@ -26,6 +26,7 @@ import { P, Inline, Strong, Table } from './library/atoms';
 import { CodeSnippet } from './library/CodeSnippet';
 import { Diagram } from './library/diagrams';
 import { Layout } from './library/Layout';
+import { SiteNav, ScrollToTop } from '../SiteNav';
 import type { TocGroup } from './library/TOC';
 import { useLibrarySearch } from './library/useLibrarySearch';
 import { FONT_LINK_ID, FONTS_HREF, LIBRARY_GRID_CSS, LIB_TYPE, inkCard } from './library/style';
@@ -704,8 +705,10 @@ export const Library = () => {
   return (
     <div style={{
       minHeight: '100vh', background: SHADE.bg, color: SHADE.text,
-      fontFamily: TYPE.body,
+      fontFamily: TYPE.body, paddingTop: 60,
     }}>
+      <SiteNav solid />
+      <ScrollToTop />
       <Hero
         query={raw} setQuery={setRaw}
         articleCount={ARTICLE_COUNT}
