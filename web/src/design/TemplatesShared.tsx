@@ -44,20 +44,21 @@ const BODY: Record<TemplateVariant, string> = {
     col = mix(col, vec3(0.13,0.34,0.88), smoothstep(0.52,0.92,n));
     col += vec3(0.95) * pow(max(0.0, hash(floor(uv*130.0)) - 0.985)*60.0, 2.0);
   `,
-  // double helix — two glowing strands with depth + base-pair rungs
+  // double helix — lightweight procedural strands + base-pair rungs.
+  // (A full molecular DNA raymarcher is gorgeous but far too heavy to run as
+  // one of 12 always-on preview tiles — it belongs in the composer at full
+  // size. This reads clearly as a helix and renders for free.)
   dna: `
     float t = T*0.9;
     float ph = uv.y*9.0 + t;
     float x1 = 0.34*sin(ph);
     float x2 = 0.34*sin(ph + 3.14159);
-    float d1 = cos(ph)*0.5 + 0.5;          // depth cue (front strand brighter)
+    float d1 = cos(ph)*0.5 + 0.5;
     float d2 = cos(ph + 3.14159)*0.5 + 0.5;
     col = vec3(0.02,0.03,0.07);
-    // base-pair rungs between the strands, only on the front half
     float bar = smoothstep(0.035, 0.0, abs(fract(uv.y*4.5 + t*0.16) - 0.5));
     float between = step(min(x1,x2), uv.x) * step(uv.x, max(x1,x2));
     col += vec3(0.92,0.86,0.55) * bar * between * 0.55;
-    // strands (drawn after, so they sit on top)
     col += vec3(0.10,0.95,0.85) * (0.35 + 0.65*d1) * smoothstep(0.055, 0.0, abs(uv.x - x1));
     col += vec3(0.98,0.26,0.66) * (0.35 + 0.65*d2) * smoothstep(0.055, 0.0, abs(uv.x - x2));
   `,
