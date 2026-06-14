@@ -18,6 +18,96 @@ type IconRenderer = (args: IconRenderArgs) => ReactNode;
 const SHADOW = 'rgba(0,0,0,0.22)';
 
 export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
+  // ─────────────────── PRIMITIVES added for the templates ───────────────────
+
+  // Relief light — a sun lighting a ridge (slope-shading primitive).
+  'card-relief-light': ({ c, cream }) => (
+    <>
+      <path d="M3 18.4 L9 10 L13 14.5 L17.5 8 L21 18.4 Z" fill={SHADOW} />
+      <path d="M3 17.6 L9 9.2 L13 13.7 L17.5 7.2 L21 17.6 Z" fill={c} />
+      <path d="M9 9.2 L13 13.7 L8 17.6 L3 17.6 Z" fill={cream} opacity="0.5" />
+      <circle cx="18.4" cy="5.4" r="2.6" fill="#FCB427" />
+      {[0, 60, 120, 180, 240, 300].map((a, i) => {
+        const r = (a * Math.PI) / 180;
+        return <line key={i} x1={18.4 + Math.cos(r) * 3.6} y1={5.4 + Math.sin(r) * 3.6} x2={18.4 + Math.cos(r) * 5} y2={5.4 + Math.sin(r) * 5} stroke="#FCB427" strokeWidth="1.4" strokeLinecap="round" />;
+      })}
+    </>
+  ),
+
+  // Heat ramp — blackbody gradient bar (hardcoded hot hues = the identity).
+  'card-heat-ramp': () => (
+    <>
+      <rect x="3" y="7.4" width="18" height="9.2" rx="2.4" fill={SHADOW} />
+      <rect x="3" y="7" width="3.6" height="9.2" fill="#1a0a06" />
+      <rect x="6.6" y="7" width="3.6" height="9.2" fill="#7a1500" />
+      <rect x="10.2" y="7" width="3.6" height="9.2" fill="#ff4a00" />
+      <rect x="13.8" y="7" width="3.6" height="9.2" fill="#ffa000" />
+      <rect x="17.4" y="7" width="3.6" height="9.2" fill="#fff0b0" />
+      <rect x="3" y="7" width="18" height="9.2" rx="2.4" fill="none" />
+    </>
+  ),
+
+  // Radial mask — soft circular falloff (filled core → faint ring).
+  'card-radial-mask': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} opacity="0.25" />
+      <circle cx="12" cy="12" r="6" fill={c} opacity="0.55" />
+      <circle cx="12" cy="12" r="3.2" fill={cream} />
+    </>
+  ),
+
+  // Flame — teardrop flame, cream inner tongue.
+  'card-flame': ({ c, cream }) => (
+    <>
+      <path d="M12 2.6 C15.5 7 18.6 9.6 18.6 14 a6.6 6.6 0 0 1 -13.2 0 C5.4 10.6 8 9 9 5.6 C9.8 8 11 8.8 12 8 C12.9 7.2 12.6 4.8 12 2.6 Z" fill={c} />
+      <path d="M12 9.6 C13.8 11.6 14.8 13 14.8 15 a2.8 2.8 0 0 1 -5.6 0 C9.2 13.2 10.6 12.4 11 10.6 C11.3 11.6 11.7 11.8 12 11.4 Z" fill={cream} />
+    </>
+  ),
+
+  // Aurora — drifting horizontal light curtains.
+  'card-aurora': ({ c, cream }) => (
+    <>
+      <path d="M2.5 8 Q7 5 12 8 T21.5 8 V11 Q17 8.4 12 11 T2.5 11 Z" fill={c} />
+      <path d="M2.5 12 Q7 9 12 12 T21.5 12 V15 Q17 12.4 12 15 T2.5 15 Z" fill={cream} opacity="0.8" />
+      <path d="M2.5 16 Q7 13.4 12 16 T21.5 16 V18.6 Q17 16.4 12 18.6 T2.5 18.6 Z" fill={c} opacity="0.55" />
+    </>
+  ),
+
+  // Helix — two twisting strands with rungs (DNA).
+  'card-helix': ({ c, cream }) => (
+    <>
+      <path d="M8 3 C16 7 8 11 16 15 C8 19 16 21 16 21" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M16 3 C8 7 16 11 8 15 C16 19 8 21 8 21" fill="none" stroke={cream} strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="9" y1="6.4" x2="15" y2="6.4" stroke={cream} strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+      <line x1="9" y1="12" x2="15" y2="12" stroke={c} strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+      <line x1="9" y1="17.6" x2="15" y2="17.6" stroke={cream} strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+    </>
+  ),
+
+  // Starfield — scattered 4-point sparkles.
+  'card-starfield': ({ c, cream }) => {
+    const star = (x: number, y: number, s: number, col: string) => (
+      <path key={`${x}-${y}`} d={`M${x} ${y - s} L${x + s * 0.32} ${y - s * 0.32} L${x + s} ${y} L${x + s * 0.32} ${y + s * 0.32} L${x} ${y + s} L${x - s * 0.32} ${y + s * 0.32} L${x - s} ${y} L${x - s * 0.32} ${y - s * 0.32} Z`} fill={col} />
+    );
+    return (
+      <>
+        {star(8, 7, 3.2, cream)}
+        {star(16.5, 9.5, 2.4, c)}
+        {star(12, 15, 2.8, cream)}
+        {star(6, 16, 1.8, c)}
+        {star(18, 16.5, 1.8, c)}
+      </>
+    );
+  },
+
+  // Twist (3D) — a swirling twisted bar.
+  'card-twist-3d': ({ c, cream }) => (
+    <>
+      <path d="M7 3 C17 6 7 10 17 13 C7 16 17 20 9 21" fill="none" stroke={c} strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M7 3 C17 6 7 10 17 13 C7 16 17 20 9 21" fill="none" stroke={cream} strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+    </>
+  ),
+
   // ───────────────────────────────── MARKERS ────────────────────────────────
 
   'card-portal': ({ cream }) => (

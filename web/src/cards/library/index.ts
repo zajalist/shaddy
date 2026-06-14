@@ -49,14 +49,10 @@ import { WORLEY_EDGES } from './worley-edges';
 import { AURORA } from './aurora';
 import { FLAME } from './flame';
 import { HELIX } from './helix';
-import { TERRAIN } from './terrain';
-import { NEBULA } from './nebula';
-import { GALAXY } from './galaxy';
-import { WORMHOLE } from './wormhole';
-import { MOLTEN } from './molten';
-import { ATOMS } from './atoms';
-import { GEMFIELD } from './gemfield';
-import { SEA } from './sea';
+// new single-purpose primitives (used to build templates from long chains)
+import { RELIEF_LIGHT } from './relief-light';
+import { HEAT_RAMP } from './heat-ramp';
+import { RADIAL_MASK } from './radial-mask';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -246,7 +242,8 @@ export {
   // new shapes — noise
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
   // composite scene shapes
-  AURORA, FLAME, HELIX, TERRAIN, NEBULA, GALAXY, WORMHOLE, MOLTEN, ATOMS, GEMFIELD, SEA,
+  AURORA, FLAME, HELIX,
+  RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -320,8 +317,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   ZELLIGE_GRID, KUFIC_GRID, ARABESQUE_CURLS,
   // Noise family
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
-  // Composite scenes — fuller looks from one block (terrain, space, fire, DNA…)
-  TERRAIN, NEBULA, GALAXY, WORMHOLE, MOLTEN, ATOMS, GEMFIELD, SEA, AURORA, FLAME, HELIX,
+  // Pattern shapes — named single-purpose shapes (write d), like star/heart
+  AURORA, FLAME, HELIX,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals
@@ -345,14 +342,14 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Scalar transforms
   RIPPLE, THRESHOLD_D, INVERT_D, POWER_CURVE, BANDS, CONTOUR, SIN_WAVE_D,
   ONION, ANTIALIASED_STEP, REMAP, CUBIC_SMOOTHSTEP, SIGMOID_CURVE,
-  SMOOTH_MIN_D, SMOOTH_MIN_TO_CIRCLE, SMOOTH_INTERSECTION,
+  SMOOTH_MIN_D, SMOOTH_MIN_TO_CIRCLE, SMOOTH_INTERSECTION, RADIAL_MASK,
   // Mouse-interactive distortions — react to live pointer position
   MOUSE_REPEL, MOUSE_PAINT_D,
 
   // ─── COLORS ───
   // Generic
   PALETTE, TRIPLE_GRADIENT, FOUR_GRADIENT, DUOTONE, COSINE_PALETTE, RAINBOW_D, HUE_CYCLE,
-  D_AS_RGB, SOLID_COLOR, TRITONE, SPLIT_TONE,
+  D_AS_RGB, SOLID_COLOR, TRITONE, SPLIT_TONE, HEAT_RAMP,
   // Themed palettes — consolidated into one selector-based card
   PALETTE_THEMED,
   // Adjustments
@@ -363,7 +360,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   VIGNETTE, GLOW, BLOOM, GOD_RAYS, RADIAL_BLUR_FAKE, FOG, FOG_EXP, STARFIELD,
   SPHERE_AO, RIM_LIGHT, CHROMATIC_ABERRATION,
   // Lighting
-  FRESNEL, BLINN_PHONG, AMBIENT_OCCLUSION, SOFT_SHADOW,
+  FRESNEL, BLINN_PHONG, AMBIENT_OCCLUSION, SOFT_SHADOW, RELIEF_LIGHT,
   // Tonal
   CONTRAST, EXPOSURE, GAMMA, DIM, TINT,
   // Tonemapping
