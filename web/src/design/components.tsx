@@ -332,11 +332,15 @@ export const TopBar = () => {
         gap: 22,
         font: `500 12.5px ${TYPE.body}`,
         position: 'relative',
-        overflow: importOpen ? 'visible' : 'hidden',
+        // overflow visible so dropdowns (sign-in picker, import menu) that hang
+        // below the bar aren't clipped; the Starfield is clipped by its wrapper.
+        overflow: 'visible',
         zIndex: 30,
       }}
     >
-      <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
+      <span aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
+      </span>
 
       {/* centered cluster — mascot mark + nav links (mirrors the landing nav) */}
       <div

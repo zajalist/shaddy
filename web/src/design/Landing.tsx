@@ -208,14 +208,17 @@ const LandingNav = () => {
         borderBottom: scrolled || menuOpen ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
         color: SHADE.topbarText,
         font: `500 12.5px ${TYPE.body}`,
-        // The mobile menu drawer hangs below the topbar — it must not be
-        // clipped by the topbar's overflow.
-        overflow: menuOpen ? 'visible' : 'hidden',
+        // overflow stays visible so dropdowns (sign-in picker, mobile drawer)
+        // that hang below the bar aren't clipped. The Starfield is clipped by
+        // its own wrapper below instead.
+        overflow: 'visible',
         transform: hidden && !menuOpen ? 'translateY(-100%)' : 'translateY(0)',
         transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1), background 0.3s, backdrop-filter 0.3s, border-color 0.3s',
       }}
     >
-      <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
+      <span aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <Starfield opts={{ density: 0.22, leftBias: 1.8 }} />
+      </span>
       {/* Mobile: mascot mark on the left */}
       {isMobile && (
         <a href="#top" aria-label="Shaddy home" style={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 1, textDecoration: 'none' }}>
