@@ -461,7 +461,9 @@ export const TemplatesShared = ({
       antialias: false,
       alpha: true,
       premultipliedAlpha: true,
-      preserveDrawingBuffer: false,
+      // keep the drawn frame readable so screenshots/thumbnails don't capture
+      // blank between frames (negligible cost for a small preview grid).
+      preserveDrawingBuffer: true,
     });
     if (!gl) return;
     gl.clearColor(0, 0, 0, 0);
