@@ -86,16 +86,18 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('hue_shift', {}, { shift: ref('dna_hue') }),
   ], [dnaHue]);
 
-  // ── ocean: smooth domain-warped swell that BREATHES → deep-blue ramp (no
-  //    blown-out white) → gentle wave relief (clean now via quintic) ──
-  const ocnSwell = chain('ocn_sw', 'swell', [aTime(0.25), aOsc(1, 0), aRemap(0.7, 1.5)]);
+  // ── ocean: a raymarcher built PURELY FROM BLOCKS —
+  //    Camera → Sea surface (Seascape height-field) → water material →
+  //    Sky (bg+ambient) → Sun (diffuse+spec) → Fresnel (sky reflection) → Fog. ──
   const ocean = recipe([
-    t('domain_warp', { scale: 3.0 }, { warp: ref('ocn_sw') }),
-    t('triple_gradient', { color_a: [0.02, 0.12, 0.24], color_b: [0.06, 0.34, 0.46], color_c: [0.40, 0.68, 0.78] }),
-    t('relief_light', { strength: 5, light_x: 0.0, light_y: 0.7, amount: 0.45 }),
-    t('bloom', { threshold: 0.78, intensity: 0.3 }),
-    t('vignette', { inner: 0.5, outer: 1.5, strength: 0.5 }),
-  ], [ocnSwell]);
+    t('camera_3d', { eye_x: 0, eye_y: 3.2, eye_z: 0, tgt_x: 0, tgt_y: 1.5, tgt_z: -7, fov: 1.7 }),
+    t('sea_surface_3d', { scale: 1.0, height: 0.6, speed: 0.6 }),
+    t('material_color_3d', { color: [0.0, 0.09, 0.18] }),
+    t('sky_3d', { horizon: [0.72, 0.80, 0.92], zenith: [0.20, 0.42, 0.82], ambient: [0.30, 0.40, 0.52] }),
+    t('sun_3d', { dir_x: 0.3, dir_y: 0.6, dir_z: -0.55, color: [1.0, 0.95, 0.82], specular: 1.2, shininess: 80, soft: 0.1 }),
+    t('fresnel_3d', { base: 0.02, amount: 0.75 }),
+    t('fog_3d', { color: [0.72, 0.80, 0.92], density: 0.06 }),
+  ], [], '3d');
 
   // ── lava: churning domain-warp (smooth, not blocky) that also rises
   //    continuously → crack contrast → heat ramp → molten relief → glow.

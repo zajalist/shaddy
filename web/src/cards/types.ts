@@ -292,6 +292,23 @@ export type Card3DContribution = {
    *  LAST material-card before raymarch wins (v1 — material is global, not
    *  per-surface). */
   material?: string;
+  // ── Composable raymarch shading (compile3d assembles these into main) ──
+  /** vec3 albedo as a function of hit `p` and normal `n` — 3D texturing.
+   *  Last one wins; overrides `material`. */
+  albedoExpr?: string;
+  /** Statement(s) accumulating into `lcol` (the lit colour). In scope: hit `p`,
+   *  normal `n`, ray dir `rd`, albedo `alb`, distance `t`, and g_sky(rd). Lights
+   *  accumulate in card order. */
+  light?: string;
+  /** vec3 background/reflection colour as a function of ray dir `rd`. Emitted as
+   *  `g_sky(rd)` (used for misses AND fresnel reflections). Last one wins. */
+  sky?: string;
+  /** Camera ray origin (vec3). Last one wins; defaults to the u_cam_eye uniform. */
+  camEye?: string;
+  /** Camera target (vec3). Last one wins; defaults to u_cam_target. */
+  camTarget?: string;
+  /** Camera focal length (float). Last one wins; default 1.6. */
+  camFov?: string;
 };
 
 /** A typed-card definition. Wildcards have no CardDef — they're a hard-coded

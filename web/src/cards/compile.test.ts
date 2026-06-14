@@ -285,7 +285,9 @@ describe('3D compile', () => {
     expect(out.glsl).toContain('float sdScene(vec3 p)');
     expect(out.glsl).toContain('float d = 1e9;');
     expect(out.glsl).toContain('void main() {');
-    expect(out.glsl).toContain('vec3 col = vec3(0.15, 0.18, 0.25);');
+    // Background is now a composable sky function; default reproduces the old colour.
+    expect(out.glsl).toContain('vec3 g_sky(vec3 rd) { return vec3(0.15, 0.18, 0.25); }');
+    expect(out.glsl).toContain('vec3 col = g_sky(rd);');
     expect(out.glsl).toContain('fragColor = vec4(col, 1.0);');
     expect(out.glsl).toContain(END_MARKER);
   });

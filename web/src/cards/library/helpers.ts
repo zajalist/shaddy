@@ -101,6 +101,26 @@ const BODIES: Record<string, string> = {
   return a + b * cos(6.2831853 * (c * t + d));
 }`,
 
+  // Ocean wave height (from "Seascape" by Alexander Alekseev / TDM, 2014,
+  // CC BY-NC-SA 3.0). The octave sum + its constants are the author's tuning —
+  // that's what makes it read as real water. Used by the composable wavy/ocean
+  // SURFACE block (a height-field SDF), so the rest of the raymarcher (camera,
+  // lighting, fresnel) is built from separate blocks.
+  oc_hash: `float oc_hash(vec2 p){ float h = dot(p, vec2(127.1, 311.7)); return fract(sin(h) * 43758.5453123); }`,
+  oc_noise: `float oc_noise(in vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return -1.0 + 2.0 * mix(mix(oc_hash(i + vec2(0.0,0.0)), oc_hash(i + vec2(1.0,0.0)), u.x),
+                          mix(oc_hash(i + vec2(0.0,1.0)), oc_hash(i + vec2(1.0,1.0)), u.x), u.y);
+}`,
+  oc_octave: `float oc_octave(vec2 uv, float choppy){ uv += oc_noise(uv); vec2 wv = 1.0 - abs(sin(uv)); vec2 swv = abs(cos(uv)); wv = mix(wv, swv, wv); return pow(1.0 - pow(wv.x * wv.y, 0.65), choppy); }`,
+  seaHeight: `float seaHeight(vec2 uv, float tt){
+  float freq = 0.16, amp = 0.6, choppy = 4.0; float st = 1.0 + tt * 0.8;
+  uv.x *= 0.75; mat2 m = mat2(1.6,1.2,-1.2,1.6); float d, h = 0.0;
+  for(int i = 0; i < 5; i++){ d = oc_octave((uv + st) * freq, choppy); d += oc_octave((uv - st) * freq, choppy); h += d * amp; uv *= m; freq *= 1.9; amp *= 0.22; choppy = mix(choppy, 1.0, 0.2); }
+  return h;
+}`,
+
   // Common SDF primitives (return signed distance — negative inside).
   sdfBox: `float sdfBox(vec2 p, vec2 b) {
   vec2 d = abs(p) - b;
@@ -372,6 +392,9 @@ const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = 
   fbm2: { deps: ['noise2', 'hash21'] },
   ridged2: { deps: ['noise2', 'hash21'] },
   worley2: { deps: ['hash22'] },
+  oc_noise: { deps: ['oc_hash'] },
+  oc_octave: { deps: ['oc_noise', 'oc_hash'] },
+  seaHeight: { deps: ['oc_octave', 'oc_noise', 'oc_hash'] },
   sceneNormal3: { phase: 'post' },
   softShadow3: { phase: 'post' },
 };

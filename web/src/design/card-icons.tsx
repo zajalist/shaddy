@@ -18,6 +18,85 @@ type IconRenderer = (args: IconRenderArgs) => ReactNode;
 const SHADOW = 'rgba(0,0,0,0.22)';
 
 export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
+  // ── Composable raymarcher blocks (3D) ──
+  'card-camera-3d': ({ c, cream }) => (
+    <>
+      <path d="M7.6 6.4 L9 4.6 L14.4 4.6 L15.8 6.4 Z" fill={c} />
+      <rect x="2.6" y="6.4" width="16.4" height="11.4" rx="2.4" fill={c} />
+      <circle cx="10.4" cy="12.1" r="3.8" fill={cream} />
+      <circle cx="10.4" cy="12.1" r="2" fill={c} />
+      <path d="M19 9.4 L21.6 7.6 V16.6 L19 14.8 Z" fill={c} />
+    </>
+  ),
+  'card-sea-surface-3d': ({ c, cream }) => (
+    <>
+      <rect x="2.4" y="3" width="19" height="18" rx="3" fill={c} />
+      <circle cx="16.6" cy="6.8" r="2.2" fill={cream} opacity="0.85" />
+      <path d="M2.4 11 Q6 8.6 9.6 11 T17 11 T21.4 11 V14 Q17 11.6 13.4 14 T5.6 14 T2.4 14 Z" fill={cream} opacity="0.7" />
+      <path d="M2.4 15 Q6 12.6 9.6 15 T17 15 T21.4 15 V18.8 Q17 16.4 13.4 18.8 T5.6 18.8 T2.4 18.8 Z" fill={cream} opacity="0.45" />
+    </>
+  ),
+  'card-terrain-surface-3d': ({ c, cream }) => (
+    <>
+      <path d="M2.4 19 L8.2 8.4 L12 14 L15.2 6.6 L21.6 19 Z" fill={c} />
+      <path d="M15.2 6.6 L17.4 10.8 L13.2 14.2 L12 12 Z" fill={cream} opacity="0.85" />
+      <path d="M8.2 8.4 L10.4 12.4 L6 15 L4 12 Z" fill={cream} opacity="0.55" />
+    </>
+  ),
+  'card-noise-displace-3d': ({ c, cream }) => (
+    <>
+      <path d="M2.6 8 Q6 4.6 9.4 8 T16.2 8 T21.4 8 V11 Q16 7.6 12 11 T2.6 10.6 Z" fill={c} />
+      <path d="M2.6 13 Q6 9.6 9.4 13 T16.2 13 T21.4 13 V16 Q16 12.6 12 16 T2.6 15.6 Z" fill={cream} opacity="0.7" />
+    </>
+  ),
+  'card-sun-3d': ({ c, cream }) => (
+    <>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => (
+        <rect key={i} x="11" y="1.6" width="2" height="4.2" rx="1" fill={c} transform={`rotate(${a} 12 12)`} />
+      ))}
+      <circle cx="12" cy="12" r="5.2" fill={c} />
+      <circle cx="13.4" cy="10.6" r="2" fill={cream} />
+    </>
+  ),
+  'card-sky-3d': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="3.4" width="18.8" height="17.2" rx="3" fill={c} />
+      <rect x="2.6" y="3.4" width="18.8" height="8" rx="3" fill={cream} opacity="0.3" />
+      <circle cx="8" cy="9" r="3.4" fill={cream} />
+      <circle cx="12" cy="9.6" r="2.6" fill={cream} />
+      <circle cx="14.8" cy="9" r="3" fill={cream} />
+    </>
+  ),
+  'card-fresnel-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <path d="M12 3 A9 9 0 0 1 21 12 L12 12 Z" fill={cream} opacity="0.8" />
+      <path d="M5.6 5.6 L9 9 M16.4 7.6 L13.6 10.4" stroke={cream} strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
+    </>
+  ),
+  'card-fog-3d': ({ c, cream }) => (
+    <>
+      {[6, 9.4, 12.8, 16.2].map((y, i) => (
+        <rect key={i} x={3 + (i % 2) * 1.5} y={y} width={i % 2 ? 14 : 16} height="2.2" rx="1.1" fill={i % 2 ? cream : c} opacity={0.5 + 0.12 * i} />
+      ))}
+    </>
+  ),
+  'card-texture-height-3d': ({ c, cream }) => (
+    <>
+      <path d="M3 18.6 L8 9 L12 13 L16 7 L21 18.6 Z" fill={c} />
+      <path d="M16 7 L18.4 11.6 L14.4 13.6 L12 11 Z" fill={cream} />
+      <rect x="3" y="14.6" width="18" height="4" fill={c} opacity="0.4" />
+    </>
+  ),
+  'card-texture-noise-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3.4" width="18" height="17.2" rx="3" fill={c} />
+      {[[7,7],[12,6],[16,8],[6,12],[11,13],[17,12],[8,17],[14,16],[18,17]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r={1.3 + (i%3)*0.25} fill={cream} opacity={0.5 + (i%3)*0.18} />
+      ))}
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

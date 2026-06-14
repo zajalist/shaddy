@@ -344,50 +344,24 @@ function compile2d(recipe: Recipe): CompiledShader {
   };
 }
 
-// ─── 3D compiler — raymarched SDF scene ────────────────────────────────
+// ─── 3D compiler — composable raymarched scene ─────────────────────────
 //
-// Recipe.mode === '3d' picks this path. Each typed card with mode:'3d'
-// contributes via its Card3DContribution:
-//   - sdfExpr     → adds a `d = sdMin/sdSmoothMin(d, <expr>, k)` line to sdScene
-//   - domainExpr  → rebinds `p = <expr>` for cards that follow
-//   - smoothness  → updates the local `k` variable
-//   - material    → updates the global `mat` accumulator the lighting pass reads
+// Recipe.mode === '3d' picks this path. The raymarcher is BUILT FROM BLOCKS:
+//   surfaces/CSG  — sdfExpr / domainExpr / smoothness → sdScene()
+//   camera        — camEye / camTarget / camFov
+//   texturing     — albedoExpr (vec3 from hit p, normal n)
+//   lighting      — light (statements accumulating into `lcol`; may call g_sky)
+//   sky/background — sky (vec3 from ray dir rd)
+//   material      — legacy flat albedo (last wins)
+// compile3d collects these and assembles main(). Defaults reproduce the prior
+// fixed Lambert+shadow shade, so old 3D recipes render identically.
 //
-// Material is global (last-card-wins) and shading is Lambert + ambient +
-// soft-shadow — see the report for what's deliberately limited in v1.
-//
-// 2D cards in a 3D recipe are no-ops (marker + skip-note only), symmetric
-// with the 3D-in-2D handling.
+// 2D cards in a 3D recipe are no-ops (marker + skip-note only).
 
-const MAIN_3D_HEAD = [
-  '  vec2 uv = (v_uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0) * 2.0;',
-  '  g_material = G_MATERIAL_INIT;',
-  '  vec3 ro = u_cam_eye;',
-  '  vec3 ta = u_cam_target;',
-  '  vec3 ww = normalize(ta - ro);',
-  '  vec3 uu = normalize(cross(ww, u_cam_up));',
-  '  vec3 vv = cross(uu, ww);',
-  '  vec3 rd = normalize(uv.x * uu + uv.y * vv + 1.6 * ww);',
-  '  float t = 0.0;',
-  '  bool hit = false;',
-  '  for (int i = 0; i < 128; i++) {',
-  '    vec3 p = ro + rd * t;',
-  '    float dh = sdScene(p);',
-  '    if (dh < 0.001) { hit = true; break; }',
-  '    t += dh;',
-  '    if (t > 30.0) break;',
-  '  }',
-  '  vec3 col = vec3(0.15, 0.18, 0.25);',
-  '  float d = 0.0;',
-  '  if (hit) {',
-  '    vec3 p = ro + rd * t;',
-  '    vec3 n = sceneNormal3(p);',
+// Default shade used when no `light` block is present (matches the old head).
+const DEFAULT_3D_SHADE = [
   '    vec3 ld = normalize(vec3(0.5, 1.0, 0.6));',
-  '    float lambert = max(0.1, dot(n, ld));',
-  '    float shadow = softShadow3(p + n * 0.01, ld, 0.02, 8.0, 0.08);',
-  '    col = g_material * lambert * shadow + vec3(0.05);',
-  '    d = t;',
-  '  }',
+  '    lcol = alb * max(0.1, dot(n, ld)) * softShadow3(p + n * 0.01, ld, 0.02, 8.0, 0.08) + vec3(0.05);',
 ];
 
 function compile3d(recipe: Recipe): CompiledShader {
@@ -402,11 +376,18 @@ function compile3d(recipe: Recipe): CompiledShader {
   uniformDecls.push('uniform vec3 u_cam_target;');
   uniformDecls.push('uniform vec3 u_cam_up;');
 
-  // ── Pass 1: uniform decls + bindings (3D cards only) + find last material ──
+  // ── Pass 1: uniform decls + bindings (3D cards only) + collect the
+  //    composable camera / shading / texturing / sky contributions ──
   let materialExpr = 'vec3(0.85, 0.7, 0.45)';
+  let albedoExpr: string | null = null;
+  let skyExpr = 'vec3(0.15, 0.18, 0.25)';
+  let camEye = 'u_cam_eye';
+  let camTarget = 'u_cam_target';
+  let camFov = '1.6';
+  const lights: string[] = [];
   recipe.cards.forEach((card, cardIndex) => {
     if (card.kind !== 'typed') return;
-    if (card.enabled === false) return; // muted → no uniforms / no material
+    if (card.enabled === false) return; // muted → no uniforms / no contribution
     const def = lookupCardDef(card.type);
     if (!def || def.mode !== '3d') return;
     for (const [paramKey, paramDef] of Object.entries(def.params)) {
@@ -417,16 +398,21 @@ function compile3d(recipe: Recipe): CompiledShader {
       const value: ParameterValue = card.params[paramKey]?.value ?? fallback;
       uniforms.push({ name, cardId: card.id, paramKey, value });
     }
-    if (def.contribution3d?.material !== undefined) {
-      materialExpr = substitutePlaceholders(def.contribution3d.material, (paramKey) => {
-        if (!(paramKey in def.params)) {
-          throw new Error(
-            `[cards.compile] card "${def.type}" references unknown placeholder {{${paramKey}}}`,
-          );
-        }
-        return uniformNameFor(cardIndex, paramKey);
-      });
-    }
+    const c = def.contribution3d;
+    if (!c) return;
+    const sub3 = (tpl: string): string => substitutePlaceholders(tpl, (paramKey) => {
+      if (!(paramKey in def.params)) {
+        throw new Error(`[cards.compile] card "${def.type}" references unknown placeholder {{${paramKey}}}`);
+      }
+      return uniformNameFor(cardIndex, paramKey);
+    });
+    if (c.material !== undefined) materialExpr = sub3(c.material);
+    if (c.albedoExpr !== undefined) albedoExpr = sub3(c.albedoExpr);
+    if (c.sky !== undefined) skyExpr = sub3(c.sky);
+    if (c.camEye !== undefined) camEye = sub3(c.camEye);
+    if (c.camTarget !== undefined) camTarget = sub3(c.camTarget);
+    if (c.camFov !== undefined) camFov = sub3(c.camFov);
+    if (c.light !== undefined) lights.push(sub3(c.light));
   });
 
   // Dangling-uniform guard (same as the 2D path) — keep wildcard refs linkable.
@@ -509,12 +495,45 @@ function compile3d(recipe: Recipe): CompiledShader {
     }
   }
 
+  // Sky / background as a function of ray dir — used for misses AND for fresnel
+  // reflections inside lighting blocks.
+  lines.push(`vec3 g_sky(vec3 rd) { return ${skyExpr}; }`);
+  lines.push('');
+
+  // Assemble main() from the collected camera / shading / texturing pieces.
+  const albedo = albedoExpr ?? 'g_material';
+  const shadeLines = lights.length > 0
+    ? lights.flatMap((stmt) => stmt.split('\n').map((l) => '    ' + l.trim()))
+    : DEFAULT_3D_SHADE;
   lines.push('void main() {');
-  for (const line of MAIN_3D_HEAD) {
-    // Substitute the material expression resolved by Pass 1 into the
-    // standard main() head template.
-    lines.push(line.replace('G_MATERIAL_INIT', materialExpr));
-  }
+  lines.push('  vec2 uv = (v_uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0) * 2.0;');
+  lines.push(`  g_material = ${materialExpr};`);
+  lines.push(`  vec3 ro = ${camEye};`);
+  lines.push(`  vec3 ta = ${camTarget};`);
+  lines.push('  vec3 ww = normalize(ta - ro);');
+  lines.push('  vec3 uu = normalize(cross(ww, u_cam_up));');
+  lines.push('  vec3 vv = cross(uu, ww);');
+  lines.push(`  vec3 rd = normalize(uv.x * uu + uv.y * vv + (${camFov}) * ww);`);
+  lines.push('  float t = 0.0;');
+  lines.push('  bool hit = false;');
+  lines.push('  for (int i = 0; i < 128; i++) {');
+  lines.push('    vec3 p = ro + rd * t;');
+  lines.push('    float dh = sdScene(p);');
+  lines.push('    if (dh < 0.0008) { hit = true; break; }');
+  lines.push('    t += dh * 0.7;'); // under-relax so height-field surfaces don't overshoot
+  lines.push('    if (t > 60.0) break;');
+  lines.push('  }');
+  lines.push('  vec3 col = g_sky(rd);');
+  lines.push('  float d = 0.0;');
+  lines.push('  if (hit) {');
+  lines.push('    vec3 p = ro + rd * t;');
+  lines.push('    vec3 n = sceneNormal3(p);');
+  lines.push(`    vec3 alb = ${albedo};`);
+  lines.push('    vec3 lcol = vec3(0.0);');
+  for (const l of shadeLines) lines.push(l);
+  lines.push('    col = lcol;');
+  lines.push('    d = t;');
+  lines.push('  }');
   lines.push('');
   lines.push(END_MARKER);
   lines.push('');
@@ -602,9 +621,16 @@ function emit3dTypedCard(card: TypedCard, cardIndex: number, emit: CardEmit): vo
   } else if (contrib.smoothness !== undefined) {
     emit.line(`  k = ${sub(contrib.smoothness)};`);
   } else if (contrib.material !== undefined) {
-    // Material is global — assigned in main() via MAIN_3D_HEAD (Pass 1 resolved
-    // the last material expr). This card's body is just a marker note.
+    // Material is global — assigned in main() (Pass 1 resolved the last expr).
     emit.line(`  // ${def.type} — global material (last material card wins)`);
+  } else if (contrib.albedoExpr !== undefined) {
+    emit.line(`  // ${def.type} — surface texture / albedo (applied in shading)`);
+  } else if (contrib.light !== undefined) {
+    emit.line(`  // ${def.type} — light contribution (applied in shading)`);
+  } else if (contrib.sky !== undefined) {
+    emit.line(`  // ${def.type} — sky / background (applied in g_sky)`);
+  } else if (contrib.camEye !== undefined || contrib.camTarget !== undefined || contrib.camFov !== undefined) {
+    emit.line(`  // ${def.type} — camera (applied in main)`);
   } else {
     emit.line(`  // ${def.type} — 3D card without a recognized contribution`);
   }
