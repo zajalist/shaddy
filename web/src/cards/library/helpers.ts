@@ -415,6 +415,22 @@ vec3 auBg(vec3 rd){
   return mix(b, a, h) - k * h * (1.0 - h);
 }`,
 
+  // CSG combine: union (cm=0), subtraction of s from d (cm=1), intersection
+  // (cm=2). k smooths the join (k=0 = hard). Drives the combine-mode register.
+  sdCombine: `float sdCombine(float d, float s, float k, int cm) {
+  if (cm == 1) {
+    if (k <= 0.0) return max(d, -s);
+    float h = clamp(0.5 - 0.5 * (d + s) / k, 0.0, 1.0);
+    return mix(d, -s, h) + k * h * (1.0 - h);
+  }
+  if (cm == 2) {
+    if (k <= 0.0) return max(d, s);
+    float h = clamp(0.5 - 0.5 * (d - s) / k, 0.0, 1.0);
+    return mix(d, s, h) + k * h * (1.0 - h);
+  }
+  return sdSmoothMin(d, s, k);
+}`,
+
   // 3D box SDF (iq). b = half-extents per axis.
   sdfBox3: `float sdfBox3(vec3 p, vec3 b) {
   vec3 q = abs(p) - b;
@@ -540,6 +556,7 @@ const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = 
   oc_octave: { deps: ['oc_noise', 'oc_hash'] },
   seaHeight: { deps: ['oc_octave', 'oc_noise', 'oc_hash'] },
   terrainFbm: { deps: ['noise2', 'hash21'] },
+  sdCombine: { deps: ['sdSmoothMin'] },
   sceneNormal3: { phase: 'post' },
   softShadow3: { phase: 'post' },
 };

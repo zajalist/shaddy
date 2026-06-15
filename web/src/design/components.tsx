@@ -706,8 +706,10 @@ const REAL_3D_IDS: readonly string[] = [
   // SDF primitives (batch A)
   'cylinder_3d', 'cone_3d', 'plane_3d', 'ellipsoid_3d',
   'octahedron_3d', 'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
-  // domain ops
+  // domain ops + CSG operators (batch B)
   'repeat_3d', 'twist_3d', 'noise_displace_3d', 'smooth_union_3d',
+  'subtract_3d', 'intersect_3d', 'union_3d', 'round_3d', 'onion_3d',
+  'displace_3d', 'elongate_3d', 'bend_3d',
   // camera + lighting + atmosphere
   'camera_3d', 'sky_3d', 'sun_3d', 'fresnel_3d', 'fog_3d',
   // material + layer texturing (mask → paint) + bump

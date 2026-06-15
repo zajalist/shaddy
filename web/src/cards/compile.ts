@@ -426,7 +426,7 @@ function compile3d(recipe: Recipe): CompiledShader {
 
   // ── Pass 2: helper closure — always include the raymarch core ──
   const requestedHelpers = new Set<string>([
-    'sdMin', 'sdSmoothMin', 'sceneNormal3', 'softShadow3',
+    'sdMin', 'sdSmoothMin', 'sdCombine', 'sceneNormal3', 'softShadow3',
   ]);
   for (const card of recipe.cards) {
     if (card.kind !== 'typed') continue;
@@ -472,6 +472,7 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('float sdScene(vec3 p) {');
   lines.push('  float d = 1e9;');
   lines.push('  float k = 0.0;');
+  lines.push('  int cm = 0;'); // CSG combine mode: 0 union, 1 subtract, 2 intersect
   lines.push('');
 
   // Pre-pass: drop a marker + body for EVERY card (so the code view still
@@ -734,13 +735,19 @@ function emit3dTypedCard(card: TypedCard, cardIndex: number, emit: CardEmit): vo
 
   const contrib = def.contribution3d;
   if (contrib.sdfExpr) {
-    // d = sdSmoothMin(d, <expr>, k); — uses k=0 → hard min via the helper.
-    emit.line(`  d = sdSmoothMin(d, ${sub(contrib.sdfExpr)}, k);`);
+    // d = sdCombine(d, <expr>, k, cm); — union/subtract/intersect per cm, with
+    // k=0 → hard combine via the helper.
+    emit.line(`  d = sdCombine(d, ${sub(contrib.sdfExpr)}, k, cm);`);
   } else if (contrib.domainExpr) {
     // Rebind p for subsequent contributions. Stays inside sdScene's scope.
     emit.line(`  p = ${sub(contrib.domainExpr)};`);
+  } else if (contrib.sdfStmt !== undefined) {
+    // Raw statement modifying the running `d` (round / onion / displace).
+    emit.line(`  ${sub(contrib.sdfStmt)}`);
   } else if (contrib.smoothness !== undefined) {
     emit.line(`  k = ${sub(contrib.smoothness)};`);
+  } else if (contrib.combine !== undefined) {
+    emit.line(`  cm = ${sub(contrib.combine)};`);
   } else if (contrib.material !== undefined) {
     // Material is global — assigned in main() (Pass 1 resolved the last expr).
     emit.line(`  // ${def.type} — global material (last material card wins)`);

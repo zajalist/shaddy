@@ -283,6 +283,77 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ──────────── SDF operators (batch B) — CSG + domain ops ────────────
+
+  // Subtract — a disc with a bite removed (CSG difference).
+  'card-subtract-3d': ({ c, cream }) => (
+    <>
+      <circle cx="11" cy="12" r="8" fill={c} />
+      <circle cx="18" cy="8" r="5.4" fill={cream} />
+      <circle cx="18" cy="8" r="4.4" fill="#0b0c0e" />
+    </>
+  ),
+
+  // Intersect — two overlapping discs, only the lens lit.
+  'card-intersect-3d': ({ c, cream }) => (
+    <>
+      <circle cx="9" cy="12" r="7" fill={c} opacity="0.55" />
+      <circle cx="15" cy="12" r="7" fill={c} opacity="0.55" />
+      <path d="M12 6.2 A7 7 0 0 1 12 17.8 A7 7 0 0 1 12 6.2 Z" fill={cream} />
+    </>
+  ),
+
+  // Union — two overlapping discs merged, both lit.
+  'card-union-3d': ({ c, cream }) => (
+    <>
+      <circle cx="9" cy="12" r="7" fill={c} />
+      <circle cx="15" cy="12" r="7" fill={c} />
+      <circle cx="9" cy="12" r="2.2" fill={cream} opacity="0.5" />
+    </>
+  ),
+
+  // Round — a square whose corners are softened to a blob.
+  'card-round-3d': ({ c, cream }) => (
+    <>
+      <rect x="4.5" y="4.5" width="15" height="15" rx="6.5" fill={c} />
+      <rect x="8" y="8" width="5" height="5" rx="2.4" fill={cream} opacity="0.5" />
+    </>
+  ),
+
+  // Onion — concentric shell rings.
+  'card-onion-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <circle cx="12" cy="12" r="6.5" fill="#0b0c0e" />
+      <circle cx="12" cy="12" r="4.6" fill={c} />
+      <circle cx="12" cy="12" r="2.4" fill={cream} opacity="0.7" />
+    </>
+  ),
+
+  // Displace — a disc with a rippled (wavy) outline hint.
+  'card-displace-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="8" fill={c} />
+      <path d="M4 12 Q6 9 8 12 T12 12 T16 12 T20 12" stroke={cream} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+    </>
+  ),
+
+  // Elongate — a pill stretched horizontally with end caps.
+  'card-elongate-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="8.5" width="18" height="7" rx="3.5" fill={c} />
+      <circle cx="6.5" cy="12" r="2" fill={cream} opacity="0.55" />
+      <circle cx="17.5" cy="12" r="2" fill={cream} opacity="0.55" />
+    </>
+  ),
+
+  // Bend — a curved bar (an arc).
+  'card-bend-3d': ({ c }) => (
+    <>
+      <path d="M5 18 Q5 6 19 6" stroke={c} strokeWidth="4.6" fill="none" strokeLinecap="round" />
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

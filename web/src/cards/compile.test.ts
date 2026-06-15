@@ -311,10 +311,11 @@ describe('3D compile', () => {
     expect(out.glsl).toContain('uniform float u_card0_cx;');
     expect(out.glsl).toContain('uniform float u_card0_cy;');
     expect(out.glsl).toContain('uniform float u_card0_cz;');
-    // Sphere SDF contribution wired into sdScene via sdSmoothMin.
-    expect(out.glsl).toContain('sdSmoothMin(d, length(p - vec3(u_card0_cx, u_card0_cy, u_card0_cz)) - u_card0_r, k);');
+    // Sphere SDF contribution wired into sdScene via sdCombine.
+    expect(out.glsl).toContain('sdCombine(d, length(p - vec3(u_card0_cx, u_card0_cy, u_card0_cz)) - u_card0_r, k, cm);');
     // Raymarch helpers present.
     expect(out.glsl).toContain('float sdSmoothMin(float a, float b, float k)');
+    expect(out.glsl).toContain('float sdCombine(float d, float s, float k, int cm)');
     expect(out.glsl).toContain('vec3 sceneNormal3(vec3 p, float ne)');
     expect(out.glsl).toContain('float softShadow3(vec3 ro, vec3 rd, float mint, float maxt, float w)');
     // Span covers the sphere card.
@@ -353,9 +354,9 @@ describe('3D compile', () => {
     });
     // Smoothness card updates `k` before the second sphere's union.
     expect(out.glsl).toContain('k = u_card1_k;');
-    // Both sphere unions are emitted via sdSmoothMin.
-    const smoothMinCalls = out.glsl.match(/sdSmoothMin\(d, /g) ?? [];
-    expect(smoothMinCalls.length).toBe(2);
+    // Both sphere unions are emitted via sdCombine (union/subtract/intersect).
+    const combineCalls = out.glsl.match(/sdCombine\(d, /g) ?? [];
+    expect(combineCalls.length).toBe(2);
     // 3 spans — sphere, smoothness, sphere.
     expect(out.spans).toHaveLength(3);
   });

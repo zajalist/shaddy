@@ -86,6 +86,15 @@ import { OCTAHEDRON_3D } from './octahedron-3d';
 import { HEX_PRISM_3D } from './hex-prism-3d';
 import { TRI_PRISM_3D } from './tri-prism-3d';
 import { PYRAMID_3D } from './pyramid-3d';
+// SDF operators (3D) — CSG modes + surface/domain ops, batch B
+import { SUBTRACT_3D } from './subtract-3d';
+import { INTERSECT_3D } from './intersect-3d';
+import { UNION_3D } from './union-3d';
+import { ROUND_3D } from './round-3d';
+import { ONION_3D } from './onion-3d';
+import { DISPLACE_3D } from './displace-3d';
+import { ELONGATE_3D } from './elongate-3d';
+import { BEND_3D } from './bend-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -282,6 +291,8 @@ export {
   SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
   // SDF primitives (3D) — batch A
   CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
+  // SDF operators (3D) — batch B
+  SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -440,6 +451,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   SKY_3D, SUN_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
   // SDF primitives (3D) — batch A
   CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
+  // SDF operators (3D) — batch B
+  SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

@@ -39,11 +39,16 @@ Have: sphere, box, rounded-box, torus, capsule, ground, atom.
 Add: `cylinder_3d`, `cone_3d`, `plane_3d`, `ellipsoid_3d`, `octahedron_3d`,
 `hex_prism_3d`, `tri_prism_3d`, `pyramid_3d`. (8)
 
-### B. 3D SDF operators — iq "Menger Sponge" `4sX3Rn`, SDF-ops article
+### B. 3D SDF operators — iq "Menger Sponge" `4sX3Rn`, SDF-ops article — SHIPPED
 Have: smooth-union, smooth-intersection, repeat-3d, twist-3d, mirror.
-Add: `subtract_3d`, `smooth_subtract_3d`, `round_3d`, `onion_3d` (shell),
-`elongate_3d`, `displace_3d` (surface bump), `revolution_3d` (2D SDF→lathe),
-`extrude_3d` (2D SDF→prism). (8)
+Added: `subtract_3d`, `intersect_3d`, `union_3d` (CSG combine-mode register `cm`,
+respecting the existing smoothness `k` so smooth-subtract is free), `round_3d`,
+`onion_3d` (shell), `displace_3d` (surface bump), `elongate_3d`, `bend_3d`. (8)
+Implemented via two new compiler primitives: a combine-mode register and an
+`sdfStmt` contribution kind (raw `d`-modifying statement).
+`revolution_3d`/`extrude_3d` (2D-SDF→3D) deferred — they need the 2D shape
+pipeline threaded into the raymarcher; swapped for intersect/union/bend which
+fit the current model and are higher-value.
 
 ### C. 3D fractals — Menger `4sX3Rn`, Apollonian `4ds3zn`, Mandelbulb, Quaternion Julia
 Add: `menger_fold_3d`, `mandelbulb_3d`, `apollonian_fold_3d`, `sierpinski_fold_3d`. (4)

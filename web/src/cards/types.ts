@@ -291,6 +291,16 @@ export type Card3DContribution = {
   /** A GLSL expression returning float — sets the union smoothness `k` for
    *  subsequent unions. 0 means a hard min(). */
   smoothness?: string;
+  /** A GLSL int expression (0|1|2) — sets the CSG combine mode `cm` for
+   *  subsequent shapes: 0 union, 1 subtraction, 2 intersection. Persists like
+   *  `smoothness`; respects the current `k` for smooth versions. */
+  combine?: string;
+  /** A raw GLSL statement that MODIFIES the running scene distance `d` in
+   *  sdScene (in scope: `d`, hit point `p`, smoothness `k`). Used by surface
+   *  operators — round (`d -= r`), onion shell (`d = abs(d) - t`), displace
+   *  (`d += …`). Applied in card order, so it affects everything accumulated
+   *  before it. */
+  sdfStmt?: string;
   /** A GLSL expression returning vec3 — sets the global material colour. The
    *  LAST material-card before raymarch wins (v1 — material is global, not
    *  per-surface). */
