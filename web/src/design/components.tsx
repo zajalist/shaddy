@@ -700,13 +700,16 @@ function scoreBlock(block: BlockDef, tokens: string[]): number {
 // recipe is in 3D mode. Inserting any of them auto-flips the recipe to 3D
 // (see cards/state.ts.insertTypedCard).
 const REAL_3D_IDS: readonly string[] = [
-  'sphere_3d',
-  'box_3d',
-  'torus_3d',
-  'ground_3d',
-  'repeat_3d',
-  'smooth_union_3d',
-  'material_color_3d',
+  // surfaces / shapes
+  'sphere_3d', 'box_3d', 'torus_3d', 'ground_3d',
+  'sea_surface_3d', 'terrain_surface_3d', 'atom_3d',
+  // domain ops
+  'repeat_3d', 'twist_3d', 'noise_displace_3d', 'smooth_union_3d',
+  // camera + lighting + atmosphere
+  'camera_3d', 'sky_3d', 'sun_3d', 'fresnel_3d', 'fog_3d',
+  // material + layer texturing (mask → paint) + bump
+  'material_color_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
+  'mask_fresnel_3d', 'paint_3d', 'bump_3d',
 ];
 
 // Hybrid cards — existing 2D cards that already produce a 3D-looking result.

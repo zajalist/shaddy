@@ -126,12 +126,19 @@ export const RecipeCanvas = forwardRef<RecipeCanvasHandle, RecipeCanvasProps>(({
     // volume recipes produce `col` directly (via the march), so injecting
     // d_as_rgb there would overwrite the lit colour with d (0) → black preview.
     if (recipe.mode === undefined || recipe.mode === '2d') {
-      const isColorType = (type: string): boolean => lookupCardDef(type)?.category === 'color';
+      // A card "produces colour" if it's a colour card OR it explicitly writes
+      // the `col` register (e.g. scene blocks like Night sky / Star Nest). Such
+      // chains already have colour, so the d→rgb fallback must NOT fire.
+      const producesColor = (type: string): boolean => {
+        const def = lookupCardDef(type);
+        if (!def) return false;
+        return def.category === 'color' || (def.io?.writes?.includes('col') ?? false);
+      };
       const hasColor = sliced.some((c) => {
         if (c.kind !== 'typed') return false;
         // A macro counts as producing colour if any of its sub-blocks does.
-        if (c.type === 'macro') return (c.macro?.blocks ?? []).some((b) => isColorType(b.type));
-        return isColorType(c.type);
+        if (c.type === 'macro') return (c.macro?.blocks ?? []).some((b) => producesColor(b.type));
+        return producesColor(c.type);
       });
       if (!hasColor) {
         sliced = [...sliced, { kind: 'typed' as const, id: '__preview_dviz', type: 'd_as_rgb', enabled: true, params: {} }];
