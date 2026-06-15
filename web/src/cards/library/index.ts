@@ -103,6 +103,10 @@ import { REFRACTION_3D } from './refraction-3d';
 import { SUBSURFACE_3D } from './subsurface-3d';
 import { CHECKER_MATERIAL_3D } from './checker-material-3d';
 import { ATMOSPHERE_SKY_3D } from './atmosphere-sky-3d';
+// Texturing masks (3D) — batch E
+import { TRIPLANAR_3D } from './triplanar-3d';
+import { MASK_CURVATURE_3D } from './mask-curvature-3d';
+import { MASK_AO_3D } from './mask-ao-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -303,6 +307,8 @@ export {
   SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
   // materials & lighting (3D) — batch D
   POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
+  // texturing masks (3D) — batch E
+  TRIPLANAR_3D, MASK_CURVATURE_3D, MASK_AO_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -465,6 +471,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
   // materials & lighting (3D) — batch D
   POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
+  // texturing masks (3D) — batch E
+  TRIPLANAR_3D, MASK_CURVATURE_3D, MASK_AO_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

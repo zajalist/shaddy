@@ -424,6 +424,37 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ──────────── Texturing masks (batch E) ────────────
+
+  // Triplanar — a cube with detail projected on its three visible faces.
+  'card-triplanar-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M12 3 L20 7.5 L12 12 L4 7.5 Z" fill={cream} opacity="0.85" />
+      <path d="M4 7.5 L12 12 L12 21 L4 16.5 Z" fill={c} />
+      <path d="M20 7.5 L12 12 L12 21 L20 16.5 Z" fill={ink} opacity="0.35" />
+      {[[8,9],[12,15],[16,11]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r="0.9" fill={cream} opacity="0.6" />
+      ))}
+    </>
+  ),
+
+  // Mask: curvature — a rounded form with bright edge highlight.
+  'card-mask-curvature-3d': ({ c, cream }) => (
+    <>
+      <path d="M5 19 Q5 5 19 5 L19 8 Q9 8 8 19 Z" fill={c} />
+      <path d="M5 19 Q5 5 19 5" stroke={cream} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+    </>
+  ),
+
+  // Mask: AO — a sphere with a dark contact crease at its base.
+  'card-mask-ao-3d': ({ c, cream, ink }) => (
+    <>
+      <circle cx="12" cy="10" r="7" fill={c} />
+      <circle cx="9.6" cy="7.6" r="2.2" fill={cream} opacity="0.7" />
+      <ellipse cx="12" cy="19" rx="8.5" ry="2.2" fill={ink} opacity="0.45" />
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

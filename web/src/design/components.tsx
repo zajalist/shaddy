@@ -718,6 +718,8 @@ const REAL_3D_IDS: readonly string[] = [
   // material + layer texturing (mask → paint) + bump
   'material_color_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
   'mask_fresnel_3d', 'paint_3d', 'bump_3d',
+  // texturing masks (batch E)
+  'triplanar_3d', 'mask_curvature_3d', 'mask_ao_3d',
 ];
 
 // Hybrid cards — existing 2D cards that already produce a 3D-looking result.

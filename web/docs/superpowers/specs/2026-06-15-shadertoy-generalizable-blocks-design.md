@@ -61,7 +61,7 @@ geometry + sky, fresnel-weighted), `refraction_3d` (IOR glass + fresnel),
 `subsurface_3d`, `checker_material_3d`, `atmosphere_sky_3d` (gradient + sun glow). (7)
 Verified: reflection/refraction/pbr render correctly in the editor.
 
-### E. 3D texturing masks (extend UE5 set) — triplanar technique, terrain material shaders
+### E. 3D texturing masks (extend UE5 set) — triplanar technique, terrain material shaders  — SHIPPED
 Have: mask-height/slope/noise/fresnel, paint, bump.
 Add: `triplanar_3d` (project noise/texture across 3 axes), `mask_curvature_3d`,
 `mask_ao_3d`. (3)
