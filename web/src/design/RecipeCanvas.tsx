@@ -122,7 +122,10 @@ export const RecipeCanvas = forwardRef<RecipeCanvasHandle, RecipeCanvasProps>(({
     const idx = baseCards.findIndex((c) => c.id === previewUpToId);
     if (idx < 0) return baseCards === recipe.cards ? recipe : { ...recipe, cards: baseCards };
     let sliced = baseCards.slice(0, idx + 1);
-    if (recipe.mode !== '3d') {
+    // Only the 2D pipeline benefits from the d→rgb preview fallback. 3D and
+    // volume recipes produce `col` directly (via the march), so injecting
+    // d_as_rgb there would overwrite the lit colour with d (0) → black preview.
+    if (recipe.mode === undefined || recipe.mode === '2d') {
       const isColorType = (type: string): boolean => lookupCardDef(type)?.category === 'color';
       const hasColor = sliced.some((c) => {
         if (c.kind !== 'typed') return false;
