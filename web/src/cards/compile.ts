@@ -535,6 +535,9 @@ function compile3d(recipe: Recipe): CompiledShader {
   // the surface recedes (matches the Seascape technique).
   lines.push('    vec3 n = sceneNormal3(p, max(0.0015, t * 0.0022));');
   lines.push(`    vec3 alb = ${albedo};`);
+  // `mask` is the UE5-style layer mask: Mask blocks set it (0..1 from slope /
+  // height / noise / fresnel), Paint blocks blend a colour through it.
+  lines.push('    float mask = 1.0;');
   for (const stmt of albedoStmts) {
     for (const l of stmt.split('\n')) lines.push('    ' + l.trim());
   }

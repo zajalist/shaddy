@@ -107,6 +107,42 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <rect x="3" y="14.6" width="18" height="4" fill={c} opacity="0.4" />
     </>
   ),
+  // ── block-based layer texturing: masks + paint ──
+  'card-mask-height-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3.4" width="18" height="17.2" rx="3" fill={c} />
+      <rect x="3" y="3.4" width="18" height="6" fill={cream} />
+      <rect x="3" y="9.4" width="18" height="4" fill={cream} opacity="0.5" />
+    </>
+  ),
+  'card-mask-slope-3d': ({ c, cream }) => (
+    <>
+      <path d="M3 19 L12 6 L21 19 Z" fill={c} />
+      <path d="M12 6 L21 19 L13.5 19 Z" fill={cream} />
+    </>
+  ),
+  'card-mask-noise-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3.4" width="18" height="17.2" rx="3" fill={c} />
+      {[[7,7],[14,6],[17,10],[6,13],[11,12],[16,16],[9,17]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r={1.6+(i%3)*0.3} fill={cream} opacity={0.4+(i%3)*0.2} />
+      ))}
+    </>
+  ),
+  'card-mask-fresnel-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={cream} />
+      <circle cx="12" cy="12" r="6.4" fill={c} />
+    </>
+  ),
+  'card-paint-3d': ({ c, cream }) => (
+    <>
+      <rect x="9" y="3" width="6" height="9" rx="1.4" fill={c} />
+      <rect x="9.6" y="3.6" width="4.8" height="2" rx="0.8" fill={cream} opacity="0.6" />
+      <path d="M9 12 L15 12 L13.6 20 A1.5 1.5 0 0 1 10.4 20 Z" fill={cream} />
+      <circle cx="12" cy="16" r="1.4" fill={c} />
+    </>
+  ),
   'card-texture-slope-3d': ({ c, cream }) => (
     <>
       <path d="M3 19 L13 5 L21 19 Z" fill={c} />
