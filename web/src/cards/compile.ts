@@ -88,7 +88,9 @@ function hasNonDefaultComposition(card: Card): boolean {
 export { END_MARKER } from './markers';
 
 export function compile(recipe: Recipe): CompiledShader {
-  return (recipe.mode === '3d') ? compile3d(recipe) : compile2d(recipe);
+  if (recipe.mode === '3d') return compile3d(recipe);
+  if (recipe.mode === 'volume') return compileVolume(recipe);
+  return compile2d(recipe);
 }
 
 /** The custom-animation chains a recipe's params actually bind to (via
@@ -557,6 +559,112 @@ function compile3d(recipe: Recipe): CompiledShader {
     spans,
     uniforms,
   };
+}
+
+// ─── Volumetric compiler — a raymarcher built from blocks ──────────────
+//
+// Recipe.mode === 'volume'. A Volume-camera block sets the ray (vDir/vFrom),
+// a density-field block emits `float volField(vec3 p)`, and a Volume-march
+// block accumulates `col` by stepping the ray through volField. Trailing 2D
+// colour/effect cards (exposure, vignette…) post-process `col` afterwards, so
+// nebula = Volume camera → Kaliset field → Volume march → Exposure → Vignette.
+function compileVolume(recipe: Recipe): CompiledShader {
+  const uniformDecls: string[] = [];
+  const uniforms: UniformBinding[] = [];
+  let volFieldBody = '';
+
+  // Pass 1: uniforms for every enabled typed card + capture the field body.
+  recipe.cards.forEach((card, cardIndex) => {
+    if (card.kind !== 'typed' || card.enabled === false) return;
+    const def = lookupCardDef(card.type);
+    if (!def) return;
+    for (const [paramKey, paramDef] of Object.entries(def.params)) {
+      if (paramDef.kind === 'text') continue;
+      const name = uniformNameFor(cardIndex, paramKey);
+      uniformDecls.push(`uniform ${glslTypeForParam(paramDef.kind)} ${name};`);
+      const value: ParameterValue = card.params[paramKey]?.value ?? paramKindFallback(paramDef);
+      uniforms.push({ name, cardId: card.id, paramKey, value });
+    }
+    const c = def.contribution3d;
+    if (c?.volField !== undefined && !volFieldBody) {
+      volFieldBody = substitutePlaceholders(c.volField, (k) => {
+        if (!(k in def.params)) throw new Error(`[cards.compile] card "${def.type}" references unknown placeholder {{${k}}}`);
+        return uniformNameFor(cardIndex, k);
+      });
+    }
+  });
+  for (const decl of collectDanglingUniformFallbacks(recipe.cards, uniformDecls)) uniformDecls.push(decl);
+
+  // Pass 2: helper closure.
+  const requestedHelpers = new Set<string>();
+  for (const card of recipe.cards) {
+    if (card.kind !== 'typed' || card.enabled === false) continue;
+    const def = lookupCardDef(card.type);
+    if (def?.helpers) for (const h of def.helpers) requestedHelpers.add(h);
+  }
+  const helperClosure = resolveHelperClosure(requestedHelpers);
+
+  // Pass 3: emit.
+  const lines: string[] = [];
+  if (uniformDecls.length > 0) {
+    lines.push('// === per-card uniforms ===');
+    for (const d of uniformDecls) lines.push(d);
+    lines.push('');
+  }
+  const emittedHelpers = orderedHelpers(helperClosure).map((h) => h.body);
+  if (emittedHelpers.length > 0) {
+    lines.push('// === helpers ===');
+    for (const b of emittedHelpers) { for (const l of b.split('\n')) lines.push(l); lines.push(''); }
+  }
+
+  // The density field as a global function the march calls.
+  lines.push('float volField(vec3 p) {');
+  lines.push('  float a = 0.0;');
+  if (volFieldBody) for (const l of volFieldBody.split('\n')) lines.push('  ' + l);
+  lines.push('  return a;');
+  lines.push('}');
+  lines.push('');
+
+  lines.push('void main() {');
+  for (const l of MAIN_PRELUDE) lines.push(l);
+  lines.push('  vec3 vDir = vec3(0.0); float vTime = 0.0; vec3 vFrom = vec3(0.0);');
+  lines.push('');
+
+  const spans: Span[] = [];
+  recipe.cards.forEach((card, cardIndex) => {
+    const emit = new CardEmit();
+    if (card.enabled === false) {
+      emitDisabledCard(card, emit);
+    } else if (card.kind === 'typed') {
+      const def = lookupCardDef(card.type);
+      const c = def?.contribution3d;
+      const sub = (tpl: string): string => substitutePlaceholders(tpl, (k) => uniformNameFor(cardIndex, k));
+      if (def && c?.volCam !== undefined) {
+        emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, paramDisplays: buildParamDisplays(def, card), alpha: card.alpha, blend: card.blendMode }));
+        for (const l of sub(c.volCam).split('\n')) emit.line('  ' + l);
+      } else if (def && c?.volMarch !== undefined) {
+        emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, paramDisplays: buildParamDisplays(def, card), alpha: card.alpha, blend: card.blendMode }));
+        for (const l of sub(c.volMarch).split('\n')) emit.line('  ' + l);
+      } else if (def && c?.volField !== undefined) {
+        emit.marker(formatCardMarker({ cardId: card.id, friendlyName: def.friendlyName, paramDisplays: buildParamDisplays(def, card), alpha: card.alpha, blend: card.blendMode }));
+        emit.line('  // density field — emitted as volField(p) above');
+      } else {
+        // A regular 2D colour/effect card — post-process `col`.
+        emitTypedCard(card, cardIndex, emit);
+      }
+    } else {
+      emitWildcardCard(card, emit);
+    }
+    spans.push(emit.flush(card.id, lines));
+  });
+
+  lines.push('');
+  lines.push(END_MARKER);
+  lines.push('');
+  for (const l of MAIN_EPILOGUE) lines.push(l);
+  lines.push('}');
+
+  return { glsl: lines.join('\n'), spans, uniforms };
 }
 
 /** The scratch pad a single card emits into. Its marker line + body lines

@@ -53,8 +53,10 @@ import { HELIX } from './helix';
 import { RELIEF_LIGHT } from './relief-light';
 import { HEAT_RAMP } from './heat-ramp';
 import { RADIAL_MASK } from './radial-mask';
-// faithful Shadertoy ports (the algorithm IS the block)
-import { STAR_NEST } from './star-nest';
+// volumetric raymarch blocks (mode: 'volume') — Star Nest, decomposed
+import { VOLUME_CAMERA_3D } from './volume-camera-3d';
+import { KALISET_FIELD_3D } from './kaliset-field-3d';
+import { VOLUME_MARCH_3D } from './volume-march-3d';
 // composable raymarcher blocks (3D) — camera, surfaces, lighting, texturing
 import { CAMERA_3D } from './camera-3d';
 import { ATOM_3D } from './atom-3d';
@@ -261,7 +263,8 @@ export {
   // new shapes — noise
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
   // composite scene shapes
-  AURORA, FLAME, HELIX, STAR_NEST,
+  AURORA, FLAME, HELIX,
+  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D,
   RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
@@ -339,7 +342,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Noise family
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
   // Pattern shapes — named single-purpose shapes (write d), like star/heart
-  AURORA, FLAME, HELIX, STAR_NEST,
+  AURORA, FLAME, HELIX,
+  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals

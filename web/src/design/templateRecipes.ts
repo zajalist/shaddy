@@ -39,7 +39,7 @@ const aNoise = (speed = 1): AnimBlock => ({ id: `a${_aid++}`, type: 'noise', par
 const aRemap = (min: number, max: number): AnimBlock => ({ id: `a${_aid++}`, type: 'remap', params: { min: P(min), max: P(max) } });
 const chain = (id: string, name: string, blocks: AnimBlock[]): AnimChain => ({ id, name, blocks });
 
-function recipe(cards: Card[], animations: AnimChain[] = [], mode?: '2d' | '3d'): Recipe {
+function recipe(cards: Card[], animations: AnimChain[] = [], mode?: '2d' | '3d' | 'volume'): Recipe {
   return { cards, canvasAspect: 'landscape', ...(animations.length ? { animations } : {}), ...(mode ? { mode } : {}) };
 }
 
@@ -71,13 +71,16 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('fog_3d', { color: [0.80, 0.86, 0.94], density: 0.05 }),
   ], [], '3d');
 
-  // ── nebula: "Star Nest" by Pablo Roman Andrioli (Shadertoy XlfGRj) — a
-  //    volumetric kaliset fly-through → exposure → vignette. ──
+  // ── nebula: "Star Nest" (Pablo Roman Andrioli, XlfGRj) DECOMPOSED into a
+  //    volumetric raymarch chain — Volume camera → Kaliset field → Volume march
+  //    → Exposure → Vignette. ──
   const nebula = recipe([
-    t('star_nest', { zoom: 0.8, speed: 0.02, formu: 0.53, tile: 0.85, brightness: 0.0018, darkmatter: 0.3, distfade: 0.73, saturation: 0.9 }),
+    t('volume_camera_3d', { zoom: 0.8, speed: 0.02 }),
+    t('kaliset_field_3d', { formu: 0.53, tile: 0.85 }),
+    t('volume_march_3d', { stepsize: 0.1, brightness: 0.0018, darkmatter: 0.3, distfade: 0.73, saturation: 0.9 }),
     t('exposure', { stops: 1.1 }),
     t('vignette', { inner: 0.7, outer: 1.7, strength: 0.4 }),
-  ]);
+  ], [], 'volume');
 
   // ── dna: twisting helix → palette → glow → slow hue cycle ──
   const dnaHue = chain('dna_hue', 'hue cycle', [aTime(0.2), aOsc(1, 0), aRemap(-0.05, 0.05)]);

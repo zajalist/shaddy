@@ -37,6 +37,32 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       ))}
     </>
   ),
+  'card-volume-camera-3d': ({ c, cream }) => (
+    <>
+      <path d="M7.6 6.4 L9 4.6 L14.4 4.6 L15.8 6.4 Z" fill={c} />
+      <rect x="2.6" y="6.4" width="16.4" height="11.4" rx="2.4" fill={c} />
+      <circle cx="10.4" cy="12.1" r="3.8" fill={cream} />
+      <circle cx="10.4" cy="12.1" r="2" fill={c} />
+      <path d="M19 9.4 L21.6 7.6 V16.6 L19 14.8 Z" fill={c} />
+    </>
+  ),
+  'card-kaliset-field-3d': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      <circle cx="12" cy="12" r="2.4" fill={cream} />
+      {[[6,6,1.3],[17,7,1.0],[8,17,1.1],[18,16,1.4],[12,5,0.8],[5,12,0.9],[19,11,0.8],[14,15,0.9]].map(([x,y,r],i)=>(
+        <circle key={i} cx={x} cy={y} r={r} fill={cream} opacity={0.45+(i%3)*0.18} />
+      ))}
+    </>
+  ),
+  'card-volume-march-3d': ({ c, cream }) => (
+    <>
+      {[6,9.4,12.8,16.2].map((y,i)=>(
+        <rect key={i} x={3+(i%2)*1.5} y={y} width={i%2?14:16} height="2.4" rx="1.2" fill={i%2?cream:c} opacity={0.55+0.12*i} />
+      ))}
+      <circle cx="19" cy="6" r="1.6" fill={cream} />
+    </>
+  ),
   'card-atom-3d': ({ c, cream }) => (
     <>
       <ellipse cx="12" cy="12" rx="9" ry="3.4" fill="none" stroke={c} strokeWidth="1.6" transform="rotate(30 12 12)" />

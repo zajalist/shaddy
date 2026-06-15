@@ -52,8 +52,11 @@ export const PASS_RENDER_ORDER: readonly PassId[] = ['a', 'b', 'c', 'd', 'image'
 /** Buffer-only pass ids (A-D, no image). */
 export const BUFFER_PASS_IDS: readonly Exclude<PassId, 'image'>[] = ['a', 'b', 'c', 'd'] as const;
 
-/** Which shader template the compiler should emit. See Recipe.mode. */
-export type ShaderTemplate = '2d' | '3d';
+/** Which shader template the compiler should emit. See Recipe.mode.
+ *  'volume' is a volumetric raymarcher built from blocks: a Volume camera sets
+ *  the ray, a density-field block emits `volField(p)`, and a Volume march block
+ *  accumulates colour through it. Trailing 2D colour/effect cards post-process. */
+export type ShaderTemplate = '2d' | '3d' | 'volume';
 
 /** A card is either a typed entry from the CARD_LIBRARY or a wildcard that
  *  carries arbitrary GLSL the system cannot represent as a known card. */
@@ -313,6 +316,15 @@ export type Card3DContribution = {
   camTarget?: string;
   /** Camera focal length (float). Last one wins; default 1.6. */
   camFov?: string;
+  // ── Volumetric mode (Recipe.mode === 'volume') ──
+  /** Statements setting the volume ray: `vDir`, `vTime`, `vFrom`. */
+  volCam?: string;
+  /** Body of `float volField(vec3 p)` — must set local `a` (density). Emitted as
+   *  a global function the Volume march calls. */
+  volField?: string;
+  /** The volume march loop body — accumulates into `col` using vDir/vFrom and
+   *  volField(p). */
+  volMarch?: string;
 };
 
 /** A typed-card definition. Wildcards have no CardDef — they're a hard-coded
