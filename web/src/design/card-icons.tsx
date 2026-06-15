@@ -28,6 +28,15 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <path d="M19 9.4 L21.6 7.6 V16.6 L19 14.8 Z" fill={c} />
     </>
   ),
+  'card-star-nest': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      <circle cx="12" cy="12" r="2.4" fill={cream} />
+      {[[6,6,1.3],[17,7,1.0],[8,17,1.1],[18,16,1.4],[12,5,0.8],[5,12,0.9],[19,11,0.8],[10,10,0.7],[14,15,0.9]].map(([x,y,r],i)=>(
+        <circle key={i} cx={x} cy={y} r={r} fill={cream} opacity={0.45+(i%3)*0.18} />
+      ))}
+    </>
+  ),
   'card-atom-3d': ({ c, cream }) => (
     <>
       <ellipse cx="12" cy="12" rx="9" ry="3.4" fill="none" stroke={c} strokeWidth="1.6" transform="rotate(30 12 12)" />

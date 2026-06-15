@@ -62,19 +62,13 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('fog_3d', { color: [0.80, 0.86, 0.94], density: 0.05 }),
   ], [], '3d');
 
-  // ── nebula: domain-warped gas that BREATHES in place (no uv translate, so
-  //    the starfield stays fixed) → 4-stop space palette → cloud relief →
-  //    bloom → static stars ──
-  const nebBreathe = chain('neb_br', 'breathe', [aTime(0.3), aOsc(1, 0), aRemap(1.2, 2.4)]);
+  // ── nebula: "Star Nest" by Pablo Roman Andrioli (Shadertoy XlfGRj) — a
+  //    volumetric kaliset fly-through → exposure → vignette. ──
   const nebula = recipe([
-    t('domain_warp', { scale: 2.0 }, { warp: ref('neb_br') }),
-    t('power_curve', { gamma: 1.5 }),
-    t('four_gradient', { color_a: [0.02, 0.01, 0.06], color_b: [0.35, 0.07, 0.5], color_c: [0.78, 0.22, 0.55], color_d: [0.55, 0.72, 1.0] }),
-    t('relief_light', { strength: 5, light_x: -0.4, light_y: 0.6, amount: 0.4 }),
-    t('bloom', { threshold: 0.4, intensity: 1.3 }),
-    t('starfield', { density: 80, coverage: 0.05, size: 0.08, twinkle: 0, color: [0.9, 0.95, 1.0] }),
-    t('vignette', { inner: 0.5, outer: 1.5, strength: 0.7 }),
-  ], [nebBreathe]);
+    t('star_nest', { zoom: 0.8, speed: 0.02, formu: 0.53, tile: 0.85, brightness: 0.0018, darkmatter: 0.3, distfade: 0.73, saturation: 0.9 }),
+    t('exposure', { stops: 1.1 }),
+    t('vignette', { inner: 0.7, outer: 1.7, strength: 0.4 }),
+  ]);
 
   // ── dna: twisting helix → palette → glow → slow hue cycle ──
   const dnaHue = chain('dna_hue', 'hue cycle', [aTime(0.2), aOsc(1, 0), aRemap(-0.05, 0.05)]);
