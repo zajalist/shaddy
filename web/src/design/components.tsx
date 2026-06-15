@@ -712,6 +712,9 @@ const REAL_3D_IDS: readonly string[] = [
   'displace_3d', 'elongate_3d', 'bend_3d',
   // camera + lighting + atmosphere
   'camera_3d', 'sky_3d', 'sun_3d', 'fresnel_3d', 'fog_3d',
+  // materials & lighting (batch D)
+  'point_light_3d', 'pbr_ggx_3d', 'reflection_3d', 'refraction_3d',
+  'subsurface_3d', 'checker_material_3d', 'atmosphere_sky_3d',
   // material + layer texturing (mask → paint) + bump
   'material_color_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
   'mask_fresnel_3d', 'paint_3d', 'bump_3d',

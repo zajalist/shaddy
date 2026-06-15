@@ -53,11 +53,13 @@ fit the current model and are higher-value.
 ### C. 3D fractals — Menger `4sX3Rn`, Apollonian `4ds3zn`, Mandelbulb, Quaternion Julia
 Add: `menger_fold_3d`, `mandelbulb_3d`, `apollonian_fold_3d`, `sierpinski_fold_3d`. (4)
 
-### D. 3D materials & lighting (headline) — iq "Happy Jumping" `3lsSzf`, GGX/PBR demos, reflective/glass spheres
+### D. 3D materials & lighting (headline) — iq "Happy Jumping" `3lsSzf`, GGX/PBR demos, reflective/glass spheres — SHIPPED
 Have: blinn-phong, fresnel, rim, soft-shadow, AO, sky, sun, fog.
-Add: `pbr_ggx_3d` (metallic/roughness), `point_light_3d` (attenuated),
-`reflection_3d` (mirror bounce), `refraction_3d` (IOR glass + fresnel),
-`subsurface_3d`, `checker_material_3d`, `atmosphere_sky_3d` (Rayleigh). (7)
+Added: `pbr_ggx_3d` (metallic/roughness Cook-Torrance), `point_light_3d`
+(attenuated + soft shadow), `reflection_3d` (REAL second-march mirror of scene
+geometry + sky, fresnel-weighted), `refraction_3d` (IOR glass + fresnel),
+`subsurface_3d`, `checker_material_3d`, `atmosphere_sky_3d` (gradient + sun glow). (7)
+Verified: reflection/refraction/pbr render correctly in the editor.
 
 ### E. 3D texturing masks (extend UE5 set) — triplanar technique, terrain material shaders
 Have: mask-height/slope/noise/fresnel, paint, bump.

@@ -354,6 +354,76 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ──────────── Materials & lighting (batch D) ────────────
+
+  // Point light — a bulb with short radiating ticks.
+  'card-point-light-3d': ({ c, cream }) => (
+    <>
+      {[[12,3.6],[12,20.4],[3.6,12],[20.4,12],[6,6],[18,6],[6,18],[18,18]].map(([x=0,y=0],i)=>(
+        <rect key={i} x={x-0.7} y={y-0.7} width="1.4" height="1.4" rx="0.7" fill={c} opacity="0.7" transform={`rotate(${i*45} ${x} ${y})`} />
+      ))}
+      <circle cx="12" cy="12" r="5.4" fill={c} />
+      <circle cx="10.4" cy="10.4" r="1.8" fill={cream} opacity="0.85" />
+    </>
+  ),
+
+  // PBR GGX — a glossy sphere with a tight specular hotspot + soft rim.
+  'card-pbr-ggx-3d': ({ c, cream, ink }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <circle cx="12" cy="12" r="9" fill={ink} opacity="0.2" />
+      <circle cx="14.5" cy="14.5" r="4" fill={c} />
+      <circle cx="9" cy="9" r="2.2" fill={cream} />
+    </>
+  ),
+
+  // Reflection — a sphere over a horizon with a mirrored copy below.
+  'card-reflection-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="8.5" r="5" fill={c} />
+      <circle cx="10.3" cy="6.8" r="1.5" fill={cream} opacity="0.8" />
+      <rect x="2.5" y="12" width="19" height="0.9" fill={cream} opacity="0.4" />
+      <circle cx="12" cy="16.5" r="4.2" fill={c} opacity="0.28" />
+    </>
+  ),
+
+  // Refraction — a glassy diamond with a bent ray through it.
+  'card-refraction-3d': ({ c, cream }) => (
+    <>
+      <path d="M12 4 L19 12 L12 20 L5 12 Z" fill={c} opacity="0.7" />
+      <path d="M3 9 L11 11 L13 16 L21 18" stroke={cream} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+
+  // Subsurface — a translucent blob with an inner glow.
+  'card-subsurface-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} opacity="0.55" />
+      <circle cx="13" cy="13" r="5.2" fill={cream} opacity="0.7" />
+      <circle cx="13.5" cy="13.5" r="2.4" fill={cream} />
+    </>
+  ),
+
+  // Checker material — a 3x3 checkerboard.
+  'card-checker-material-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2.4" fill={c} />
+      {[[0,0],[2,0],[1,1],[0,2],[2,2]].map(([cx=0,cy=0],i)=>(
+        <rect key={i} x={3+cx*6} y={3+cy*6} width="6" height="6" fill={cream} opacity="0.85" />
+      ))}
+    </>
+  ),
+
+  // Atmosphere sky — gradient band with a low sun disc.
+  'card-atmosphere-sky-3d': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      <rect x="2.6" y="2.6" width="18.8" height="11" fill={cream} opacity="0.16" />
+      <circle cx="15" cy="13" r="3.2" fill={cream} />
+      <rect x="2.6" y="15.5" width="18.8" height="5.9" rx="0" fill={cream} opacity="0.1" />
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

@@ -95,6 +95,14 @@ import { ONION_3D } from './onion-3d';
 import { DISPLACE_3D } from './displace-3d';
 import { ELONGATE_3D } from './elongate-3d';
 import { BEND_3D } from './bend-3d';
+// Materials & lighting (3D) — batch D
+import { POINT_LIGHT_3D } from './point-light-3d';
+import { PBR_GGX_3D } from './pbr-ggx-3d';
+import { REFLECTION_3D } from './reflection-3d';
+import { REFRACTION_3D } from './refraction-3d';
+import { SUBSURFACE_3D } from './subsurface-3d';
+import { CHECKER_MATERIAL_3D } from './checker-material-3d';
+import { ATMOSPHERE_SKY_3D } from './atmosphere-sky-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -293,6 +301,8 @@ export {
   CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
   // SDF operators (3D) — batch B
   SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
+  // materials & lighting (3D) — batch D
+  POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -453,6 +463,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
   // SDF operators (3D) — batch B
   SUBTRACT_3D, INTERSECT_3D, UNION_3D, ROUND_3D, ONION_3D, DISPLACE_3D, ELONGATE_3D, BEND_3D,
+  // materials & lighting (3D) — batch D
+  POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).
