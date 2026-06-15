@@ -67,6 +67,8 @@ import { FRESNEL_3D } from './fresnel-3d';
 import { FOG_3D } from './fog-3d';
 import { TEXTURE_HEIGHT_3D } from './texture-height-3d';
 import { TEXTURE_NOISE_3D } from './texture-noise-3d';
+import { TEXTURE_SLOPE_3D } from './texture-slope-3d';
+import { BUMP_3D } from './bump-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -259,7 +261,7 @@ export {
   AURORA, FLAME, HELIX, STAR_NEST,
   RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
-  SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D,
+  SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D, TEXTURE_SLOPE_3D, BUMP_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -414,7 +416,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D, TWIST_3D,
   // Composable raymarcher: camera, height-field surfaces, lighting, texturing
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
-  SKY_3D, SUN_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D,
+  SKY_3D, SUN_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D, TEXTURE_SLOPE_3D, BUMP_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

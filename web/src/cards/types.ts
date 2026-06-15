@@ -294,8 +294,12 @@ export type Card3DContribution = {
   material?: string;
   // ── Composable raymarch shading (compile3d assembles these into main) ──
   /** vec3 albedo as a function of hit `p` and normal `n` — 3D texturing.
-   *  Last one wins; overrides `material`. */
+   *  Last one wins; overrides `material`. (Base layer.) */
   albedoExpr?: string;
+  /** Statement(s) that MODIFY `alb` (the surface albedo) — stackable texturing.
+   *  In scope: hit `p`, normal `n`, albedo `alb`. Applied in card order after the
+   *  base albedo, so height-tint → slope-rock → triplanar detail compose. */
+  albedo?: string;
   /** Statement(s) accumulating into `lcol` (the lit colour). In scope: hit `p`,
    *  normal `n`, ray dir `rd`, albedo `alb`, distance `t`, and g_sky(rd). Lights
    *  accumulate in card order. */

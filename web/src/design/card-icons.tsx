@@ -107,6 +107,21 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <rect x="3" y="14.6" width="18" height="4" fill={c} opacity="0.4" />
     </>
   ),
+  'card-texture-slope-3d': ({ c, cream }) => (
+    <>
+      <path d="M3 19 L13 5 L21 19 Z" fill={c} />
+      <path d="M13 5 L21 19 L13 19 Z" fill={cream} opacity="0.55" />
+      <path d="M3 19 L9 11 L13 19 Z" fill={cream} opacity="0.85" />
+    </>
+  ),
+  'card-bump-3d': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      {[[7,7],[15,7],[11,11],[7,15],[16,15],[12,17]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r="2.4" fill={cream} opacity={0.35+(i%3)*0.2} />
+      ))}
+    </>
+  ),
   'card-texture-noise-3d': ({ c, cream }) => (
     <>
       <rect x="3" y="3.4" width="18" height="17.2" rx="3" fill={c} />

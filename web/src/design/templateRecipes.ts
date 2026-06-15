@@ -56,7 +56,12 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
   const terrain = recipe([
     t('camera_3d', { eye_x: 0, eye_y: 3.6, eye_z: 5.5, tgt_x: 0, tgt_y: 1.2, tgt_z: -5, fov: 1.5 }),
     t('terrain_surface_3d', { scale: 0.3, height: 2.4 }),
-    t('texture_height_3d', { low: [0.16, 0.34, 0.15], mid: [0.44, 0.35, 0.26], high: [0.96, 0.97, 1.0], h0: 0.3, h1: 1.6, h2: 2.6 }),
+    // layered texturing (Shadertoy-style): height biome → rock on slopes →
+    // triplanar detail; bump perturbs the normal before lighting.
+    t('texture_height_3d', { low: [0.16, 0.34, 0.15], mid: [0.40, 0.33, 0.24], high: [0.96, 0.97, 1.0], h0: 0.3, h1: 1.6, h2: 2.6 }),
+    t('texture_slope_3d', { rock: [0.30, 0.27, 0.23], flat_lo: 0.45, flat_hi: 0.78 }),
+    t('texture_noise_3d', { scale: 4, amount: 0.3, tint: [0.7, 0.66, 0.55] }),
+    t('bump_3d', { scale: 6, strength: 0.25 }),
     t('sky_3d', { horizon: [0.80, 0.86, 0.94], zenith: [0.34, 0.54, 0.86], ambient: [0.42, 0.47, 0.55] }),
     t('sun_3d', { dir_x: -0.45, dir_y: 0.7, dir_z: -0.35, color: [1.0, 0.93, 0.78], specular: 0, shininess: 16, soft: 0.12 }),
     t('fog_3d', { color: [0.80, 0.86, 0.94], density: 0.05 }),

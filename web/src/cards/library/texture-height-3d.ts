@@ -21,6 +21,6 @@ export const TEXTURE_HEIGHT_3D: CardDef = {
   },
   snippetTemplate: '// texture_height_3d (3D) low={{low}} mid={{mid}} high={{high}} bands={{h0}},{{h1}},{{h2}}',
   contribution3d: {
-    albedoExpr: 'mix(mix({{low}}, {{mid}}, smoothstep({{h0}}, {{h1}}, p.y)), {{high}}, smoothstep({{h1}}, {{h2}}, p.y))',
+    albedo: 'alb = mix(mix({{low}}, {{mid}}, smoothstep({{h0}}, {{h1}}, p.y)), {{high}}, smoothstep({{h1}}, {{h2}}, p.y));',
   },
 };

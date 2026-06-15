@@ -385,6 +385,7 @@ function compile3d(recipe: Recipe): CompiledShader {
   let camTarget = 'u_cam_target';
   let camFov = '1.6';
   const lights: string[] = [];
+  const albedoStmts: string[] = [];
   recipe.cards.forEach((card, cardIndex) => {
     if (card.kind !== 'typed') return;
     if (card.enabled === false) return; // muted → no uniforms / no contribution
@@ -408,6 +409,7 @@ function compile3d(recipe: Recipe): CompiledShader {
     });
     if (c.material !== undefined) materialExpr = sub3(c.material);
     if (c.albedoExpr !== undefined) albedoExpr = sub3(c.albedoExpr);
+    if (c.albedo !== undefined) albedoStmts.push(sub3(c.albedo));
     if (c.sky !== undefined) skyExpr = sub3(c.sky);
     if (c.camEye !== undefined) camEye = sub3(c.camEye);
     if (c.camTarget !== undefined) camTarget = sub3(c.camTarget);
@@ -533,6 +535,9 @@ function compile3d(recipe: Recipe): CompiledShader {
   // the surface recedes (matches the Seascape technique).
   lines.push('    vec3 n = sceneNormal3(p, max(0.0015, t * 0.0022));');
   lines.push(`    vec3 alb = ${albedo};`);
+  for (const stmt of albedoStmts) {
+    for (const l of stmt.split('\n')) lines.push('    ' + l.trim());
+  }
   lines.push('    vec3 lcol = vec3(0.0);');
   for (const l of shadeLines) lines.push(l);
   lines.push('    col = lcol;');
@@ -627,7 +632,7 @@ function emit3dTypedCard(card: TypedCard, cardIndex: number, emit: CardEmit): vo
   } else if (contrib.material !== undefined) {
     // Material is global — assigned in main() (Pass 1 resolved the last expr).
     emit.line(`  // ${def.type} — global material (last material card wins)`);
-  } else if (contrib.albedoExpr !== undefined) {
+  } else if (contrib.albedoExpr !== undefined || contrib.albedo !== undefined) {
     emit.line(`  // ${def.type} — surface texture / albedo (applied in shading)`);
   } else if (contrib.light !== undefined) {
     emit.line(`  // ${def.type} — light contribution (applied in shading)`);
