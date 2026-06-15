@@ -32,6 +32,8 @@ for (int r = 0; r < 20; r++) {
   fade *= {{distfade}};
   s += {{stepsize}};
 }
-col = mix(vec3(length(col)), col, {{saturation}}) * 0.01;`,
+col = mix(vec3(length(col)), col, {{saturation}}) * 0.01;
+col = min(col, vec3(8.0));
+col = mix(col, vec3(0.0), vec3(notEqual(col, col)));`,
   },
 };

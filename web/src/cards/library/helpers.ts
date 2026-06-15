@@ -374,11 +374,14 @@ const BODIES: Record<string, string> = {
   // so noisy height-fields don't alias into firefly sparkles at the horizon.
   sceneNormal3: `vec3 sceneNormal3(vec3 p, float ne) {
   vec2 e = vec2(ne, 0.0);
-  return normalize(vec3(
+  vec3 g = vec3(
     sdScene(p + e.xyy) - sdScene(p - e.xyy),
     sdScene(p + e.yxy) - sdScene(p - e.yxy),
     sdScene(p + e.yyx) - sdScene(p - e.yyx)
-  ));
+  );
+  // tiny up-bias so a flat region (zero gradient) never normalizes to NaN
+  // (which shows up as flickering white pixels, worse at low resolution).
+  return normalize(g + vec3(0.0, 1e-6, 0.0));
 }`,
 
   // iq's soft-shadow march — call AFTER sdScene exists. 32 iterations gives

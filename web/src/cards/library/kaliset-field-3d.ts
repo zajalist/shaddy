@@ -16,6 +16,6 @@ export const KALISET_FIELD_3D: CardDef = {
   },
   snippetTemplate: '// kaliset_field fractal={{formu}} tile={{tile}}',
   contribution3d: {
-    volField: 'vec3 q = abs(vec3({{tile}}) - mod(p, vec3({{tile}} * 2.0))); float pa = 0.0; for (int i = 0; i < 17; i++) { q = abs(q) / dot(q, q) - {{formu}}; a += abs(length(q) - pa); pa = length(q); }',
+    volField: 'vec3 q = abs(vec3({{tile}}) - mod(p, vec3({{tile}} * 2.0))); float pa = 0.0; for (int i = 0; i < 17; i++) { q = abs(q) / max(dot(q, q), 1e-4) - {{formu}}; a += abs(length(q) - pa); pa = length(q); }',
   },
 };

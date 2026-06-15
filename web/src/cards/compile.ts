@@ -551,6 +551,7 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('');
   lines.push(END_MARKER);
   lines.push('');
+  lines.push('  col = mix(col, vec3(0.0), vec3(notEqual(col, col)));'); // kill NaN fireflies
   lines.push('  fragColor = vec4(col, 1.0);');
   lines.push('}');
 
