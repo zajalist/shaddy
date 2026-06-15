@@ -57,6 +57,9 @@ import { RADIAL_MASK } from './radial-mask';
 import { VOLUME_CAMERA_3D } from './volume-camera-3d';
 import { KALISET_FIELD_3D } from './kaliset-field-3d';
 import { VOLUME_MARCH_3D } from './volume-march-3d';
+// Auroras (nimitz) — decomposed into night sky + aurora curtains
+import { NIGHT_SKY } from './night-sky';
+import { AURORA_CURTAINS } from './aurora-curtains';
 // composable raymarcher blocks (3D) — camera, surfaces, lighting, texturing
 import { CAMERA_3D } from './camera-3d';
 import { ATOM_3D } from './atom-3d';
@@ -264,7 +267,7 @@ export {
   DOMAIN_WARP, FBM, RIDGED, TURBULENCE, WORLEY_EDGES,
   // composite scene shapes
   AURORA, FLAME, HELIX,
-  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D,
+  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D, NIGHT_SKY, AURORA_CURTAINS,
   RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
@@ -343,7 +346,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   NOISE_FIELD, FBM, RIDGED, TURBULENCE, DOMAIN_WARP, VORONOI_CELLS, WORLEY_EDGES,
   // Pattern shapes — named single-purpose shapes (write d), like star/heart
   AURORA, FLAME, HELIX,
-  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D,
+  VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D, NIGHT_SKY, AURORA_CURTAINS,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals

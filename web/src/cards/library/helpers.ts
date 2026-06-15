@@ -121,6 +121,64 @@ const BODIES: Record<string, string> = {
   return h;
 }`,
 
+  // "Auroras" by nimitz (2017, CC BY-NC-SA) — triangle-noise aurora texture +
+  // the 50-step screen-space accumulation. Used by the Aurora curtains block.
+  auroraLib: `mat2 au_mm2(float a){ float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+float au_tri(float x){ return clamp(abs(fract(x) - 0.5), 0.01, 0.49); }
+vec2 au_tri2(vec2 p){ return vec2(au_tri(p.x) + au_tri(p.y), au_tri(p.y + au_tri(p.x))); }
+float au_triNoise2d(vec2 p, float spd){
+  float z = 1.8, z2 = 2.5, rz = 0.0;
+  mat2 m2 = mat2(0.95534, 0.29552, -0.29552, 0.95534);
+  p *= au_mm2(p.x * 0.06);
+  vec2 bp = p;
+  for (float i = 0.0; i < 5.0; i++) {
+    vec2 dg = au_tri2(bp * 1.85) * 0.75; dg *= au_mm2(u_time * spd); p -= dg / z2;
+    bp *= 1.3; z2 *= 0.45; z *= 0.42; p *= 1.21 + (rz - 1.0) * 0.02;
+    rz += au_tri(p.x + au_tri(p.y)) * z; p *= -m2;
+  }
+  return clamp(1.0 / pow(rz * 29.0, 1.3), 0.0, 0.55);
+}
+float au_hash21(vec2 n){ return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453); }
+vec4 auroraAccum(vec3 ro, vec3 rd){
+  vec4 col = vec4(0.0); vec4 avgCol = vec4(0.0);
+  for (float i = 0.0; i < 50.0; i++) {
+    float of = 0.006 * au_hash21(gl_FragCoord.xy) * smoothstep(0.0, 15.0, i);
+    float pt = ((0.8 + pow(i, 1.4) * 0.002) - ro.y) / (rd.y * 2.0 + 0.4); pt -= of;
+    vec3 bpos = ro + pt * rd; vec2 p = bpos.zx;
+    float rzt = au_triNoise2d(p, 0.06);
+    vec4 col2 = vec4(0.0, 0.0, 0.0, rzt);
+    col2.rgb = (sin(1.0 - vec3(2.15, -0.5, 1.2) + i * 0.043) * 0.5 + 0.5) * rzt;
+    avgCol = mix(avgCol, col2, 0.5);
+    col += avgCol * exp2(-i * 0.065 - 2.5) * smoothstep(0.0, 5.0, i);
+  }
+  col *= clamp(rd.y * 15.0 + 0.4, 0.0, 1.0);
+  return col * 1.8;
+}`,
+
+  // Background + stars for the aurora night sky (nimitz).
+  nmzStars: `vec3 au_nmzHash33(vec3 q){
+  uvec3 p = uvec3(ivec3(q));
+  p = p * uvec3(374761393u, 1103515245u, 668265263u) + p.zxy + p.yzx;
+  p = p.yzx * (p.zxy ^ (p >> 3u));
+  return vec3(p ^ (p >> 16u)) * (1.0 / vec3(0xffffffffu));
+}
+vec3 auStars(vec3 p){
+  vec3 c = vec3(0.0); float res = u_resolution.x;
+  for (float i = 0.0; i < 4.0; i++) {
+    vec3 q = fract(p * (0.15 * res)) - 0.5; vec3 id = floor(p * (0.15 * res));
+    vec2 rn = au_nmzHash33(id).xy;
+    float c2 = 1.0 - smoothstep(0.0, 0.6, length(q));
+    c2 *= step(rn.x, 0.0005 + i * i * 0.001);
+    c += c2 * (mix(vec3(1.0, 0.49, 0.1), vec3(0.75, 0.9, 1.0), rn.y) * 0.1 + 0.9);
+    p *= 1.3;
+  }
+  return c * c * 0.8;
+}
+vec3 auBg(vec3 rd){
+  float sd = dot(normalize(vec3(-0.5, -0.6, 0.9)), rd) * 0.5 + 0.5; sd = pow(sd, 5.0);
+  return mix(vec3(0.05, 0.1, 0.2), vec3(0.1, 0.05, 0.2), sd) * 0.63;
+}`,
+
   // Eroded ridged-multifractal terrain height (IQ-style): each octave is a
   // sharpened noise ridge, dampened by the previous octave so detail collects on
   // ridges and valleys stay smooth — reads as water-carved/eroded terrain.

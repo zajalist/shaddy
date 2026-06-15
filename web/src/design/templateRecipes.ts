@@ -151,18 +151,13 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('vignette', { inner: 0.4, outer: 1.3, strength: 0.7 }),
   ], [galRot, galRn]);
 
-  // ── aurora: starry sky FIRST, then curtains added with composition opacity
-  //    over it (color_a black + 'add' blend + alpha) so the night sky shows
-  //    through the gaps instead of a flat gradient filling the frame. ──
-  const aurThk = chain('aur_t', 'sway', [aTime(0.3), aOsc(1, 0), aRemap(0.3, 0.5)]);
+  // ── aurora: "Auroras" by nimitz (Shadertoy XtGGRt) — Night sky (bg + stars)
+  //    → Aurora curtains (50-step screen accumulation) → Vignette. ──
   const aurora = recipe([
-    t('starfield', { density: 80, coverage: 0.045, size: 0.07, twinkle: 0, color: [0.85, 0.9, 1.0] }),
-    t('aurora', { speed: 0.4, scale: 2.0, sway: 1.1 }, { thickness: ref('aur_t') }),
-    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.18, 0.95, 0.55] }, {}, { blend: 'add', alpha: 0.9 }),
-    t('palette', { color_a: [0.0, 0.0, 0.0], color_b: [0.45, 0.22, 0.9] }, {}, { blend: 'add', alpha: 0.4 }),
-    t('glow', { threshold: 0.4, intensity: 1.2 }),
-    t('vignette', { inner: 0.6, outer: 1.5, strength: 0.5 }),
-  ], [aurThk]);
+    t('night_sky', { stars: 1 }),
+    t('aurora_curtains', { intensity: 1 }),
+    t('vignette', { inner: 0.7, outer: 1.6, strength: 0.4 }),
+  ]);
 
   // ── fire: flickering flame → heat ramp → glow → bloom ──
   const fireW = chain('fire_w', 'flicker', [aTime(0.8), aNoise(1), aRemap(1.1, 1.5)]);

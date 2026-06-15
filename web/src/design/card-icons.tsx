@@ -37,6 +37,23 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       ))}
     </>
   ),
+  'card-night-sky': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      <rect x="2.6" y="2.6" width="18.8" height="9" fill={cream} opacity="0.18" />
+      {[[6,6],[15,5],[18,9],[5,11],[11,8],[19,13]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r={0.9+(i%3)*0.3} fill={cream} opacity={0.6+(i%3)*0.15} />
+      ))}
+    </>
+  ),
+  'card-aurora-curtains': ({ c, cream }) => (
+    <>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={c} />
+      <path d="M5 19 Q6 9 8 5 L10 5 Q9 11 8.5 19 Z" fill={cream} opacity="0.8" />
+      <path d="M10 19 Q11 8 13 4 L14.6 4 Q13.4 10 13 19 Z" fill={cream} opacity="0.6" />
+      <path d="M15 19 Q16 10 17.6 6 L19 6 Q18 12 18 19 Z" fill={cream} opacity="0.45" />
+    </>
+  ),
   'card-volume-camera-3d': ({ c, cream }) => (
     <>
       <path d="M7.6 6.4 L9 4.6 L14.4 4.6 L15.8 6.4 Z" fill={c} />
