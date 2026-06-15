@@ -210,6 +210,79 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ──────────── SDF primitives (batch A) — solid forms, soft top-light ────────────
+
+  // Cylinder — an upright tube: lit top ellipse + body.
+  'card-cylinder-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M6 6.5 V17.5 A6 2.4 0 0 0 18 17.5 V6.5 Z" fill={c} />
+      <ellipse cx="12" cy="6.5" rx="6" ry="2.4" fill={cream} />
+      <path d="M6 6.5 V17.5 A6 2.4 0 0 0 9 19.3 V8.3 Z" fill={ink} opacity="0.18" />
+    </>
+  ),
+
+  // Cone — tapered tube with a lit base ellipse.
+  'card-cone-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M12 4 L18 17.5 A6 2.4 0 0 1 6 17.5 Z" fill={c} />
+      <ellipse cx="12" cy="17.5" rx="6" ry="2.4" fill={cream} />
+      <path d="M12 4 L6 17.5 A6 2.4 0 0 0 9.2 19.2 Z" fill={ink} opacity="0.16" />
+    </>
+  ),
+
+  // Plane — a tilted ground quad with a normal direction.
+  'card-plane-3d': ({ c, cream }) => (
+    <>
+      <path d="M3 15 L11 11 L21 13.5 L13 18 Z" fill={c} />
+      <path d="M11 11 L11 4.5" stroke={cream} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M11 4.5 L9.3 6.6 M11 4.5 L12.7 6.6" stroke={cream} strokeWidth="1.6" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Ellipsoid — squashed sphere with a cream highlight.
+  'card-ellipsoid-3d': ({ c, cream }) => (
+    <>
+      <ellipse cx="12" cy="12" rx="9" ry="6.4" fill={c} />
+      <ellipse cx="9.2" cy="9.4" rx="2.8" ry="1.8" fill={cream} opacity="0.85" />
+    </>
+  ),
+
+  // Octahedron — two pyramids base-to-base, two-tone facets.
+  'card-octahedron-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M12 3 L20 12 L12 21 L4 12 Z" fill={c} />
+      <path d="M12 3 L20 12 L12 12 Z" fill={cream} opacity="0.85" />
+      <path d="M12 12 L12 21 L4 12 Z" fill={ink} opacity="0.18" />
+    </>
+  ),
+
+  // Hex prism — a hexagon with an extruded side face.
+  'card-hex-prism-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M8.5 4 L16 4 L19.5 11 L16 18 L8.5 18 L5 11 Z" fill={c} />
+      <path d="M16 4 L19.5 11 L16 18 L18 19 L21.5 12 L18 5 Z" fill={ink} opacity="0.2" />
+      <path d="M8.5 4 L16 4 L14 6 L9.6 6 Z" fill={cream} opacity="0.6" />
+    </>
+  ),
+
+  // Tri prism — a triangle with an extruded depth face.
+  'card-tri-prism-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M9 5 L17 18 L1.5 18 Z" fill={c} transform="translate(2 0)" />
+      <path d="M11 5 L19 18 L21.5 16.5 L13.5 3.5 Z" fill={ink} opacity="0.2" />
+      <path d="M11 5 L13.5 3.5 L7 16.5 L5 18 Z" fill={cream} opacity="0.4" />
+    </>
+  ),
+
+  // Pyramid — square base with a lit front face.
+  'card-pyramid-3d': ({ c, cream, ink }) => (
+    <>
+      <path d="M12 3 L21 18 L3 18 Z" fill={c} />
+      <path d="M12 3 L21 18 L12 18 Z" fill={ink} opacity="0.18" />
+      <path d="M12 3 L12 18 L3 18 Z" fill={cream} opacity="0.45" />
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

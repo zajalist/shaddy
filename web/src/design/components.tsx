@@ -703,6 +703,9 @@ const REAL_3D_IDS: readonly string[] = [
   // surfaces / shapes
   'sphere_3d', 'box_3d', 'torus_3d', 'ground_3d',
   'sea_surface_3d', 'terrain_surface_3d', 'atom_3d',
+  // SDF primitives (batch A)
+  'cylinder_3d', 'cone_3d', 'plane_3d', 'ellipsoid_3d',
+  'octahedron_3d', 'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
   // domain ops
   'repeat_3d', 'twist_3d', 'noise_displace_3d', 'smooth_union_3d',
   // camera + lighting + atmosphere

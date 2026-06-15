@@ -77,6 +77,15 @@ import { MASK_NOISE_3D } from './mask-noise-3d';
 import { MASK_FRESNEL_3D } from './mask-fresnel-3d';
 import { PAINT_3D } from './paint-3d';
 import { BUMP_3D } from './bump-3d';
+// SDF primitives (3D) — iq's primitive zoo, batch A
+import { CYLINDER_3D } from './cylinder-3d';
+import { CONE_3D } from './cone-3d';
+import { PLANE_3D } from './plane-3d';
+import { ELLIPSOID_3D } from './ellipsoid-3d';
+import { OCTAHEDRON_3D } from './octahedron-3d';
+import { HEX_PRISM_3D } from './hex-prism-3d';
+import { TRI_PRISM_3D } from './tri-prism-3d';
+import { PYRAMID_3D } from './pyramid-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -271,6 +280,8 @@ export {
   RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
+  // SDF primitives (3D) — batch A
+  CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -427,6 +438,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Composable raymarcher: camera, height-field surfaces, lighting, texturing
   CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SKY_3D, SUN_3D, FRESNEL_3D, FOG_3D, MASK_HEIGHT_3D, MASK_SLOPE_3D, MASK_NOISE_3D, MASK_FRESNEL_3D, PAINT_3D, BUMP_3D,
+  // SDF primitives (3D) — batch A
+  CYLINDER_3D, CONE_3D, PLANE_3D, ELLIPSOID_3D, OCTAHEDRON_3D, HEX_PRISM_3D, TRI_PRISM_3D, PYRAMID_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

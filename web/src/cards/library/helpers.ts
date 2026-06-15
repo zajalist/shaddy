@@ -427,6 +427,69 @@ vec3 auBg(vec3 rd){
   return length(q) - t.y;
 }`,
 
+  // ── 3D SDF primitives (iq) — all centred at origin unless noted ──
+  // Vertical capped cylinder. h = half-height, r = radius.
+  sdfCylinder3: `float sdfCylinder3(vec3 p, float h, float r) {
+  vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r, h);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}`,
+
+  // Capped cone, axis on y. h = half-height, r1 = bottom radius, r2 = top.
+  sdfCone3: `float sdfCone3(vec3 p, float h, float r1, float r2) {
+  vec2 q = vec2(length(p.xz), p.y);
+  vec2 k1 = vec2(r2, h);
+  vec2 k2 = vec2(r2 - r1, 2.0 * h);
+  vec2 ca = vec2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - h);
+  vec2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / max(dot(k2, k2), 1e-6), 0.0, 1.0);
+  float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+  return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
+}`,
+
+  // Ellipsoid (iq bound approximation). r = per-axis radii.
+  sdfEllipsoid3: `float sdfEllipsoid3(vec3 p, vec3 r) {
+  float k0 = length(p / r);
+  float k1 = length(p / (r * r));
+  return k0 * (k0 - 1.0) / max(k1, 1e-5);
+}`,
+
+  // Octahedron (bound). s = radius along each axis.
+  sdfOctahedron3: `float sdfOctahedron3(vec3 p, float s) {
+  p = abs(p);
+  return (p.x + p.y + p.z - s) * 0.57735027;
+}`,
+
+  // Hexagonal prism. h.x = radius across flats, h.y = half-depth (z).
+  sdfHexPrism3: `float sdfHexPrism3(vec3 p, vec2 h) {
+  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  p = abs(p);
+  p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
+  vec2 d = vec2(
+    length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x),
+    p.z - h.y);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}`,
+
+  // Triangular prism. h.x = side scale, h.y = half-depth (z).
+  sdfTriPrism3: `float sdfTriPrism3(vec3 p, vec2 h) {
+  vec3 q = abs(p);
+  return max(q.z - h.y, max(q.x * 0.866025 + p.y * 0.5, -p.y) - h.x * 0.5);
+}`,
+
+  // Square pyramid, base on y=0 rising to apex at y=h. (iq)
+  sdfPyramid3: `float sdfPyramid3(vec3 p, float h) {
+  float m2 = h * h + 0.25;
+  p.xz = abs(p.xz);
+  p.xz = (p.z > p.x) ? p.zx : p.xz;
+  p.xz -= 0.5;
+  vec3 q = vec3(p.z, h * p.y - 0.5 * p.x, h * p.x + 0.5 * p.y);
+  float s = max(-q.x, 0.0);
+  float t = clamp((q.y - 0.5 * p.z) / (m2 + 0.25), 0.0, 1.0);
+  float a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;
+  float b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
+  float d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
+  return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.y));
+}`,
+
   // Numerical-gradient surface normal — assumes sdScene exists at emit time.
   // `ne` is the sample epsilon: pass a DISTANCE-SCALED value (bigger far away)
   // so noisy height-fields don't alias into firefly sparkles at the horizon.
