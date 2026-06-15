@@ -55,6 +55,7 @@ import { HEAT_RAMP } from './heat-ramp';
 import { RADIAL_MASK } from './radial-mask';
 // composable raymarcher blocks (3D) — camera, surfaces, lighting, texturing
 import { CAMERA_3D } from './camera-3d';
+import { ATOM_3D } from './atom-3d';
 import { SEA_SURFACE_3D } from './sea-surface-3d';
 import { TERRAIN_SURFACE_3D } from './terrain-surface-3d';
 import { NOISE_DISPLACE_3D } from './noise-displace-3d';
@@ -255,7 +256,7 @@ export {
   // composite scene shapes
   AURORA, FLAME, HELIX,
   RELIEF_LIGHT, HEAT_RAMP, RADIAL_MASK,
-  CAMERA_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
+  CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SUN_3D, SKY_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
@@ -410,7 +411,7 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Recipe.mode.
   SPHERE_3D, BOX_3D, TORUS_3D, GROUND_3D, REPEAT_3D, SMOOTH_UNION_3D, MATERIAL_COLOR_3D, TWIST_3D,
   // Composable raymarcher: camera, height-field surfaces, lighting, texturing
-  CAMERA_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
+  CAMERA_3D, ATOM_3D, SEA_SURFACE_3D, TERRAIN_SURFACE_3D, NOISE_DISPLACE_3D,
   SKY_3D, SUN_3D, FRESNEL_3D, FOG_3D, TEXTURE_HEIGHT_3D, TEXTURE_NOISE_3D,
 
   // ─── MARKERS ───

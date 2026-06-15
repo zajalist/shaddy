@@ -112,15 +112,20 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('glow', { threshold: 0.55, intensity: 1.3 }),
   ], [lavaRise, lavaChurn]);
 
-  // ── molecule: pulsing metaballs → blue ramp → round relief → bloom ──
-  const molPulse = chain('mol_p', 'pulse', [aTime(0.4), aOsc(1, 0), aRemap(0.14, 0.24)]);
+  // ── molecule: a raymarched metaball molecule FROM BLOCKS — a central atom +
+  //    three orbiting atoms, smooth-unioned, lit by sky/sun with fresnel sheen. ──
   const molecule = recipe([
-    t('metaballs', { speed: 0.6 }, { falloff: ref('mol_p') }),
-    t('triple_gradient', { color_a: [0.02, 0.04, 0.12], color_b: [0.2, 0.6, 1.0], color_c: [0.75, 0.95, 1.0] }),
-    t('relief_light', { strength: 7, light_x: -0.4, light_y: 0.6, amount: 0.5 }),
-    t('bloom', { threshold: 0.5, intensity: 1.2 }),
-    t('vignette', { inner: 0.5, outer: 1.4, strength: 0.6 }),
-  ], [molPulse]);
+    t('camera_3d', { eye_x: 0, eye_y: 0.4, eye_z: 4.6, tgt_x: 0, tgt_y: 0, tgt_z: 0, fov: 1.9 }),
+    t('smooth_union_3d', { k: 0.6 }),
+    t('atom_3d', { radius: 0, size: 0.62, speed: 0, phase: 0 }),
+    t('atom_3d', { radius: 1.15, size: 0.4, speed: 0.6, phase: 0 }),
+    t('atom_3d', { radius: 1.15, size: 0.4, speed: 0.6, phase: 2.1 }),
+    t('atom_3d', { radius: 1.15, size: 0.4, speed: 0.6, phase: 4.2 }),
+    t('material_color_3d', { color: [0.25, 0.55, 1.0] }),
+    t('sky_3d', { horizon: [0.10, 0.12, 0.2], zenith: [0.02, 0.03, 0.08], ambient: [0.28, 0.34, 0.5] }),
+    t('sun_3d', { dir_x: 0.4, dir_y: 0.7, dir_z: 0.4, color: [1.0, 0.96, 0.9], specular: 1.4, shininess: 90, soft: 0.12 }),
+    t('fresnel_3d', { base: 0.05, amount: 0.5 }),
+  ], [], '3d');
 
   // ── galaxy: winding twirl + noise-warped ragged arms, coloured ADDITIVELY
   //    over black (transparent gaps) + warm core, then the rotation is UNDONE

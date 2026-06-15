@@ -28,6 +28,16 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
       <path d="M19 9.4 L21.6 7.6 V16.6 L19 14.8 Z" fill={c} />
     </>
   ),
+  'card-atom-3d': ({ c, cream }) => (
+    <>
+      <ellipse cx="12" cy="12" rx="9" ry="3.4" fill="none" stroke={c} strokeWidth="1.6" transform="rotate(30 12 12)" />
+      <ellipse cx="12" cy="12" rx="9" ry="3.4" fill="none" stroke={c} strokeWidth="1.6" transform="rotate(-30 12 12)" />
+      <circle cx="12" cy="12" r="2.6" fill={c} />
+      <circle cx="12" cy="12" r="1.1" fill={cream} />
+      <circle cx="19.2" cy="8.2" r="1.4" fill={cream} />
+      <circle cx="5" cy="15.4" r="1.4" fill={cream} />
+    </>
+  ),
   'card-sea-surface-3d': ({ c, cream }) => (
     <>
       <rect x="2.4" y="3" width="19" height="18" rx="3" fill={c} />
