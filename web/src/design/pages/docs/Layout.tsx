@@ -10,6 +10,10 @@ import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { DOC, TYPE } from './theme';
 import { useIsMobile } from '../../useIsMobile';
+import { TopBar } from '../../components';
+
+// Height of the shared editor top bar pinned above the docs shell (desktop).
+export const DOCS_TOPBAR_H = 56;
 
 export type LayoutProps = {
   sidebar: ReactNode;
@@ -81,11 +85,18 @@ export const Layout = ({ sidebar, content, rightRail }: LayoutProps) => {
   }
 
   return (
-    <div style={root}>
-      {sidebar}
-      <main style={centre}>{content}</main>
-      {rightRail}
-    </div>
+    <>
+      {/* Shared editor top bar so docs readers can jump straight back to the
+          composer / library / gallery. Fixed; the docs columns sit below it. */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100 }}>
+        <TopBar active="docs" />
+      </div>
+      <div style={{ ...root, paddingTop: DOCS_TOPBAR_H }}>
+        {sidebar}
+        <main style={centre}>{content}</main>
+        {rightRail}
+      </div>
+    </>
   );
 };
 

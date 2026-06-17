@@ -34,8 +34,9 @@ export const Sidebar = ({ activeId, onNavigate }: SidebarProps) => {
 
   const wrap: CSSProperties = {
     position: 'sticky',
-    top: 0,
-    height: '100vh',
+    // Sits below the shared editor top bar (56px) pinned by docs/Layout.
+    top: 56,
+    height: 'calc(100vh - 56px)',
     width: 264,
     flex: '0 0 264px',
     background: DOC.surface,

@@ -716,44 +716,47 @@ const VOLUME_3D_IDS: readonly string[] = [
   'volume_march_3d', 'vol_light_scatter_3d', 'night_sky', 'aurora_curtains',
 ];
 
-// 3D palette taxonomy — mirrors the 2D category tree (cards/library/index.ts).
-// Ordered groups of card ids; any real-3D id not listed falls into "Other".
-type ThreeDGroup = { label: string; color: string; ids: readonly string[] };
-const THREED_GROUPS: ThreeDGroup[] = [
-  { label: 'Camera & scene', color: SHADE.gold, ids: ['camera_3d'] },
-  { label: 'Surfaces', color: SHADE.catShape, ids: [
-    'ground_3d', 'plane_3d', 'sea_surface_3d', 'terrain_surface_3d',
-  ] },
-  { label: 'SDF primitives', color: SHADE.catShape, ids: [
-    'sphere_3d', 'box_3d', 'rounded_box_3d', 'torus_3d', 'atom_3d', 'capsule_3d',
-    'cylinder_3d', 'cone_3d', 'ellipsoid_3d', 'octahedron_3d',
-    'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
-  ] },
-  { label: 'CSG operators', color: SHADE.catDistort, ids: [
-    'union_3d', 'subtract_3d', 'intersect_3d', 'smooth_union_3d', 'round_3d', 'onion_3d',
-  ] },
-  { label: 'Domain & deform', color: SHADE.catDistort, ids: [
-    'repeat_3d', 'twist_3d', 'bend_3d', 'elongate_3d', 'displace_3d', 'noise_displace_3d',
-  ] },
-  { label: 'Fractals', color: SHADE.ember, ids: [
-    'menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d',
-  ] },
-  { label: 'Materials', color: SHADE.catColor, ids: [
-    'material_color_3d', 'checker_material_3d', 'grid_material_3d',
-    'pbr_ggx_3d', 'orbit_trap_color_3d',
-  ] },
-  { label: 'Lighting', color: SHADE.catEffect, ids: [
-    'point_light_3d', 'sun_3d', 'fresnel_3d', 'subsurface_3d',
-    'reflection_3d', 'refraction_3d',
-  ] },
-  { label: 'Texturing', color: SHADE.catColor, ids: [
-    'triplanar_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
-    'mask_fresnel_3d', 'mask_curvature_3d', 'mask_ao_3d', 'paint_3d', 'bump_3d',
-  ] },
-  { label: 'Atmosphere', color: SHADE.catEffect, ids: [
-    'sky_3d', 'atmosphere_sky_3d', 'fog_3d',
-  ] },
-  { label: 'Volumetric', color: SHADE.ember, ids: VOLUME_3D_IDS },
+// 3D palette taxonomy — mirrors the 2D category→subgroup tree exactly:
+// a handful of top-level categories (each with its own SVG glyph + colour),
+// each holding named sub-folders of card ids. Any real-3D id not listed
+// falls into an "Other" sub-folder so the palette is never lossy.
+type ThreeDSub = { label: string; ids: readonly string[] };
+type ThreeDCat = { key: string; label: string; color: string; icon: string; subs: ThreeDSub[] };
+const THREED_CATS: ThreeDCat[] = [
+  {
+    key: 'geometry', label: 'Geometry', color: SHADE.catShape, icon: 'cat3d-geometry',
+    subs: [
+      { label: 'Camera', ids: ['camera_3d'] },
+      { label: 'Surfaces', ids: ['ground_3d', 'plane_3d', 'sea_surface_3d', 'terrain_surface_3d'] },
+      { label: 'Primitives', ids: [
+        'sphere_3d', 'box_3d', 'torus_3d', 'atom_3d', 'cylinder_3d', 'cone_3d',
+        'ellipsoid_3d', 'octahedron_3d', 'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
+      ] },
+      { label: 'CSG operators', ids: ['union_3d', 'subtract_3d', 'intersect_3d', 'smooth_union_3d', 'round_3d', 'onion_3d'] },
+      { label: 'Domain & deform', ids: ['repeat_3d', 'twist_3d', 'bend_3d', 'elongate_3d', 'displace_3d', 'noise_displace_3d'] },
+      { label: 'Fractals', ids: ['menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d'] },
+    ],
+  },
+  {
+    key: 'materials', label: 'Materials', color: SHADE.catColor, icon: 'cat3d-materials',
+    subs: [
+      { label: 'Surface', ids: ['material_color_3d', 'checker_material_3d', 'grid_material_3d', 'pbr_ggx_3d', 'orbit_trap_color_3d'] },
+      { label: 'Texturing', ids: ['triplanar_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d', 'mask_fresnel_3d', 'mask_curvature_3d', 'mask_ao_3d', 'paint_3d', 'bump_3d'] },
+    ],
+  },
+  {
+    key: 'lighting', label: 'Lighting', color: SHADE.catEffect, icon: 'cat3d-lighting',
+    subs: [
+      { label: 'Lights & shading', ids: ['point_light_3d', 'sun_3d', 'fresnel_3d', 'subsurface_3d', 'reflection_3d', 'refraction_3d'] },
+    ],
+  },
+  {
+    key: 'atmosphere', label: 'Atmosphere & volume', color: SHADE.catDistort, icon: 'cat3d-atmosphere',
+    subs: [
+      { label: 'Sky & fog', ids: ['sky_3d', 'atmosphere_sky_3d', 'fog_3d'] },
+      { label: 'Volumetric', ids: VOLUME_3D_IDS },
+    ],
+  },
 ];
 
 // Hybrid cards — existing 2D cards that already produce a 3D-looking result.
@@ -1022,25 +1025,38 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
     () => HYBRID_3D_IDS.map((id) => blocksById.get(id)).filter((b): b is BlockDef => b != null),
     [blocksById],
   );
-  // 3D resting view — category groups (mirrors the 2D tree). Any real-3D id
-  // not claimed by a group lands in "Other" so the palette is never lossy.
+  // 3D resting view — category → sub-folder tree (mirrors the 2D taxonomy).
+  // Any real-3D id not claimed by a sub-folder lands in an "Other" category
+  // so the palette is never lossy.
   const threeDGrouped = useMemo(() => {
     const claimed = new Set<string>();
-    const groups = THREED_GROUPS.map((g) => {
-      const blocks = g.ids
-        .map((id) => blocksById.get(id))
-        .filter((b): b is BlockDef => b != null);
-      blocks.forEach((b) => claimed.add(b.id));
-      return { label: g.label, color: g.color, blocks };
-    }).filter((g) => g.blocks.length > 0);
+    const cats = THREED_CATS.map((cat) => {
+      const subs = cat.subs.map((s) => {
+        const blocks = s.ids
+          .map((id) => blocksById.get(id))
+          .filter((b): b is BlockDef => b != null);
+        blocks.forEach((b) => claimed.add(b.id));
+        return { label: s.label, blocks };
+      }).filter((s) => s.blocks.length > 0);
+      return { key: cat.key, label: cat.label, color: cat.color, icon: cat.icon, subs };
+    }).filter((c) => c.subs.length > 0);
     const leftover = real3dBlocks.filter((b) => !claimed.has(b.id));
-    if (leftover.length > 0) groups.push({ label: 'Other', color: SHADE.textDim, blocks: leftover });
-    return groups;
+    if (leftover.length > 0) {
+      cats.push({
+        key: 'other', label: 'Other', color: SHADE.textDim, icon: 'cat3d-geometry',
+        subs: [{ label: 'Uncategorized', blocks: leftover }],
+      });
+    }
+    return cats;
   }, [blocksById, real3dBlocks]);
   const activeBlocks = useMemo(() => {
     if (tab === '2d') return BLOCK_LIB;
     const seen = new Set<string>();
-    const all = [...real3dBlocks, ...threeDGrouped.flatMap((g) => g.blocks), ...hybrid3dBlocks];
+    const all = [
+      ...real3dBlocks,
+      ...threeDGrouped.flatMap((c) => c.subs.flatMap((s) => s.blocks)),
+      ...hybrid3dBlocks,
+    ];
     return all.filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
   }, [tab, real3dBlocks, threeDGrouped, hybrid3dBlocks]);
 
@@ -1404,39 +1420,51 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
             atmosphere, volumetrics. Hybrid 2D-maths cards live at the bottom. */}
         {flatList == null && tab === '3d' && (
           <div style={{ paddingTop: 2 }}>
-            {threeDGrouped.map(({ label, color, blocks }) => {
-              const key = `3d::${label}`;
-              const open = !(collapsed[key] ?? false);
+            {threeDGrouped.map(({ key: catKey, label, color, icon, subs }) => {
+              const catOpen = !(collapsed[`3d::${catKey}`] ?? false);
+              const count = subs.reduce((n, s) => n + s.blocks.length, 0);
               return (
-                <div key={label}>
+                <div key={catKey}>
                   <TreeGroupRow
-                    depth={0} open={open} color={color}
-                    label={label} count={blocks.length}
-                    glyph={<span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'block' }} />}
-                    onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: open }))}
+                    depth={0} open={catOpen} color={color}
+                    label={label} count={count}
+                    glyph={<Icon name={icon} size={13} color={color} />}
+                    onToggle={() => setCollapsed((prev) => ({ ...prev, [`3d::${catKey}`]: catOpen }))}
                   />
-                  {open && (
-                    <div style={{ paddingLeft: 18, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {blocks.map((b) => <PaletteItem key={b.id} block={b} />)}
-                    </div>
-                  )}
+                  {catOpen && subs.map(({ label: subLabel, blocks }) => {
+                    const subKey = `3d::${catKey}::${subLabel}`;
+                    const subO = subOpen[subKey] ?? false;
+                    return (
+                      <div key={subLabel}>
+                        <TreeGroupRow
+                          depth={1} open={subO} color={color}
+                          label={subLabel} count={blocks.length}
+                          onToggle={() => setSubOpen((prev) => ({ ...prev, [subKey]: !subO }))}
+                        />
+                        {subO && (
+                          <div style={{ paddingLeft: 30, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {blocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
 
             {hybrid3dBlocks.length > 0 && (() => {
-              const key = '3d::Hybrid';
-              const open = !(collapsed[key] ?? true); // default closed
+              const catOpen = !(collapsed['3d::hybrid'] ?? true); // default closed
               return (
                 <div>
                   <TreeGroupRow
-                    depth={0} open={open} color={SHADE.textDim}
+                    depth={0} open={catOpen} color={SHADE.textDim}
                     label="Hybrid (2D maths)" count={hybrid3dBlocks.length}
-                    glyph={<span style={{ width: 10, height: 10, borderRadius: 2, background: SHADE.textDim, display: 'block', opacity: 0.6 }} />}
-                    onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: open }))}
+                    glyph={<Icon name="cat-distort" size={13} color={SHADE.textDim} />}
+                    onToggle={() => setCollapsed((prev) => ({ ...prev, '3d::hybrid': catOpen }))}
                   />
-                  {open && (
-                    <div style={{ paddingLeft: 18, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {catOpen && (
+                    <div style={{ paddingLeft: 30, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
                     </div>
                   )}

@@ -200,6 +200,49 @@ const ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ─── 3D palette category glyphs (duotone, match cat-* family) ───────────
+  // Geometry — an isometric cube (SDF solids / raymarched scene).
+  'cat3d-geometry': ({ c, cream }) => (
+    <>
+      <path d="M12 3 L20 7.5 L12 12 L4 7.5 Z" fill={cream} />
+      <path d="M4 7.5 L12 12 L12 21 L4 16.5 Z" fill={c} />
+      <path d="M20 7.5 L12 12 L12 21 L20 16.5 Z" fill={c} opacity="0.66" />
+    </>
+  ),
+  // Materials — a shaded sphere with a specular hit + terminator rim.
+  'cat3d-materials': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <circle cx="9.2" cy="9.2" r="2.6" fill={cream} />
+      <path d="M4.6 14.8 A9 9 0 0 0 18.4 18.2" fill="none" stroke={cream} strokeWidth="1.6" strokeLinecap="round" opacity="0.42" />
+    </>
+  ),
+  // Lighting — a sun: rays in the cat colour, cream core.
+  'cat3d-lighting': ({ c, cream }) => (
+    <>
+      <g stroke={c} strokeWidth="2.2" strokeLinecap="round">
+        <path d="M12 2.4 V5.4" /><path d="M12 18.6 V21.6" />
+        <path d="M2.4 12 H5.4" /><path d="M18.6 12 H21.6" />
+        <path d="M5.1 5.1 L7.2 7.2" /><path d="M16.8 16.8 L18.9 18.9" />
+        <path d="M18.9 5.1 L16.8 7.2" /><path d="M7.2 16.8 L5.1 18.9" />
+      </g>
+      <circle cx="12" cy="12" r="4.4" fill={c} />
+      <circle cx="12" cy="12" r="2" fill={cream} />
+    </>
+  ),
+  // Atmosphere & volume — a cloud with a sun behind it.
+  'cat3d-atmosphere': ({ c, cream }) => (
+    <>
+      <circle cx="16.6" cy="7.4" r="3" fill={cream} opacity="0.8" />
+      <g fill={c}>
+        <circle cx="8" cy="14" r="4" />
+        <circle cx="13" cy="12.8" r="4.7" />
+        <circle cx="17" cy="15" r="3.6" />
+        <rect x="7.5" y="14.4" width="10.6" height="4.4" rx="2.2" />
+      </g>
+    </>
+  ),
+
   // ─── UI ICONS — solid duotone so they read on any bar ──────────────────
   'metro': ({ c, cream }) => (
     <>

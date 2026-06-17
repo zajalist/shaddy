@@ -94,13 +94,14 @@ export const OnThisPage = ({ activeDocId }: OnThisPageProps) => {
 
   const wrap: CSSProperties = {
     position: 'sticky',
-    top: 0,
+    // Sits below the shared editor top bar (56px) pinned by docs/Layout.
+    top: 56,
     alignSelf: 'flex-start',
     width: 240,
     flex: '0 0 240px',
-    padding: '56px 24px 32px 32px',
+    padding: '32px 24px 32px 32px',
     boxSizing: 'border-box',
-    maxHeight: '100vh',
+    maxHeight: 'calc(100vh - 56px)',
     overflowY: 'auto',
   };
   const eyebrow: CSSProperties = {

@@ -53,6 +53,8 @@ const useDocsChrome = () => {
       style.id = CHROME_ID;
       style.textContent = `
         .doc-anchor { opacity: 0; }
+        /* Keep anchor-linked headings clear of the fixed editor top bar. */
+        article [data-toc] { scroll-margin-top: 72px; }
         h2:hover > .doc-anchor,
         h3:hover > .doc-anchor { opacity: 1; }
         .doc-nav-item:hover {
