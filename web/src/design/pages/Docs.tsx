@@ -79,8 +79,11 @@ const useDocsChrome = () => {
     const prevHtmlOverflowX = document.documentElement.style.overflowX;
     document.body.style.background = DOC.bg;
     document.body.style.color = DOC.textBody;
-    document.body.style.overflowX = 'hidden';
-    document.documentElement.style.overflowX = 'hidden';
+    // Use `clip` (not `hidden`) so the horizontal overflow is contained
+    // WITHOUT turning <html>/<body> into a scroll container — `hidden`
+    // would do that and silently break the `position: sticky` docs rails.
+    document.body.style.overflowX = 'clip';
+    document.documentElement.style.overflowX = 'clip';
     return () => {
       document.body.style.background = prevBg;
       document.body.style.color = prevColor;

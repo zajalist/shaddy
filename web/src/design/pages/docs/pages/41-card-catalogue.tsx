@@ -8,7 +8,7 @@ const page: DocPage = {
   id: 'card-catalogue',
   title: 'Card catalogue',
   groupLabel: 'Cards reference',
-  lede: 'One source of truth for the 149 typed cards — the /library route renders the live shelf.',
+  lede: 'One source of truth for the typed-card library — the /library route renders the live shelf.',
   body: (
     <>
       <P>
@@ -19,17 +19,18 @@ const page: DocPage = {
         there's no separate "docs version" to drift from.
       </P>
 
-      <H2>What's there today</H2>
+      <H2>What's in the library</H2>
       <UL>
-        <LI><Strong>149 typed cards</Strong>, plus the wildcard escape hatch.</LI>
+        <LI><Strong>The full typed-card library</Strong>, plus the wildcard escape hatch. Every count on <A href="/library">/library</A> is live.</LI>
         <LI>
           Split across four categories — <Code>shape</Code>,{' '}
           <Code>distortion</Code>, <Code>color</Code>, <Code>effect</Code>.
         </LI>
         <LI>
-          The 3D set is the smallest — seven cards as of v1 (sphere, box,
-          torus, ground plane, smooth union, repeat domain, material colour).
-          Expect this set to grow.
+          A deep 3D set, grouped in the composer's <Strong>3D</Strong> tab
+          into camera, surfaces, SDF primitives, CSG operators, domain &amp;
+          deform, fractals, materials, lighting, texturing, atmosphere, and
+          volumetrics.
         </LI>
         <LI>
           A growing set of "mouse-interactive" cards — <Code>mouse_glow</Code>,{' '}

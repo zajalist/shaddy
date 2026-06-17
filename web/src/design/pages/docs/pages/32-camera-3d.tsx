@@ -83,7 +83,7 @@ const page: DocPage = {
 
       <H2>Limits</H2>
       <P>
-        The camera is view-only in v1 — there's no FOV, no near / far, no
+        The camera is view-only — there's no FOV, no near / far, no
         roll. The fragment template builds the ray basis from{' '}
         <Code>fwd = normalize(target - eye)</Code>, an aspect-corrected pixel
         offset, and the provided <Code>up</Code> vector — that's it. If you

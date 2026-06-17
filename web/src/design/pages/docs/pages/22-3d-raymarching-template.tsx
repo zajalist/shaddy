@@ -92,8 +92,8 @@ const page: DocPage = {
         </LI>
         <LI>
           <Strong>material</Strong> — sets the global <Code>u_material</Code>{' '}
-          vec3. Materials are global in v1 — the last material card before
-          the raymarch wins.
+          vec3. Materials are applied globally — the last material card
+          before the raymarch wins.
         </LI>
       </UL>
 

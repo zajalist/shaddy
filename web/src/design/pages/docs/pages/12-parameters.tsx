@@ -78,7 +78,8 @@ const page: DocPage = {
         A discrete integer choice. Stored as a number under the hood and
         emitted as a <Code>float</Code> uniform the shader casts via{' '}
         <Code>int(u_card0_palette)</Code> before switching on it. Keeping
-        the transport uniform (no <Code>int</Code> uniforms in v1) avoids a
+        the transport uniform a <Code>float</Code> (Shaddy emits no{' '}
+        <Code>int</Code> uniforms) avoids a
         whole class of GL driver bugs around interpolation qualifiers on
         integer scalars.
       </P>

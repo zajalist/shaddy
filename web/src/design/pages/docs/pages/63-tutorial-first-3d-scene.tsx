@@ -77,9 +77,10 @@ const page: DocPage = {
       <P>
         <Code>effects → material (3D)</Code>. Pick a warm orange — say{' '}
         <Code>(0.92, 0.42, 0.16)</Code> in linear RGB. The whole scene
-        takes that colour. <Strong>Materials are global in v1</Strong> —
-        the last material card before the raymarch wins. Per-surface
-        materials are a future enhancement.
+        takes that colour. <Strong>Materials are applied globally</Strong> —
+        the last material card before the raymarch sets the surface colour
+        for the whole scene. For distinct per-surface looks, drive the
+        colour from geometry with the texturing mask + paint cards.
       </P>
 
       <H2>Step 5 — Move the camera</H2>
@@ -109,10 +110,10 @@ const page: DocPage = {
           expression <Strong>before</Strong> the geometry runs.
         </LI>
         <LI>
-          The shading pipeline is fixed in v1 — Lambert + one directional
-          light + soft shadow. For per-surface materials or a different
-          shading model, you'd need either a new effect card or a wildcard
-          that overrides the relevant section.
+          The built-in shading pipeline is Lambert + one directional
+          light + soft shadow. For a different shading model, add a
+          lighting card (point light, PBR/GGX, subsurface, Fresnel) or a
+          wildcard that overrides the relevant section.
         </LI>
       </OL>
     </>
