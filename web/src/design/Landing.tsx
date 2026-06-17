@@ -957,9 +957,8 @@ const FAQ = () => {
     { q: 'Do I need to know shader math?', a: "Not at all. Most people start by snapping blocks until something pretty happens, then read the code drawer to figure out which line did what. The blocks teach the maths by sitting next to it." },
     { q: 'Does it run on mobile?', a: "Yep. Palette and properties slide up as bottom sheets so the canvas stays the hero. I tested on a four-year-old phone and still got 60 fps for most recipes." },
     { q: 'Will I get a fast GPU on my laptop?', a: "Almost certainly. Any laptop made since 2018 has a usable GPU and Shaddy renders through WebGL 2. The mobile path downscales the drawing buffer when the framerate drops; the desktop path renders at full devicePixelRatio." },
-    { q: 'Can I import existing shaders?', a: "Paste GLSL into the Ask Claude panel and the AI pulls out the blocks it recognises. It won't always be a clean round-trip, but you get a starting chain to edit, which is the hard part." },
-    { q: 'How do I get the GLSL out?', a: "Copy from the code drawer. The output is real GLSL ES 3.0 fragment source. Paste it into Shadertoy or your own WebGL pipeline and it runs. The drawer is read-write: edit the code, and the Ask Claude panel translates the edits back into cards." },
-    { q: 'Is the code open source?', a: "MIT-licensed on GitHub. Renderer, card library, AI import, all in one repo, with no proprietary bits hiding anywhere." },
+    { q: 'How do I get the GLSL out?', a: "Copy from the code drawer. The output is real GLSL ES 3.0 fragment source. Paste it into Shadertoy or your own WebGL pipeline and it runs. The drawer is read-write: edit the code and re-compile to preview your changes live." },
+    { q: 'Is the code open source?', a: "MIT-licensed on GitHub. Renderer, card library, and block engine, all in one repo, with no proprietary bits hiding anywhere." },
   ];
   return (
     <div style={{ maxWidth: 720, margin: '3rem auto 0', display: 'flex', flexDirection: 'column' }}>
@@ -1019,24 +1018,23 @@ const Footer = () => (
       }}
     >
       <FooterCol title="Product">
-        <FooterLink>Composer</FooterLink>
-        <FooterLink>Gallery</FooterLink>
-        <FooterLink>Blocks</FooterLink>
+        <FooterLink href="/design">Composer</FooterLink>
+        <FooterLink href="/gallery">Gallery</FooterLink>
+        <FooterLink href="/library">Blocks</FooterLink>
       </FooterCol>
       <FooterCol title="Learn">
-        <FooterLink>Docs</FooterLink>
-        <FooterLink>Tutorials</FooterLink>
-        <FooterLink>Shader basics</FooterLink>
+        <FooterLink href="/docs">Docs</FooterLink>
+        <FooterLink href="/learn">Tutorials</FooterLink>
+        <FooterLink href="/library">Shader basics</FooterLink>
       </FooterCol>
-      <FooterCol title="Open source">
-        <FooterLink>GitHub</FooterLink>
-        <FooterLink>Issues</FooterLink>
-        <FooterLink>License</FooterLink>
+      <FooterCol title="Legal">
+        <FooterLink href="/privacy">Privacy</FooterLink>
+        <FooterLink href="/cookies">Cookies</FooterLink>
+        <FooterLink href="/terms">Terms</FooterLink>
       </FooterCol>
       <FooterCol title="About">
-        <FooterLink>Team</FooterLink>
-        <FooterLink>Brand</FooterLink>
-        <FooterLink>Contact</FooterLink>
+        <FooterLink href="/docs">Docs</FooterLink>
+        <FooterLink href="/contact">Contact</FooterLink>
       </FooterCol>
     </div>
     <div
@@ -1054,8 +1052,10 @@ const Footer = () => (
         © 2026 · MIT licensed · Built so a 12-year-old can learn GPU programming.
       </span>
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
-        <FooterLink>Privacy</FooterLink>
-        <FooterLink>Terms</FooterLink>
+        <FooterLink href="/privacy">Privacy</FooterLink>
+        <FooterLink href="/cookies">Cookies</FooterLink>
+        <FooterLink href="/terms">Terms</FooterLink>
+        <FooterLink href="/contact">Contact</FooterLink>
       </span>
     </div>
   </footer>
@@ -1070,9 +1070,10 @@ const FooterCol = ({ title, children }: { title: string; children: ReactNode }) 
   </div>
 );
 
-const FooterLink = ({ children }: { children: ReactNode }) => (
+const FooterLink = ({ children, href = '#', external = false }: { children: ReactNode; href?: string; external?: boolean }) => (
   <a
-    href="#"
+    href={href}
+    {...(external ? { target: '_blank', rel: 'noreferrer noopener' } : {})}
     style={{
       color: 'rgba(232,226,212,0.55)',
       textDecoration: 'none',

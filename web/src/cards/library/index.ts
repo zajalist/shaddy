@@ -107,6 +107,18 @@ import { ATMOSPHERE_SKY_3D } from './atmosphere-sky-3d';
 import { TRIPLANAR_3D } from './triplanar-3d';
 import { MASK_CURVATURE_3D } from './mask-curvature-3d';
 import { MASK_AO_3D } from './mask-ao-3d';
+// Fractals (3D) — batch C
+import { MENGER_FOLD_3D } from './menger-fold-3d';
+import { MANDELBULB_3D } from './mandelbulb-3d';
+import { APOLLONIAN_FOLD_3D } from './apollonian-fold-3d';
+import { SIERPINSKI_FOLD_3D } from './sierpinski-fold-3d';
+// Volumetrics (3D) — batch F: density fields + lit volume integrator
+import { VOL_FBM_CLOUDS_3D } from './vol-fbm-clouds-3d';
+import { VOL_SPHERE_FIELD_3D } from './vol-sphere-field-3d';
+import { VOL_LIGHT_SCATTER_3D } from './vol-light-scatter-3d';
+// extra generalizable 3D materials
+import { GRID_MATERIAL_3D } from './grid-material-3d';
+import { ORBIT_TRAP_COLOR_3D } from './orbit-trap-color-3d';
 
 // ── shapes: math / patterns / polar ──
 import { BRICK_WALL } from './brick-wall';
@@ -309,6 +321,12 @@ export {
   POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
   // texturing masks (3D) — batch E
   TRIPLANAR_3D, MASK_CURVATURE_3D, MASK_AO_3D,
+  // fractals (3D) — batch C
+  MENGER_FOLD_3D, MANDELBULB_3D, APOLLONIAN_FOLD_3D, SIERPINSKI_FOLD_3D,
+  // volumetrics (3D) — batch F
+  VOL_FBM_CLOUDS_3D, VOL_SPHERE_FIELD_3D, VOL_LIGHT_SCATTER_3D,
+  // extra generalizable 3D materials
+  GRID_MATERIAL_3D, ORBIT_TRAP_COLOR_3D,
   // new shapes — math / patterns / polar
   BRICK_WALL, CAUSTICS, CONCENTRIC, CONCENTRIC_RINGS, DIAMOND_GRID, GRADIENT_CONIC, GRADIENT_LINEAR,
   HEX_GRID, INTERFERENCE, JULIA, MOIRE, PLASMA, ROSE_CURVE, SECTOR, SIN_FIELD,
@@ -385,6 +403,8 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   // Pattern shapes — named single-purpose shapes (write d), like star/heart
   AURORA, FLAME, HELIX,
   VOLUME_CAMERA_3D, KALISET_FIELD_3D, VOLUME_MARCH_3D, NIGHT_SKY, AURORA_CURTAINS,
+  // Volumetric density fields + lit integrator (batch F) — 'volume' recipes
+  VOL_FBM_CLOUDS_3D, VOL_SPHERE_FIELD_3D, VOL_LIGHT_SCATTER_3D,
   // Math / waves
   SIN_FIELD, PLASMA, INTERFERENCE, MOIRE, CAUSTICS,
   // Fractals
@@ -473,6 +493,10 @@ export const CARD_LIBRARY_LIST: CardDef[] = [
   POINT_LIGHT_3D, PBR_GGX_3D, REFLECTION_3D, REFRACTION_3D, SUBSURFACE_3D, CHECKER_MATERIAL_3D, ATMOSPHERE_SKY_3D,
   // texturing masks (3D) — batch E
   TRIPLANAR_3D, MASK_CURVATURE_3D, MASK_AO_3D,
+  // fractals (3D) — batch C
+  MENGER_FOLD_3D, MANDELBULB_3D, APOLLONIAN_FOLD_3D, SIERPINSKI_FOLD_3D,
+  // extra generalizable 3D materials
+  GRID_MATERIAL_3D, ORBIT_TRAP_COLOR_3D,
 
   // ─── MARKERS ───
   // Zero-param utility cards that the UI special-cases (no shader effect).

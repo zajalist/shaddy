@@ -283,7 +283,7 @@ export const TogglePill = ({
 // with the marketing site: mascot mark, starfield, dim links + gold underline,
 // the shared SignInButton. Navigation only — the Import/Share actions were
 // removed.
-export const TopBar = () => {
+export const TopBar = ({ active = 'compose' }: { active?: 'compose' | 'library' | 'learn' | 'gallery' | 'docs' } = {}) => {
   return (
     <div
       style={{
@@ -323,11 +323,11 @@ export const TopBar = () => {
           <img src="/mascot.svg" alt="Shaddy" style={{ height: 30, width: 'auto', display: 'block' }} />
         </a>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <NavLink href="/design" active>Compose</NavLink>
-          <NavLink href="/library">Library</NavLink>
-          <NavLink href="/learn">Learn</NavLink>
-          <NavLink href="/gallery">Gallery</NavLink>
-          <NavLink href="/docs">Docs</NavLink>
+          <NavLink href="/design" active={active === 'compose'}>Compose</NavLink>
+          <NavLink href="/library" active={active === 'library'}>Library</NavLink>
+          <NavLink href="/learn" active={active === 'learn'}>Learn</NavLink>
+          <NavLink href="/gallery" active={active === 'gallery'}>Gallery</NavLink>
+          <NavLink href="/docs" active={active === 'docs'}>Docs</NavLink>
         </nav>
       </div>
 
@@ -455,23 +455,6 @@ const PaletteItem = ({ block }: { block: BlockDef }) => {
     </div>
   );
 };
-
-const PaletteSubgroupHeader = ({ label, count }: { label: string; count: number }) => (
-  <div
-    style={{
-      display: 'flex', alignItems: 'baseline', gap: 6,
-      margin: '6px 8px 4px 8px',
-      padding: '2px 0',
-      font: `600 9.5px ${TYPE.bodyMono}`,
-      color: SHADE.textFaint,
-      letterSpacing: '0.18em', textTransform: 'uppercase',
-    }}
-  >
-    <span>{label}</span>
-    <span style={{ flex: 1, height: 1, background: SHADE.border, opacity: 0.6 }} />
-    <span style={{ opacity: 0.7 }}>{count}</span>
-  </div>
-);
 
 // ─── Nested collapsible tree rows (Outliner-style navigation) ─────────────
 const Caret = ({ open, color }: { open: boolean; color: string }) => (
@@ -706,6 +689,8 @@ const REAL_3D_IDS: readonly string[] = [
   // SDF primitives (batch A)
   'cylinder_3d', 'cone_3d', 'plane_3d', 'ellipsoid_3d',
   'octahedron_3d', 'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
+  // fractals (batch C)
+  'menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d',
   // domain ops + CSG operators (batch B)
   'repeat_3d', 'twist_3d', 'noise_displace_3d', 'smooth_union_3d',
   'subtract_3d', 'intersect_3d', 'union_3d', 'round_3d', 'onion_3d',
@@ -716,10 +701,59 @@ const REAL_3D_IDS: readonly string[] = [
   'point_light_3d', 'pbr_ggx_3d', 'reflection_3d', 'refraction_3d',
   'subsurface_3d', 'checker_material_3d', 'atmosphere_sky_3d',
   // material + layer texturing (mask → paint) + bump
-  'material_color_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
+  'material_color_3d', 'checker_material_3d', 'grid_material_3d', 'orbit_trap_color_3d',
+  'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
   'mask_fresnel_3d', 'paint_3d', 'bump_3d',
   // texturing masks (batch E)
   'triplanar_3d', 'mask_curvature_3d', 'mask_ao_3d',
+];
+
+// Volumetric raymarch cards (mode:'volume') — density fields + integrators.
+// Shown on the 3D tab under their own group; inserting one switches the
+// recipe to the volume pipeline.
+const VOLUME_3D_IDS: readonly string[] = [
+  'volume_camera_3d', 'kaliset_field_3d', 'vol_fbm_clouds_3d', 'vol_sphere_field_3d',
+  'volume_march_3d', 'vol_light_scatter_3d', 'night_sky', 'aurora_curtains',
+];
+
+// 3D palette taxonomy — mirrors the 2D category tree (cards/library/index.ts).
+// Ordered groups of card ids; any real-3D id not listed falls into "Other".
+type ThreeDGroup = { label: string; color: string; ids: readonly string[] };
+const THREED_GROUPS: ThreeDGroup[] = [
+  { label: 'Camera & scene', color: SHADE.gold, ids: ['camera_3d'] },
+  { label: 'Surfaces', color: SHADE.catShape, ids: [
+    'ground_3d', 'plane_3d', 'sea_surface_3d', 'terrain_surface_3d',
+  ] },
+  { label: 'SDF primitives', color: SHADE.catShape, ids: [
+    'sphere_3d', 'box_3d', 'rounded_box_3d', 'torus_3d', 'atom_3d', 'capsule_3d',
+    'cylinder_3d', 'cone_3d', 'ellipsoid_3d', 'octahedron_3d',
+    'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
+  ] },
+  { label: 'CSG operators', color: SHADE.catDistort, ids: [
+    'union_3d', 'subtract_3d', 'intersect_3d', 'smooth_union_3d', 'round_3d', 'onion_3d',
+  ] },
+  { label: 'Domain & deform', color: SHADE.catDistort, ids: [
+    'repeat_3d', 'twist_3d', 'bend_3d', 'elongate_3d', 'displace_3d', 'noise_displace_3d',
+  ] },
+  { label: 'Fractals', color: SHADE.ember, ids: [
+    'menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d',
+  ] },
+  { label: 'Materials', color: SHADE.catColor, ids: [
+    'material_color_3d', 'checker_material_3d', 'grid_material_3d',
+    'pbr_ggx_3d', 'orbit_trap_color_3d',
+  ] },
+  { label: 'Lighting', color: SHADE.catEffect, ids: [
+    'point_light_3d', 'sun_3d', 'fresnel_3d', 'subsurface_3d',
+    'reflection_3d', 'refraction_3d',
+  ] },
+  { label: 'Texturing', color: SHADE.catColor, ids: [
+    'triplanar_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d',
+    'mask_fresnel_3d', 'mask_curvature_3d', 'mask_ao_3d', 'paint_3d', 'bump_3d',
+  ] },
+  { label: 'Atmosphere', color: SHADE.catEffect, ids: [
+    'sky_3d', 'atmosphere_sky_3d', 'fog_3d',
+  ] },
+  { label: 'Volumetric', color: SHADE.ember, ids: VOLUME_3D_IDS },
 ];
 
 // Hybrid cards — existing 2D cards that already produce a 3D-looking result.
@@ -988,10 +1022,27 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
     () => HYBRID_3D_IDS.map((id) => blocksById.get(id)).filter((b): b is BlockDef => b != null),
     [blocksById],
   );
+  // 3D resting view — category groups (mirrors the 2D tree). Any real-3D id
+  // not claimed by a group lands in "Other" so the palette is never lossy.
+  const threeDGrouped = useMemo(() => {
+    const claimed = new Set<string>();
+    const groups = THREED_GROUPS.map((g) => {
+      const blocks = g.ids
+        .map((id) => blocksById.get(id))
+        .filter((b): b is BlockDef => b != null);
+      blocks.forEach((b) => claimed.add(b.id));
+      return { label: g.label, color: g.color, blocks };
+    }).filter((g) => g.blocks.length > 0);
+    const leftover = real3dBlocks.filter((b) => !claimed.has(b.id));
+    if (leftover.length > 0) groups.push({ label: 'Other', color: SHADE.textDim, blocks: leftover });
+    return groups;
+  }, [blocksById, real3dBlocks]);
   const activeBlocks = useMemo(() => {
     if (tab === '2d') return BLOCK_LIB;
-    return [...real3dBlocks, ...hybrid3dBlocks];
-  }, [tab, real3dBlocks, hybrid3dBlocks]);
+    const seen = new Set<string>();
+    const all = [...real3dBlocks, ...threeDGrouped.flatMap((g) => g.blocks), ...hybrid3dBlocks];
+    return all.filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
+  }, [tab, real3dBlocks, threeDGrouped, hybrid3dBlocks]);
 
   // Flat list shown when searching OR a tag chip is active; otherwise null and
   // the hierarchical view (recents/favorites + categories) renders instead.
@@ -1348,38 +1399,50 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
           </div>
         )}
 
-        {/* 3D tab — real raymarched SDF cards on top, the existing 2D
-            "looks 3D" cards still visible below for compatibility. */}
+        {/* 3D tab — categorised tree, mirroring the 2D taxonomy: camera,
+            surfaces, primitives, operators, materials, lighting, texturing,
+            atmosphere, volumetrics. Hybrid 2D-maths cards live at the bottom. */}
         {flatList == null && tab === '3d' && (
-          <div style={{ padding: '4px 4px 0' }}>
-            <div
-              style={{
-                margin: '4px 4px 10px',
-                padding: '2px 0',
-                font: `700 11px ${TYPE.body}`,
-                color: SHADE.text,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              3D raymarching
-            </div>
-            <PaletteSubgroupHeader label="SDF scene cards" count={real3dBlocks.length} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 2 }}>
-              {real3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
-            </div>
-
-            {hybrid3dBlocks.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <PaletteSubgroupHeader
-                  label="Hybrid cards that fake 3D"
-                  count={hybrid3dBlocks.length}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 2 }}>
-                  {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+          <div style={{ paddingTop: 2 }}>
+            {threeDGrouped.map(({ label, color, blocks }) => {
+              const key = `3d::${label}`;
+              const open = !(collapsed[key] ?? false);
+              return (
+                <div key={label}>
+                  <TreeGroupRow
+                    depth={0} open={open} color={color}
+                    label={label} count={blocks.length}
+                    glyph={<span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'block' }} />}
+                    onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: open }))}
+                  />
+                  {open && (
+                    <div style={{ paddingLeft: 18, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {blocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })}
+
+            {hybrid3dBlocks.length > 0 && (() => {
+              const key = '3d::Hybrid';
+              const open = !(collapsed[key] ?? true); // default closed
+              return (
+                <div>
+                  <TreeGroupRow
+                    depth={0} open={open} color={SHADE.textDim}
+                    label="Hybrid (2D maths)" count={hybrid3dBlocks.length}
+                    glyph={<span style={{ width: 10, height: 10, borderRadius: 2, background: SHADE.textDim, display: 'block', opacity: 0.6 }} />}
+                    onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: open }))}
+                  />
+                  {open && (
+                    <div style={{ paddingLeft: 18, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Soft-info panel — quiet, not loud. */}
             <div

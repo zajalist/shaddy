@@ -476,36 +476,6 @@ const ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
-  // "Ask Claude" — minimal AI glyph. A chunky cartoony chat bubble with a
-  // sparkle inside, suggesting "AI thought". Duotone, reads at 14-18px.
-  'ai-spark': ({ c, cream }) => (
-    <>
-      {/* bubble shadow */}
-      <path
-        d="M4.5 5.4 H19.5 A2.6 2.6 0 0 1 22.1 8 V15 A2.6 2.6 0 0 1 19.5 17.6 H11.2 L7.3 21.0 V17.6 H4.5 A2.6 2.6 0 0 1 1.9 15 V8 A2.6 2.6 0 0 1 4.5 5.4 Z"
-        fill={SHADOW}
-      />
-      {/* bubble body */}
-      <path
-        d="M4 5 H19 A2.6 2.6 0 0 1 21.6 7.6 V14.6 A2.6 2.6 0 0 1 19 17.2 H10.7 L6.8 20.6 V17.2 H4 A2.6 2.6 0 0 1 1.4 14.6 V7.6 A2.6 2.6 0 0 1 4 5 Z"
-        fill={c}
-      />
-      {/* highlight slab at the top */}
-      <path d="M4 5 H19 A2.6 2.6 0 0 1 21.6 7.6 V8.6 H1.4 V7.6 A2.6 2.6 0 0 1 4 5 Z" fill={cream} opacity="0.22" />
-      {/* big sparkle — 4-pointed star */}
-      <path
-        d="M11.5 7.4 L12.4 10.4 L15.4 11.1 L12.4 11.8 L11.5 14.8 L10.6 11.8 L7.6 11.1 L10.6 10.4 Z"
-        fill={cream}
-      />
-      {/* tiny sparkle to the upper right for cluster-of-thought */}
-      <path
-        d="M16.6 9 L17 10.4 L18.4 10.8 L17 11.2 L16.6 12.6 L16.2 11.2 L14.8 10.8 L16.2 10.4 Z"
-        fill={cream}
-        opacity="0.7"
-      />
-    </>
-  ),
-
   // Composer icon — one clean, flat puzzle piece (the universal "blocks"
   // glyph). The old two-tilted-pieces-with-shadow-and-sparkle version muddied
   // into a blob below ~20px; a single solid piece with crisp bumps reads from

@@ -455,6 +455,99 @@ export const CARD_ICON_PATHS: Record<string, IconRenderer> = {
     </>
   ),
 
+  // ──────────── Fractals (batch C) ────────────
+
+  // Menger sponge — a 3x3 grid of squares with the centre + cross removed.
+  'card-menger-fold-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2.4" fill={c} />
+      {[[0,0],[2,0],[1,1],[0,2],[2,2]].map(([cx=0,cy=0],i)=>(
+        <rect key={i} x={4+cx*5.7} y={4+cy*5.7} width="5.7" height="5.7" rx="0.6" fill={cream} opacity="0.5" />
+      ))}
+    </>
+  ),
+
+  // Mandelbulb — a lumpy radial bulb cluster.
+  'card-mandelbulb-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="5.5" fill={c} />
+      {[[12,4.5,2.6],[18,9,2.2],[18.5,15.5,2],[12,19.5,2.4],[5.5,15.5,2],[5,9,2.2]].map(([x=0,y=0,r=2],i)=>(
+        <circle key={i} cx={x} cy={y} r={r} fill={c} opacity={0.8} />
+      ))}
+      <circle cx="10.5" cy="10.5" r="1.8" fill={cream} opacity="0.7" />
+    </>
+  ),
+
+  // Apollonian — packed circles of varying size (gasket).
+  'card-apollonian-fold-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9.2" fill={c} opacity="0.35" />
+      {[[12,9,3.4],[8,15,2.6],[16,15,2.6],[12,15.5,1.6],[8.5,8,1.4],[15.5,8,1.4]].map(([x=0,y=0,r=2],i)=>(
+        <circle key={i} cx={x} cy={y} r={r} fill={i===0?cream:c} opacity={i===0?0.85:0.9} />
+      ))}
+    </>
+  ),
+
+  // Sierpinski — the classic subdivided triangle gasket.
+  'card-sierpinski-fold-3d': ({ c, cream }) => (
+    <>
+      <path d="M12 3 L21 19 L3 19 Z" fill={c} />
+      <path d="M12 11 L16.5 19 L7.5 19 Z" fill={cream} opacity="0.55" />
+      <path d="M12 3 L14.2 7 L9.8 7 Z" fill={cream} opacity="0.3" />
+    </>
+  ),
+
+  // ── Volumetrics (3D) — batch F ──
+  // fbm clouds — soft overlapping cloud puffs.
+  'card-vol-fbm-clouds-3d': ({ c, cream }) => (
+    <>
+      <circle cx="8" cy="13.5" r="4.2" fill={c} />
+      <circle cx="13" cy="11.5" r="5" fill={c} />
+      <circle cx="17" cy="14" r="3.6" fill={c} />
+      <rect x="6" y="14" width="13" height="4.4" rx="2.2" fill={c} />
+      <circle cx="11" cy="11" r="2.4" fill={cream} opacity="0.55" />
+    </>
+  ),
+  // sphere field — a lattice of soft blobs with bright cores.
+  'card-vol-sphere-field-3d': ({ c, cream }) => (
+    <>
+      {[[7,7],[15,6.5],[18,13],[6,15],[12,12],[16.5,17.5],[9.5,18.5]].map(([x=0,y=0],i)=>(
+        <circle key={i} cx={x} cy={y} r={2.4+(i%3)*0.6} fill={c} opacity={0.55+(i%3)*0.15} />
+      ))}
+      <circle cx="12" cy="12" r="1.4" fill={cream} />
+    </>
+  ),
+  // light scatter — a sun lighting a cloud from one side (lit volume).
+  'card-vol-light-scatter-3d': ({ c, cream }) => (
+    <>
+      <circle cx="18.4" cy="5.6" r="2.4" fill="#FCB427" />
+      {[20,70,110].map((a,i)=>{const r=(a*Math.PI)/180;return <line key={i} x1={18.4+Math.cos(r)*3.4} y1={5.6+Math.sin(r)*3.4} x2={18.4+Math.cos(r)*4.8} y2={5.6+Math.sin(r)*4.8} stroke="#FCB427" strokeWidth="1.3" strokeLinecap="round" />;})}
+      <circle cx="9" cy="14" r="4.4" fill={c} />
+      <circle cx="14" cy="12.5" r="5" fill={c} />
+      <rect x="6" y="14.5" width="13" height="4.2" rx="2.1" fill={c} />
+      <path d="M14 8 A5 5 0 0 1 18.4 13 L14 12.5 Z" fill={cream} opacity="0.6" />
+    </>
+  ),
+
+  // ── Extra generalizable 3D materials ──
+  // grid material — thin grid lines on a panel.
+  'card-grid-material-3d': ({ c, cream }) => (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2.6" fill={c} />
+      {[8,13,18].map((v,i)=>(<line key={`v${i}`} x1={v} y1="3" x2={v} y2="21" stroke={cream} strokeWidth="1.2" opacity="0.7" />))}
+      {[8,13,18].map((h,i)=>(<line key={`h${i}`} x1="3" y1={h} x2="21" y2={h} stroke={cream} strokeWidth="1.2" opacity="0.7" />))}
+    </>
+  ),
+  // orbit-trap colour — concentric bands fanning from a core (palette rings).
+  'card-orbit-trap-color-3d': ({ c, cream }) => (
+    <>
+      <circle cx="12" cy="12" r="9" fill={c} opacity="0.3" />
+      <circle cx="12" cy="12" r="6.4" fill={c} opacity="0.5" />
+      <circle cx="12" cy="12" r="4" fill={cream} opacity="0.7" />
+      <circle cx="12" cy="12" r="1.8" fill={c} />
+    </>
+  ),
+
   // ─────────────────── PRIMITIVES added for the templates ───────────────────
 
   // Relief light — a sun lighting a ridge (slope-shading primitive).

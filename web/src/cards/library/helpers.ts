@@ -404,6 +404,42 @@ vec3 auBg(vec3 rd){
   return float(bit);
 }`,
 
+  // ─── 3D value noise (for volumetrics) ───────────────────────────────────
+  // Cheap 3D hash → value noise → fBm. Used by the volumetric density-field
+  // blocks (clouds). Trilinear interpolation with a smootherstep fade so the
+  // marched density has no grid creases.
+  hash13: `float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}`,
+  noise3: `float noise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+  float n000 = hash13(i + vec3(0.0, 0.0, 0.0));
+  float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+  float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+  float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+  float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+  float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+  float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+  float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+  return mix(mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y),
+             mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y), u.z);
+}`,
+  // 5-octave 3D fBm in [0,1]. The workhorse density for volumetric clouds.
+  fbm3: `float fbm3(vec3 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    v += a * noise3(p);
+    p *= 2.02;
+    a *= 0.5;
+  }
+  return v;
+}`,
+
   // ─── 3D raymarch helpers ────────────────────────────────────────────────
   // Hard min — straight CSG union of two SDFs.
   sdMin: `float sdMin(float a, float b) { return min(a, b); }`,
@@ -506,6 +542,74 @@ vec3 auBg(vec3 rd){
   return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.y));
 }`,
 
+  // ── 3D fractal SDFs ──
+  // Menger sponge (iq) — recursive box subtraction. p in unit-ish space.
+  sdfMenger3: `float sdfMenger3(vec3 p) {
+  float d = sdfBox3(p, vec3(1.0));
+  float s = 1.0;
+  for (int m = 0; m < 4; m++) {
+    vec3 a = mod(p * s, 2.0) - 1.0;
+    s *= 3.0;
+    vec3 r = abs(1.0 - 3.0 * abs(a));
+    float da = max(r.x, r.y);
+    float db = max(r.y, r.z);
+    float dc = max(r.z, r.x);
+    float c = (min(da, min(db, dc)) - 1.0) / s;
+    d = max(d, c);
+  }
+  return d;
+}`,
+
+  // Mandelbulb (distance estimator). power shapes the bulbs (8 = classic).
+  sdfMandelbulb3: `float sdfMandelbulb3(vec3 p, float power) {
+  vec3 z = p;
+  float dr = 1.0;
+  float r = 0.0;
+  for (int i = 0; i < 8; i++) {
+    r = length(z);
+    if (r > 2.0) break;
+    float theta = acos(clamp(z.z / max(r, 1e-6), -1.0, 1.0));
+    float phi = atan(z.y, z.x);
+    dr = pow(r, power - 1.0) * power * dr + 1.0;
+    float zr = pow(r, power);
+    theta *= power;
+    phi *= power;
+    z = zr * vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)) + p;
+  }
+  return 0.5 * log(max(r, 1e-6)) * r / max(dr, 1e-6);
+}`,
+
+  // Apollonian (iq) — nested-sphere IFS fractal. scale ~1.1..1.4.
+  sdfApollonian3: `float sdfApollonian3(vec3 p, float scale) {
+  float k = 1.0;
+  for (int i = 0; i < 7; i++) {
+    p = -1.0 + 2.0 * fract(0.5 * p + 0.5);
+    float r2 = dot(p, p);
+    float kk = scale / max(r2, 1e-4);
+    p *= kk;
+    k *= kk;
+  }
+  return 0.25 * abs(p.y) / k;
+}`,
+
+  // Sierpinski tetrahedron (KIFS fold). scale = 2 is the canonical gasket.
+  sdfSierpinski3: `float sdfSierpinski3(vec3 p, float scale) {
+  vec3 a1 = vec3(1.0, 1.0, 1.0);
+  vec3 a2 = vec3(-1.0, -1.0, 1.0);
+  vec3 a3 = vec3(1.0, -1.0, -1.0);
+  vec3 a4 = vec3(-1.0, 1.0, -1.0);
+  vec3 c;
+  float dist, d;
+  for (int i = 0; i < 8; i++) {
+    c = a1; dist = length(p - a1);
+    d = length(p - a2); if (d < dist) { c = a2; dist = d; }
+    d = length(p - a3); if (d < dist) { c = a3; dist = d; }
+    d = length(p - a4); if (d < dist) { c = a4; dist = d; }
+    p = scale * p - c * (scale - 1.0);
+  }
+  return length(p) * pow(scale, -8.0);
+}`,
+
   // Numerical-gradient surface normal — assumes sdScene exists at emit time.
   // `ne` is the sample epsilon: pass a DISTANCE-SCALED value (bigger far away)
   // so noisy height-fields don't alias into firefly sparkles at the horizon.
@@ -549,6 +653,8 @@ vec3 auBg(vec3 rd){
 export type HelperPhase = 'pre' | 'post';
 const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = {
   noise2: { deps: ['hash21'] },
+  noise3: { deps: ['hash13'] },
+  fbm3: { deps: ['noise3', 'hash13'] },
   fbm2: { deps: ['noise2', 'hash21'] },
   ridged2: { deps: ['noise2', 'hash21'] },
   worley2: { deps: ['hash22'] },
@@ -557,6 +663,7 @@ const META: Record<string, { deps?: readonly string[]; phase?: HelperPhase }> = 
   seaHeight: { deps: ['oc_octave', 'oc_noise', 'oc_hash'] },
   terrainFbm: { deps: ['noise2', 'hash21'] },
   sdCombine: { deps: ['sdSmoothMin'] },
+  sdfMenger3: { deps: ['sdfBox3'] },
   sceneNormal3: { phase: 'post' },
   softShadow3: { phase: 'post' },
 };

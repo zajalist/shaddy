@@ -51,7 +51,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: 'Special',
     items: [
-      { name: 'ai-spark', label: 'ask claude', color: SHADE.catEffect },
       { name: 'composer-blocks', label: 'composer', color: SHADE.gold },
     ],
   },

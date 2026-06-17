@@ -60,7 +60,7 @@ const page: DocPage = {
           { key: <Combo><Key>⌥</Key> <Key>↑</Key> / <Key>⌥</Key> <Key>↓</Key></Combo>, value: 'Reorder selected card up / down.' },
           { key: <Combo><Key>⌘</Key> <Key>K</Key></Combo>, value: 'Open the add-card picker.' },
           { key: <Combo><Key>/</Key></Combo>, value: 'Focus the picker search field.' },
-          { key: <Combo><Key>Esc</Key></Combo>, value: 'Close any open popover (picker, AI panel, share toast).' },
+          { key: <Combo><Key>Esc</Key></Combo>, value: 'Close any open popover (picker, share toast).' },
         ]}
       />
 

@@ -80,7 +80,7 @@ const page: DocPage = {
         <LI>
           <Strong><Code>onCompile(cb)</Code></Strong> — subscribe to
           compile events. Returns an unsubscribe function. Used by the
-          GLSL error gutter and the AI panel.
+          GLSL error gutter.
         </LI>
         <LI>
           <Strong><Code>getFps()</Code></Strong> — frame rate over the last

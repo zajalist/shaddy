@@ -35,11 +35,18 @@ const lazyOrSoon = (loader: () => Promise<{ default: React.ComponentType }>) =>
 // default; Docs may still be in-flight. All four go through lazyOrSoon so
 // any missing/broken page falls back to ComingSoon rather than crashing.
 const Library = lazyOrSoon(() => import('@/design/pages/Library'));
-const Learn   = lazyOrSoon(() => import('@/design/pages/Learn').then(m => ({ default: (m as { default?: React.ComponentType; Learn?: React.ComponentType }).default ?? (m as { Learn: React.ComponentType }).Learn })));
+// Learn is closed-access for this release — the /learn route renders an
+// on-brand "in progress" placeholder. The full course lives in pages/Learn.tsx
+// for when it reopens.
+const Learn   = lazyOrSoon(() => import('@/design/pages/LearnComingSoon'));
 const Gallery = lazyOrSoon(() => import('@/design/pages/Gallery'));
 const GalleryDetail = lazyOrSoon(() => import('@/design/pages/GalleryDetail'));
 const AuthorProfile = lazyOrSoon(() => import('@/design/pages/AuthorProfile'));
 const Docs    = lazyOrSoon(() => import('@/design/pages/Docs'));
+const Privacy = lazyOrSoon(() => import('@/design/pages/Privacy'));
+const Cookies = lazyOrSoon(() => import('@/design/pages/Cookies'));
+const Terms   = lazyOrSoon(() => import('@/design/pages/Terms'));
+const Contact = lazyOrSoon(() => import('@/design/pages/Contact'));
 
 const ComingSoon = () => (
   <div style={{
@@ -82,6 +89,10 @@ createRoot(rootEl).render(
           <Route path="/s/:id" element={<GalleryDetail />} />
           <Route path="/u/:handle" element={<AuthorProfile />} />
           <Route path="/docs" element={<Docs />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/mascot" element={<MascotDemo />} />
           <Route path="/icons" element={<IconGallery />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

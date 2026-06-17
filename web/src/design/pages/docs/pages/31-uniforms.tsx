@@ -72,8 +72,8 @@ const page: DocPage = {
         The integration layer converts each to the renderer's tagged{' '}
         <Code>Uniform</Code> based on the param's kind. The vast majority
         are <Code>float</Code> or <Code>vec3</Code>; the larger ones exist
-        for matrices and 4-channel data the user-extensible layer may
-        eventually push in.
+        for matrices and 4-channel data that the user-extensible layer can
+        push in.
       </P>
       <CodeBlock language="ts" source={PACK} />
 

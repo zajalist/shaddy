@@ -227,12 +227,6 @@ export const ICON_V2: Record<string, Renderer> = {
       <path d="M12 4.2 L14.3 6.6 L9.7 6.6 Z" fill={cream} opacity="0.5" />
     </>
   ),
-  'ai-spark': ({ c, cream }) => (
-    <>
-      <path d="M4 6 C4 4.6 5.1 3.5 6.5 3.5 L17.5 3.5 C18.9 3.5 20 4.6 20 6 L20 13.5 C20 14.9 18.9 16 17.5 16 L10.6 16 L6.4 19.6 L6.4 16 C5.1 16 4 14.9 4 13.5 Z" fill={c} />
-      <path d="M12 5.6 C12.45 8.4 13.6 9.55 16.4 10 C13.6 10.45 12.45 11.6 12 14.4 C11.55 11.6 10.4 10.45 7.6 10 C10.4 9.55 11.55 8.4 12 5.6 Z" fill={cream} />
-    </>
-  ),
   'composer-blocks': ({ c, cream }) => (
     <>
       <rect x="3" y="6" width="9.4" height="12" rx="2.6" fill={c} />

@@ -14,9 +14,7 @@ import {
   cloneRecipeWithFreshIds,
   compile,
   getPassCards,
-  setPassCards,
   lookupCardDef,
-  reparse,
   STARTER_RECIPES,
   resolveExportSize,
   useCardsStore,
@@ -54,7 +52,6 @@ import {
 } from './free-canvas-layout';
 import { PropertiesPanel, DK, type RightTab } from './Properties';
 import { RecipeCanvas, type RecipeCanvasHandle } from './RecipeCanvas';
-import { TranslateStatus, translateGlslToRecipe, type TranslateState } from './AskClaude';
 
 const DEFAULT_STARTER_ID = 'sunset';
 
@@ -1160,20 +1157,16 @@ const BlockCanvas = ({ children, label }: { children?: ReactNode; label: string 
 //
 // READ mode: shows the recipe-compiled GLSL, highlighted, copyable.
 // EDIT mode: a textarea is overlaid on the highlight. The user types
-// freely, then presses Compile / Translate / Discard. The drawer owns:
+// freely, then presses Compile / Discard. The drawer owns:
 //   - editSource             — the user's working draft of the GLSL.
 //   - editStatus             — READY | EDITED | COMPILED | COMPILE FAILED.
-//   - translateStatus        — idle | loading | ok | error.
 // `onCompile(userSource)` runs the user's source through a transient
 // renderer (allocated on first compile) and returns errors / ok.
-// `onTranslate(currentEditedGlsl)` ships the source + last-good recipe
-// to Claude and applies the returned Recipe.
 
 type CompileStatus =
   | { kind: 'ready' }
   | { kind: 'edited' }
   | { kind: 'compiled' }
-  | { kind: 'translated' }
   | { kind: 'failed'; errors: GLSLError[] };
 
 const CodeDrawer = ({
@@ -1181,8 +1174,7 @@ const CodeDrawer = ({
   editMode, onEditModeChange,
   editSource, onEditSourceChange,
   compileStatus,
-  translateStatus,
-  onCompile, onTranslate, onDiscard,
+  onCompile, onDiscard,
   errorContext,
 }: {
   expanded: boolean;
@@ -1196,16 +1188,13 @@ const CodeDrawer = ({
   editSource: string;
   onEditSourceChange: (next: string) => void;
   compileStatus: CompileStatus;
-  translateStatus: TranslateState;
   onCompile: () => void;
-  onTranslate: () => void;
   onDiscard: () => void;
   /** Spans + name resolver so compile errors can name the offending card. */
   errorContext?: ErrorContext;
 }) => {
   const displaySource = editMode ? editSource : glsl;
   const lineCount = displaySource.split('\n').length;
-  const canTranslate = compileStatus.kind === 'compiled' && translateStatus.kind !== 'loading';
   const isDirty = compileStatus.kind === 'edited';
 
   return (
@@ -1379,30 +1368,14 @@ const CodeDrawer = ({
             Compile
           </button>
           <button
-            onClick={onTranslate}
-            data-testid="code-drawer-translate"
-            disabled={!canTranslate}
-            style={{
-              ...drawerActionStyle,
-              background: canTranslate ? SHADE.gold : 'transparent',
-              color: canTranslate ? '#1a1208' : SHADE.cream,
-              borderColor: canTranslate ? SHADE.goldDeep : 'rgba(254,231,199,0.20)',
-              opacity: canTranslate ? 1 : 0.55,
-              cursor: canTranslate ? 'pointer' : 'not-allowed',
-            }}
-          >
-            Translate to cards
-          </button>
-          <button
             onClick={onDiscard}
             data-testid="code-drawer-discard"
             style={drawerActionStyle}
           >
             Discard edits
           </button>
-          <TranslateStatus state={translateStatus} />
           <span style={{ marginLeft: 'auto', font: `500 10px ${TYPE.bodyMono}`, color: 'rgba(254,231,199,0.45)' }}>
-            edit → compile → translate · failures keep the last-good recipe
+            edit → compile · failures keep the last-good recipe
           </span>
         </div>
       )}
@@ -1411,7 +1384,7 @@ const CodeDrawer = ({
 };
 
 // CompileChip — the small inline status pill that rides along in the
-// drawer header. Goes READY → EDITED → COMPILED → TRANSLATED (or
+// drawer header. Goes READY → EDITED → COMPILED (or
 // COMPILE FAILED: N). Colour-coded to make state legible at a glance.
 type ErrorContext = { spans: Span[]; nameOf: (cardId: string) => string };
 const CompileChip = ({ status, errorContext }: { status: CompileStatus; errorContext?: ErrorContext }) => {
@@ -1432,12 +1405,6 @@ const CompileChip = ({ status, errorContext }: { status: CompileStatus; errorCon
     border = 'rgba(111,127,26,0.55)';
     color = '#c7d96b';
     testid = 'compile-chip-compiled';
-  } else if (status.kind === 'translated') {
-    label = 'TRANSLATED';
-    bg = 'rgba(111,127,26,0.20)';
-    border = 'rgba(111,127,26,0.55)';
-    color = '#c7d96b';
-    testid = 'compile-chip-translated';
   } else if (status.kind === 'failed') {
     label = `COMPILE FAILED: ${status.errors.length} error${status.errors.length === 1 ? '' : 's'}`;
     bg = 'rgba(181, 54, 94, 0.18)';
@@ -2217,13 +2184,12 @@ export const DesktopApp = () => {
 
   // ─── Editable code drawer state ────────────────────────────────────
   // The drawer owns three pieces of state: editMode (toggle), editSource
-  // (the user's draft GLSL), and compileStatus/translateStatus (chip).
+  // (the user's draft GLSL), and compileStatus (chip).
   // editSource only diverges from the recipe-derived GLSL while editMode is
   // on; toggling off resets it.
   const [editMode, setEditMode] = useState(false);
   const [editSource, setEditSource] = useState<string>('');
   const [compileStatus, setCompileStatus] = useState<CompileStatus>({ kind: 'ready' });
-  const [translateStatus, setTranslateStatus] = useState<TranslateState>({ kind: 'idle' });
 
   // Selection helpers shared across keyboard, mouse, and bulk-action code paths.
   const replaceSelection = useCallback((cardId: string | null) => {
@@ -2336,15 +2302,6 @@ export const DesktopApp = () => {
     [compiled.glsl],
   );
 
-  // Mirror the live recipe + active-pass recipe so the translate/reparse flow
-  // operates on (and writes back to) the pass the user is actually editing.
-  const recipeRef = useRef(recipe);
-  useEffect(() => { recipeRef.current = recipe; }, [recipe]);
-  const activeRecipeRef = useRef(activeRecipe);
-  useEffect(() => { activeRecipeRef.current = activeRecipe; }, [activeRecipe]);
-  const activePassIdRef = useRef(activePassId);
-  useEffect(() => { activePassIdRef.current = activePassId; }, [activePassId]);
-
   // ─── Compile validator (transient offscreen renderer) ─────────────
   // The on-screen RecipeCanvas owns its own renderer and we can't touch
   // it (boundary rule), so we lazily allocate a parallel "validator"
@@ -2374,7 +2331,7 @@ export const DesktopApp = () => {
       return r;
     } catch {
       // No WebGL context (test/CI/headless) — caller treats null as
-      // "can't compile; assume ok" and lets translate proceed.
+      // "can't compile; assume ok".
       return null;
     }
   }, []);
@@ -2394,7 +2351,6 @@ export const DesktopApp = () => {
     if (editMode) {
       setEditSource(wrappedGlsl);
       setCompileStatus({ kind: 'ready' });
-      setTranslateStatus({ kind: 'idle' });
     } else {
       setEditSource('');
     }
@@ -2410,7 +2366,6 @@ export const DesktopApp = () => {
   const handleEditSourceChange = useCallback((next: string) => {
     setEditSource(next);
     setCompileStatus((cur) => (cur.kind === 'failed' ? cur : { kind: 'edited' }));
-    setTranslateStatus({ kind: 'idle' });
   }, []);
 
   // Compile button → strip the preamble (renderer adds it itself), run
@@ -2420,7 +2375,7 @@ export const DesktopApp = () => {
     const r = ensureValidator();
     if (!r) {
       // No WebGL — best-effort: treat as compiled so the user can still
-      // try Translate. Better UX than blocking the flow in a non-GL env.
+      // Better UX than blocking the flow in a non-GL env.
       setCompileStatus({ kind: 'compiled' });
       return;
     }
@@ -2432,56 +2387,9 @@ export const DesktopApp = () => {
     }
   }, [editSource, ensureValidator]);
 
-  // Translate button → ship the edited GLSL + last-good recipe to Claude.
-  // On success we apply the returned Recipe through cloneRecipeWithFreshIds
-  // so any "<auto>" placeholder ids get replaced, and the chip flips to
-  // TRANSLATED. On failure we keep the existing recipe untouched.
-  const handleTranslate = useCallback(async () => {
-    if (compileStatus.kind !== 'compiled') return;
-
-    // 1) DETERMINISTIC reverse first — the compiler's marker-based reparse.
-    //    When the marker structure is intact (the common case: the user tweaked
-    //    a block body or its alpha/blend), this recovers the Recipe exactly and
-    //    instantly, with no network round-trip. Only genuine STRUCTURAL changes
-    //    (added / removed / reordered blocks → markers no longer match) fall
-    //    through to the AI path below.
-    const passId = activePassIdRef.current;
-    try {
-      // Reparse against the ACTIVE pass's recipe, then write the recovered
-      // cards back into that pass — so editing Buffer A's code updates Buffer A,
-      // never the Image pass.
-      const prevActive = activeRecipeRef.current;
-      const compiledActive = compile(prevActive);
-      const res = reparse(prevActive, compiledActive, editSource);
-      if (!res.syntaxPending) {
-        setRecipe(setPassCards(recipeRef.current, passId, res.recipe.cards));
-        setTranslateStatus({ kind: 'ok' });
-        setCompileStatus({ kind: 'translated' });
-        setEditMode(false);
-        return;
-      }
-    } catch { /* fall through to the AI path */ }
-
-    // 2) STRUCTURAL change — hand the edited GLSL + last-good (active pass)
-    //    Recipe to Claude, then write its cards back into the active pass.
-    setTranslateStatus({ kind: 'loading' });
-    try {
-      const newRecipe = await translateGlslToRecipe(editSource, activeRecipeRef.current);
-      const fresh = cloneRecipeWithFreshIds(newRecipe);
-      setRecipe(setPassCards(recipeRef.current, passId, fresh.cards));
-      setTranslateStatus({ kind: 'ok' });
-      setCompileStatus({ kind: 'translated' });
-      setEditMode(false);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      setTranslateStatus({ kind: 'error', message });
-    }
-  }, [compileStatus, editSource, setRecipe]);
-
   const handleDiscardEdits = useCallback(() => {
     setEditSource(wrappedGlsl);
     setCompileStatus({ kind: 'ready' });
-    setTranslateStatus({ kind: 'idle' });
   }, [wrappedGlsl]);
 
   // Prune selectedIds for cards that no longer exist (after removal / undo /
@@ -2909,9 +2817,7 @@ export const DesktopApp = () => {
               editSource={editSource}
               onEditSourceChange={handleEditSourceChange}
               compileStatus={compileStatus}
-              translateStatus={translateStatus}
               onCompile={handleCompile}
-              onTranslate={() => { void handleTranslate(); }}
               onDiscard={handleDiscardEdits}
               errorContext={{
                 spans: compiled.spans,

@@ -99,6 +99,7 @@ export function SignInButton({ className }: SignInButtonProps): React.ReactEleme
           border: '1px solid #d8cfbf',
           borderRadius: 999,
           background: '#fff',
+          color: '#1f1c14',
           cursor: 'pointer',
           fontSize: '0.875rem',
         }}
@@ -130,7 +131,7 @@ export function SignInButton({ className }: SignInButtonProps): React.ReactEleme
             {initials(name)}
           </span>
         )}
-        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1f1c14', fontWeight: 600 }}>
           {name}
         </span>
       </button>

@@ -69,11 +69,10 @@ const page: DocPage = {
 
       <H2>What you actually need to know</H2>
       <P>
-        Two ideas carry the whole system. One:{' '}
-        <Term>recipes project to GLSL</Term>. Two:{' '}
-        <Term>GLSL edits reparse back into recipes</Term>. Hold those two
-        and everything else &mdash; uniforms, blending, helpers, the 3D
-        camera &mdash; reads as a detail that serves one of them.
+        One idea carries the whole system:{' '}
+        <Term>recipes project to GLSL</Term>. Hold that and everything
+        else &mdash; uniforms, blending, helpers, the 3D camera &mdash;
+        reads as a detail that serves it.
       </P>
     </>
   ),
