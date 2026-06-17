@@ -59,7 +59,9 @@ def decode_token(token: str, settings: Settings) -> dict:
         algorithms = ["HS256"]
     else:
         key = _signing_key(token, settings)
-        algorithms = ["RS256"]
+        # Supabase asymmetric signing keys may be RS256 or ES256 (newer
+        # projects default to ES256 / EC P-256 in their JWKS). Accept both.
+        algorithms = ["RS256", "ES256"]
     return jwt.decode(
         token,
         key,
