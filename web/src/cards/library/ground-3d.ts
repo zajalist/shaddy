@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const GROUND_3D: CardDef = {
   type: 'ground_3d',
   category: 'shape',
-  friendlyName: 'Ground (3D)',
+  friendlyName: 'Ground',
   description: 'Infinite horizontal plane at the given height.',
   icon: '🟫',
   mode: '3d',

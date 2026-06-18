@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const REFRACTION_3D: CardDef = {
   type: 'refraction_3d',
   category: 'effect',
-  friendlyName: 'Refraction (3D)',
+  friendlyName: 'Refraction',
   description: 'Glass — refract the sky through the surface + fresnel sheen.',
   icon: '🔮',
   mode: '3d',

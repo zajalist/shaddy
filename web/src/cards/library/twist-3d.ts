@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const TWIST_3D: CardDef = {
   type: 'twist_3d',
   category: 'distortion',
-  friendlyName: 'Twist (3D)',
+  friendlyName: 'Twist',
   description: 'Spiral subsequent 3D shapes around the Y axis by height.',
   icon: '🌀',
   mode: '3d',

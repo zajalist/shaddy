@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const REPEAT_3D: CardDef = {
   type: 'repeat_3d',
   category: 'distortion',
-  friendlyName: 'Repeat (3D)',
+  friendlyName: 'Repeat',
   description: 'Tile the xz plane so subsequent 3D shapes repeat infinitely.',
   icon: '🔁',
   mode: '3d',

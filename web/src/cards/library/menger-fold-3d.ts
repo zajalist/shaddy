@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const MENGER_FOLD_3D: CardDef = {
   type: 'menger_fold_3d',
   category: 'shape',
-  friendlyName: 'Menger Sponge (3D)',
+  friendlyName: 'Menger Sponge',
   description: 'Recursive box-subtraction fractal contribution to the scene.',
   icon: '🧱',
   mode: '3d',

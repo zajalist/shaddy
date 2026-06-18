@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const TRI_PRISM_3D: CardDef = {
   type: 'tri_prism_3d',
   category: 'shape',
-  friendlyName: 'Tri Prism (3D)',
+  friendlyName: 'Tri Prism',
   description: 'Triangular prism contribution to the raymarched scene.',
   icon: '🔻',
   mode: '3d',

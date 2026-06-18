@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const ROUND_3D: CardDef = {
   type: 'round_3d',
   category: 'distortion',
-  friendlyName: 'Round (3D)',
+  friendlyName: 'Round',
   description: 'Round off the edges of the accumulated scene.',
   icon: '🔘',
   mode: '3d',

@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const REFLECTION_3D: CardDef = {
   type: 'reflection_3d',
   category: 'effect',
-  friendlyName: 'Reflection (3D)',
+  friendlyName: 'Reflection',
   description: 'Mirror reflection of the scene + sky, by grazing fresnel.',
   icon: '🪞',
   mode: '3d',

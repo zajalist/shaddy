@@ -116,7 +116,7 @@ docker compose run --rm api python -m scripts.seed_curated
 ## Notes / deviations from the spec
 
 - **Schema bootstrap via `create_all` on startup** instead of Alembic migrations.
-  Simpler for the hackathon and needs no migration step; the models in
+  Simpler to operate and needs no migration step; the models in
   `app/models.py` are the single source of truth. Adding Alembic later is a clean
   follow-up (the schema is already index-complete, incl. the GIN/partial indexes).
 - **`NullPool`** on the async engine (fresh connection per use) — fine at homelab

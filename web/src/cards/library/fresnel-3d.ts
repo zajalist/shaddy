@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const FRESNEL_3D: CardDef = {
   type: 'fresnel_3d',
   category: 'effect',
-  friendlyName: 'Fresnel reflect (3D)',
+  friendlyName: 'Fresnel reflect',
   description: 'Reflect the sky at grazing angles — water/glass sheen.',
   icon: '💧',
   mode: '3d',

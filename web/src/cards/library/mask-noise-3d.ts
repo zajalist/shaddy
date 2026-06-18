@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const MASK_NOISE_3D: CardDef = {
   type: 'mask_noise_3d',
   category: 'color',
-  friendlyName: 'Mask: detail (3D)',
+  friendlyName: 'Mask: detail',
   description: 'Layer mask from triplanar fbm — drives the next Paint block.',
   icon: '🎨',
   mode: '3d',

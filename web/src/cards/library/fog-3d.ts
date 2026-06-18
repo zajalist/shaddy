@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const FOG_3D: CardDef = {
   type: 'fog_3d',
   category: 'effect',
-  friendlyName: 'Fog (3D)',
+  friendlyName: 'Fog',
   description: 'Distance haze — fades far surfaces into the sky.',
   icon: '🌫',
   mode: '3d',

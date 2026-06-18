@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const PBR_GGX_3D: CardDef = {
   type: 'pbr_ggx_3d',
   category: 'effect',
-  friendlyName: 'PBR GGX (3D)',
+  friendlyName: 'PBR GGX',
   description: 'Metallic/roughness directional light (Cook-Torrance GGX).',
   icon: '🔩',
   mode: '3d',

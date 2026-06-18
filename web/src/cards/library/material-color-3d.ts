@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const MATERIAL_COLOR_3D: CardDef = {
   type: 'material_color_3d',
   category: 'color',
-  friendlyName: 'Material Color (3D)',
+  friendlyName: 'Material Color',
   description: 'Set the surface colour used by the 3D lighting pass.',
   icon: '🎨',
   mode: '3d',

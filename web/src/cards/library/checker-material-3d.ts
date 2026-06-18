@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const CHECKER_MATERIAL_3D: CardDef = {
   type: 'checker_material_3d',
   category: 'color',
-  friendlyName: 'Checker Material (3D)',
+  friendlyName: 'Checker Material',
   description: 'Procedural 3D checkerboard surface colour.',
   icon: '🏁',
   mode: '3d',

@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const CAMERA_3D: CardDef = {
   type: 'camera_3d',
   category: 'distortion',
-  friendlyName: 'Camera (3D)',
+  friendlyName: 'Camera',
   description: 'Set eye position, look-at target and focal length.',
   icon: '🎥',
   mode: '3d',

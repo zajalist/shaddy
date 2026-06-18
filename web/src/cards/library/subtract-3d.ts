@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const SUBTRACT_3D: CardDef = {
   type: 'subtract_3d',
   category: 'distortion',
-  friendlyName: 'Subtract (3D)',
+  friendlyName: 'Subtract',
   description: 'Carve following shapes out of the scene (CSG difference).',
   icon: '➖',
   mode: '3d',

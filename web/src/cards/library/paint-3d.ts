@@ -8,7 +8,7 @@ import type { CardDef } from '../types';
 export const PAINT_3D: CardDef = {
   type: 'paint_3d',
   category: 'color',
-  friendlyName: 'Paint (3D)',
+  friendlyName: 'Paint',
   description: 'Blend a colour into the surface through the current mask.',
   icon: '🖌',
   mode: '3d',

@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const PYRAMID_3D: CardDef = {
   type: 'pyramid_3d',
   category: 'shape',
-  friendlyName: 'Pyramid (3D)',
+  friendlyName: 'Pyramid',
   description: 'Square pyramid contribution to the raymarched scene.',
   icon: '🔼',
   mode: '3d',

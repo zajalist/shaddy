@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const NOISE_DISPLACE_3D: CardDef = {
   type: 'noise_displace_3d',
   category: 'distortion',
-  friendlyName: 'Noise displace (3D)',
+  friendlyName: 'Noise displace',
   description: 'Bump subsequent 3D surfaces with fbm noise.',
   icon: '🌊',
   mode: '3d',

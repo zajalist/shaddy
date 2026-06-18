@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const TORUS_3D: CardDef = {
   type: 'torus_3d',
   category: 'shape',
-  friendlyName: 'Torus (3D)',
+  friendlyName: 'Torus',
   description: 'Ring torus contribution to the raymarched scene.',
   icon: '🍩',
   mode: '3d',

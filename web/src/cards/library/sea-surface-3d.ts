@@ -8,7 +8,7 @@ import type { CardDef } from '../types';
 export const SEA_SURFACE_3D: CardDef = {
   type: 'sea_surface_3d',
   category: 'shape',
-  friendlyName: 'Ocean surface (3D)',
+  friendlyName: 'Ocean surface',
   description: 'Animated Seascape wave height-field — a raymarched sea.',
   icon: '🌊',
   mode: '3d',

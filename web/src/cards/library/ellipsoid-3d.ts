@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const ELLIPSOID_3D: CardDef = {
   type: 'ellipsoid_3d',
   category: 'shape',
-  friendlyName: 'Ellipsoid (3D)',
+  friendlyName: 'Ellipsoid',
   description: 'Ellipsoid (per-axis radii) contribution to the raymarched scene.',
   icon: '🥚',
   mode: '3d',

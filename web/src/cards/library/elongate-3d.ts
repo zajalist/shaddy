@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const ELONGATE_3D: CardDef = {
   type: 'elongate_3d',
   category: 'distortion',
-  friendlyName: 'Elongate (3D)',
+  friendlyName: 'Elongate',
   description: 'Stretch following shapes along the axes.',
   icon: '↔️',
   mode: '3d',

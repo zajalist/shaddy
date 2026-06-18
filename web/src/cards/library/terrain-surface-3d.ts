@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const TERRAIN_SURFACE_3D: CardDef = {
   type: 'terrain_surface_3d',
   category: 'shape',
-  friendlyName: 'Terrain surface (3D)',
+  friendlyName: 'Terrain surface',
   description: 'fbm height-field landscape — a raymarched terrain.',
   icon: '⛰',
   mode: '3d',

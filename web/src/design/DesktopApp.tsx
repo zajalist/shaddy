@@ -1297,7 +1297,7 @@ const CodeDrawer = ({
             </svg>
           </button>
           <button
-            title="Open fullscreen"
+            title="Open fullscreen (Shift+F)"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: 28, height: 26, borderRadius: 3,
@@ -1557,7 +1557,7 @@ const PreviewPanel = ({
         </button>
 
         <button
-          title="Open fullscreen"
+          title="Open fullscreen (Shift+F)"
           onClick={onFullscreen}
           style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${DK.border}`, background: DK.well, color: DK.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 120ms ease' }}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = DK.borderHi)}
@@ -1627,22 +1627,36 @@ const RightColumn = ({
   );
 };
 
-const FullscreenChromeBtn = ({ children, title, onClick }: { children: ReactNode; title: string; onClick?: () => void }) => (
-  <button
-    title={title}
-    onClick={onClick}
-    style={{
-      width: 32, height: 32, borderRadius: 3,
-      background: 'rgba(0,0,0,0.45)',
-      border: '1px solid rgba(255,255,255,0.15)',
-      color: '#fff', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backdropFilter: 'blur(6px)',
-    }}
-  >
-    {children}
-  </button>
-);
+// Warm-glass chrome button — matches the editor's dark instrument chrome
+// (SHADE.cream on a translucent charcoal), with a gold edge on hover. Reads
+// cleanly over any artwork. `active` gives it the gold "engaged" look.
+const FullscreenChromeBtn = ({
+  children, title, onClick, active = false, width = 32,
+}: { children: ReactNode; title: string; onClick?: () => void; active?: boolean; width?: number }) => {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width, height: 32, borderRadius: 6, padding: 0,
+        background: active ? SHADE.gold : hover ? 'rgba(40,38,34,0.82)' : 'rgba(20,19,17,0.62)',
+        border: `1px solid ${active ? SHADE.goldDeep : hover ? 'rgba(254,231,199,0.4)' : 'rgba(254,231,199,0.16)'}`,
+        color: active ? '#1a1208' : SHADE.cream,
+        cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        backdropFilter: 'blur(8px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
+        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+        font: `700 11px ${TYPE.bodyMono}`, letterSpacing: '0.06em',
+      }}
+    >
+      {children}
+    </button>
+  );
+};
 
 // Fullscreen preview with real screenshot / record / pan-zoom wiring.
 // Pan-zoom is applied as a CSS transform on the wrapper around RecipeCanvas
@@ -1662,7 +1676,12 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
   const chunksRef = useRef<Blob[]>([]);
   const recStartRef = useRef(0);
   const recTickRef = useRef<number | null>(null);
-  const [, setFps] = useState(0);
+  const [fps, setFps] = useState(0);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showSafe, setShowSafe] = useState(false);
+  // Live export resolution label (reflects aspect + export long-edge setting).
+  const { recipe: liveRecipe, canvas: liveCanvas } = useCardsStore.getState();
+  const exportSize = resolveExportSize(liveRecipe.canvasAspect, liveCanvas.exportLongEdge);
   // Pan state: middle-button OR space+drag.
   const spaceDownRef = useRef(false);
   const panningRef = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
@@ -1931,6 +1950,26 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
           </div>
         </div>
 
+        {/* Rule-of-thirds grid overlay (composition aid). */}
+        {showGrid && (
+          <div aria-hidden style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            backgroundImage:
+              'linear-gradient(to right, rgba(254,231,199,0.28) 1px, transparent 1px),'
+              + 'linear-gradient(to bottom, rgba(254,231,199,0.28) 1px, transparent 1px)',
+            backgroundPosition: '33.333% 0, 0 33.333%',
+            backgroundSize: '33.333% 33.333%',
+            mixBlendMode: 'difference',
+          }} />
+        )}
+        {/* Title-safe / action-safe guides (90% / 80% insets). */}
+        {showSafe && (
+          <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'difference' }}>
+            <div style={{ position: 'absolute', inset: '5%', border: '1px solid rgba(254,231,199,0.4)' }} />
+            <div style={{ position: 'absolute', inset: '10%', border: '1px dashed rgba(254,231,199,0.3)' }} />
+          </div>
+        )}
+
         {/* Screenshot flash overlay */}
         {flash && (
           <div
@@ -1948,24 +1987,25 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
           @keyframes shaddyRecPulse { 0% { box-shadow: 0 0 0 0 rgba(229, 60, 60, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(229, 60, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 60, 60, 0); } }
         `}</style>
 
-        <div style={{ position: 'absolute', left: 14, top: 14, display: 'flex', gap: 6, flexWrap: 'wrap', pointerEvents: 'none' }}>
-          <TogglePill active>1920 × 1080</TogglePill>
-          <TogglePill active>60 fps</TogglePill>
-          <TogglePill>safe area</TogglePill>
-          <TogglePill>grid</TogglePill>
+        <div style={{ position: 'absolute', left: 14, top: 14, display: 'flex', gap: 6, flexWrap: 'wrap', pointerEvents: 'auto' }}>
+          <TogglePill active>{exportSize.width} × {exportSize.height}</TogglePill>
+          <TogglePill active>{fps > 0 ? `${fps} fps` : '— fps'}</TogglePill>
+          <TogglePill active={showSafe} onClick={() => setShowSafe((v) => !v)}>safe area</TogglePill>
+          <TogglePill active={showGrid} onClick={() => setShowGrid((v) => !v)}>grid</TogglePill>
         </div>
         <div style={{ position: 'absolute', right: 14, top: 14, display: 'flex', gap: 6, alignItems: 'center' }}>
           <div
             title={`${transform.scale.toFixed(2)}x  ·  R to reset`}
             style={{
-              padding: '0 10px', height: 28, display: 'flex', alignItems: 'center',
-              borderRadius: 3,
-              background: 'rgba(0,0,0,0.45)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff',
-              font: `600 11px ${TYPE.bodyMono}`,
-              letterSpacing: '0.08em',
-              backdropFilter: 'blur(6px)',
+              padding: '0 11px', height: 32, display: 'flex', alignItems: 'center',
+              borderRadius: 6,
+              background: 'rgba(20,19,17,0.62)',
+              border: '1px solid rgba(254,231,199,0.16)',
+              color: SHADE.cream,
+              font: `700 11px ${TYPE.bodyMono}`,
+              letterSpacing: '0.06em',
+              backdropFilter: 'blur(8px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(8px) saturate(140%)',
             }}
           >
             {transform.scale.toFixed(2)}x
@@ -1985,12 +2025,12 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
             title={recording ? `Stop recording (${recLabel})` : 'Record WebM (60fps)'}
             onClick={handleToggleRecord}
             style={{
-              width: recording ? 78 : 32, height: 32, borderRadius: 3,
-              background: recording ? '#e53c3c' : 'rgba(0,0,0,0.45)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff', cursor: 'pointer',
+              width: recording ? 78 : 32, height: 32, borderRadius: 6,
+              background: recording ? '#e53c3c' : 'rgba(20,19,17,0.62)',
+              border: `1px solid ${recording ? '#e53c3c' : 'rgba(254,231,199,0.16)'}`,
+              color: recording ? '#fff' : SHADE.cream, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              backdropFilter: 'blur(6px)',
+              backdropFilter: 'blur(8px) saturate(140%)',
               transition: 'width 160ms ease, background 160ms ease',
               animation: recording ? 'shaddyRecPulse 1.4s ease-out infinite' : undefined,
               font: `700 11px ${TYPE.bodyMono}`,
@@ -2022,22 +2062,29 @@ const PreviewFullscreen = ({ onClose, title }: { onClose: () => void; title: str
               suggested a paused state that never exists. */}
           <div style={{ flex: 1 }}>
             <div style={{ font: `700 14px ${TYPE.body}`, color: '#fff' }}>{title}</div>
-            <div style={{ font: `500 11px ${TYPE.bodyMono}`, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
-              120 bpm · 60 fps · scroll to zoom · middle-drag or space-drag to pan · R reset
+            <div style={{ font: `500 11px ${TYPE.bodyMono}`, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+              {fps > 0 ? `${fps} fps · ` : ''}scroll to zoom · middle / space-drag to pan · R reset · ⇧F or Esc to exit
             </div>
           </div>
           <button
+            onClick={handleToggleRecord}
+            title={recording ? 'Stop recording and save the video' : 'Record the canvas to a video file'}
             style={{
-              background: 'rgba(255,255,255,0.08)', color: '#fff',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 3, padding: '9px 14px',
-              font: `600 11px ${TYPE.body}`,
+              background: recording ? '#e53c3c' : `linear-gradient(180deg, ${SHADE.gold} 0%, ${SHADE.goldDeep} 100%)`,
+              color: recording ? '#fff' : '#1a1208',
+              border: `1px solid ${recording ? '#e53c3c' : SHADE.goldDeep}`,
+              borderRadius: 6, padding: '9px 16px',
+              font: `700 11px ${TYPE.body}`,
               letterSpacing: '0.10em', textTransform: 'uppercase',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
               pointerEvents: 'auto',
+              boxShadow: recording ? undefined : '0 1px 0 rgba(255,255,255,0.18) inset',
             }}
           >
-            <Icon name="share" size={12} color="#fff" /> Export MP4
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              {recording ? <rect x="6" y="6" width="12" height="12" rx="1.5" /> : <circle cx="12" cy="12" r="7" />}
+            </svg>
+            {recording ? `Stop · ${recLabel}` : 'Record video'}
           </button>
         </div>
       </div>
@@ -2538,8 +2585,15 @@ export const DesktopApp = () => {
         return;
       }
 
+      // Shift+F — toggle the fullscreen preview (plain F is preview-lock).
+      if (e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setFullscreen((v) => !v);
+        return;
+      }
+
       // F — lock / unlock the preview to the selected block (Gaea-style pin).
-      if (e.key === 'f' || e.key === 'F') {
+      if (!e.shiftKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         const sel = selectedIds.size === 1 ? [...selectedIds][0]! : null;
         setPreviewLockId((cur) => (cur && (cur === sel || !sel) ? null : sel));

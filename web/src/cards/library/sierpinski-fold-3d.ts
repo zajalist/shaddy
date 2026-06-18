@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const SIERPINSKI_FOLD_3D: CardDef = {
   type: 'sierpinski_fold_3d',
   category: 'shape',
-  friendlyName: 'Sierpinski (3D)',
+  friendlyName: 'Sierpinski',
   description: 'Folded Sierpinski tetrahedron fractal contribution to the scene.',
   icon: '🔺',
   mode: '3d',

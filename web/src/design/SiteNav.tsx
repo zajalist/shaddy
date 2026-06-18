@@ -10,6 +10,7 @@ import { SHADE, TYPE } from './tokens';
 import { Starfield } from './Starfield';
 import { SignInButton } from '@/auth';
 import { useIsMobile } from './useIsMobile';
+import { FeedbackButton } from './FeedbackWidget';
 
 /** Fade + hide-on-scroll-down state, driven by window scroll. */
 export const useNavScroll = () => {
@@ -17,11 +18,19 @@ export const useNavScroll = () => {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     let lastY = 0;
-    const onScroll = () => {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
       const y = window.scrollY;
       setHidden(y > lastY && y > 100);
       setScrolled(y > 80);
       lastY = y;
+    };
+    // Coalesce bursts of scroll events into one read+update per frame.
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -101,6 +110,7 @@ export const SiteNav = ({ inPage = false, solid = false }: { inPage?: boolean; s
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10, position: 'relative', zIndex: 1 }}>
         {!isMobile && <SignInButton />}
+        {!isMobile && <FeedbackButton />}
         <a
           href="/design"
           aria-label="Open composer"
@@ -174,6 +184,7 @@ export const SiteNav = ({ inPage = false, solid = false }: { inPage?: boolean; s
           ))}
           <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
             <SignInButton />
+            <FeedbackButton compact />
           </div>
         </div>
       )}
@@ -185,8 +196,17 @@ export const SiteNav = ({ inPage = false, solid = false }: { inPage?: boolean; s
 export const ScrollToTop = ({ showAfter = 600 }: { showAfter?: number }) => {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > showAfter);
-    onScroll();
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      setVisible(window.scrollY > showAfter);
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, [showAfter]);

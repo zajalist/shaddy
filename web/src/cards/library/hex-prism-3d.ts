@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const HEX_PRISM_3D: CardDef = {
   type: 'hex_prism_3d',
   category: 'shape',
-  friendlyName: 'Hex Prism (3D)',
+  friendlyName: 'Hex Prism',
   description: 'Hexagonal prism contribution to the raymarched scene.',
   icon: '⬡',
   mode: '3d',

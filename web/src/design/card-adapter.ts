@@ -29,7 +29,9 @@ export function cardDefToBlockDef(def: CardDef): BlockDef {
   return {
     id: def.type,
     cat: categoryToBlock(def.category),
-    name: def.friendlyName.toUpperCase(),
+    // Drop a trailing "(3D)" — the 3D blocks only ever appear inside the 3D
+    // palette/search, so the suffix is redundant noise on the label.
+    name: def.friendlyName.replace(/\s*\(3d\)\s*$/i, '').toUpperCase(),
     // Custom SVG icons live in design/card-icons.tsx under the `card-<kebab>`
     // namespace; icons.tsx merges them into the renderer registry. Card defs
     // keep their emoji `def.icon` for the cards/ side of the world.

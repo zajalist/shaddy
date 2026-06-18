@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const PLANE_3D: CardDef = {
   type: 'plane_3d',
   category: 'shape',
-  friendlyName: 'Plane (3D)',
+  friendlyName: 'Plane',
   description: 'Infinite plane (oriented half-space) contribution to the scene.',
   icon: '🟦',
   mode: '3d',

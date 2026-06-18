@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const OCTAHEDRON_3D: CardDef = {
   type: 'octahedron_3d',
   category: 'shape',
-  friendlyName: 'Octahedron (3D)',
+  friendlyName: 'Octahedron',
   description: 'Octahedron contribution to the raymarched scene.',
   icon: '🔶',
   mode: '3d',

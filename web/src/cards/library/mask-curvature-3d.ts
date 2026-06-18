@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const MASK_CURVATURE_3D: CardDef = {
   type: 'mask_curvature_3d',
   category: 'color',
-  friendlyName: 'Mask: curvature (3D)',
+  friendlyName: 'Mask: curvature',
   description: 'Layer mask from edges vs creases — drives the next Paint block.',
   icon: '🪨',
   mode: '3d',

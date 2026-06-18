@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const POINT_LIGHT_3D: CardDef = {
   type: 'point_light_3d',
   category: 'effect',
-  friendlyName: 'Point Light (3D)',
+  friendlyName: 'Point Light',
   description: 'Positioned light — diffuse + distance falloff + soft shadow.',
   icon: '💡',
   mode: '3d',

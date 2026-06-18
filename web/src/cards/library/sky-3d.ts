@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const SKY_3D: CardDef = {
   type: 'sky_3d',
   category: 'effect',
-  friendlyName: 'Sky (3D)',
+  friendlyName: 'Sky',
   description: 'Gradient sky background + sky ambient light + reflections.',
   icon: '🌤',
   mode: '3d',

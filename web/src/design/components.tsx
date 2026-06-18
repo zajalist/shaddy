@@ -8,6 +8,7 @@ import type { BlockDef } from './tokens';
 import { Icon } from './icons';
 import { Starfield } from './Starfield';
 import { SignInButton } from '@/auth';
+import { FeedbackButton } from './FeedbackWidget';
 import { tagsFor } from './block-tags';
 import { getRecents, getFavorites, pushRecent, isFavorite, toggleFavorite, usePaletteVersion } from './palette-prefs';
 import { getMacros, useMacroVersion, deleteMacro, renameMacro, saveMacro } from './macro-prefs';
@@ -254,11 +255,13 @@ const MacroDeleteConfirm = ({
 
 // ─── Text-only difference-blend toggle pill ───────────────────────────────
 export const TogglePill = ({
-  children, active = true, accent,
-}: { children: ReactNode; active?: boolean; accent?: string }) => {
+  children, active = true, accent, onClick,
+}: { children: ReactNode; active?: boolean; accent?: string; onClick?: () => void }) => {
   const c = accent ?? '#fff';
   return (
     <span
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
         padding: '4px 10px',
@@ -268,7 +271,7 @@ export const TogglePill = ({
         mixBlendMode: 'difference',
         font: `500 10.5px ${TYPE.bodyMono}`,
         letterSpacing: '0.04em',
-        opacity: active ? 1 : 0.45,
+        opacity: active ? 1 : 0.5,
         whiteSpace: 'nowrap',
         cursor: 'pointer',
         userSelect: 'none',
@@ -331,8 +334,9 @@ export const TopBar = ({ active = 'compose' }: { active?: 'compose' | 'library' 
         </nav>
       </div>
 
-      {/* right: Sign in */}
+      {/* right: feedback + Sign in */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
+        <FeedbackButton />
         <SignInButton />
       </div>
 

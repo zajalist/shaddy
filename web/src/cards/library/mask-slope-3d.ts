@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const MASK_SLOPE_3D: CardDef = {
   type: 'mask_slope_3d',
   category: 'color',
-  friendlyName: 'Mask: slope (3D)',
+  friendlyName: 'Mask: slope',
   description: 'Layer mask from steepness — drives the next Paint block.',
   icon: '⛰',
   mode: '3d',

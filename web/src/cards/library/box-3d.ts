@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const BOX_3D: CardDef = {
   type: 'box_3d',
   category: 'shape',
-  friendlyName: 'Box (3D)',
+  friendlyName: 'Box',
   description: 'Axis-aligned 3D box contribution to the raymarched scene.',
   icon: '📦',
   mode: '3d',

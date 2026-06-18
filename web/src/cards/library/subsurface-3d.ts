@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const SUBSURFACE_3D: CardDef = {
   type: 'subsurface_3d',
   category: 'effect',
-  friendlyName: 'Subsurface (3D)',
+  friendlyName: 'Subsurface',
   description: 'Translucent back-glow (wax / skin / jade look).',
   icon: '🫧',
   mode: '3d',

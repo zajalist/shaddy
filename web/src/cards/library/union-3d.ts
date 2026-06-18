@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const UNION_3D: CardDef = {
   type: 'union_3d',
   category: 'distortion',
-  friendlyName: 'Union (3D)',
+  friendlyName: 'Union',
   description: 'Add following shapes to the scene again (resets Subtract/Intersect).',
   icon: '➕',
   mode: '3d',

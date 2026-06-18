@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const BUMP_3D: CardDef = {
   type: 'bump_3d',
   category: 'effect',
-  friendlyName: 'Bump (3D)',
+  friendlyName: 'Bump',
   description: 'Perturb the normal with fbm detail — micro-relief for lighting.',
   icon: '🌑',
   mode: '3d',

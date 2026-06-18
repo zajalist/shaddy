@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const BEND_3D: CardDef = {
   type: 'bend_3d',
   category: 'distortion',
-  friendlyName: 'Bend (3D)',
+  friendlyName: 'Bend',
   description: 'Bend following shapes around the x-axis.',
   icon: '🪝',
   mode: '3d',

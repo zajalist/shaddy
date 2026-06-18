@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const CYLINDER_3D: CardDef = {
   type: 'cylinder_3d',
   category: 'shape',
-  friendlyName: 'Cylinder (3D)',
+  friendlyName: 'Cylinder',
   description: 'Capped vertical cylinder contribution to the raymarched scene.',
   icon: '🛢️',
   mode: '3d',

@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const ONION_3D: CardDef = {
   type: 'onion_3d',
   category: 'distortion',
-  friendlyName: 'Onion Shell (3D)',
+  friendlyName: 'Onion Shell',
   description: 'Hollow the accumulated scene into a thin shell.',
   icon: '🧅',
   mode: '3d',

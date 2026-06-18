@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const CONE_3D: CardDef = {
   type: 'cone_3d',
   category: 'shape',
-  friendlyName: 'Cone (3D)',
+  friendlyName: 'Cone',
   description: 'Capped cone contribution to the raymarched scene.',
   icon: '🔺',
   mode: '3d',

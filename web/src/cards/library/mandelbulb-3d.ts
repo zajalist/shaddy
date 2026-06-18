@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const MANDELBULB_3D: CardDef = {
   type: 'mandelbulb_3d',
   category: 'shape',
-  friendlyName: 'Mandelbulb (3D)',
+  friendlyName: 'Mandelbulb',
   description: 'Distance-estimated 3D Mandelbrot bulb contribution to the scene.',
   icon: '🌀',
   mode: '3d',

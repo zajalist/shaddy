@@ -9,7 +9,7 @@ import type { CardDef } from '../types';
 export const ORBIT_TRAP_COLOR_3D: CardDef = {
   type: 'orbit_trap_color_3d',
   category: 'color',
-  friendlyName: 'Orbit-trap colour (3D)',
+  friendlyName: 'Orbit-trap colour',
   description: 'Folded orbit-trap surface colour via a cosine palette.',
   icon: '🌈',
   mode: '3d',

@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const SMOOTH_UNION_3D: CardDef = {
   type: 'smooth_union_3d',
   category: 'distortion',
-  friendlyName: 'Smooth Union (3D)',
+  friendlyName: 'Smooth Union',
   description: 'Smoothly blend the next 3D shapes together (iq smooth-min).',
   icon: '🫧',
   mode: '3d',

@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const INTERSECT_3D: CardDef = {
   type: 'intersect_3d',
   category: 'distortion',
-  friendlyName: 'Intersect (3D)',
+  friendlyName: 'Intersect',
   description: 'Keep only where following shapes overlap the scene (CSG intersection).',
   icon: '⨯',
   mode: '3d',

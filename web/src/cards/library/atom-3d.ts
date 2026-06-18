@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const ATOM_3D: CardDef = {
   type: 'atom_3d',
   category: 'shape',
-  friendlyName: 'Atom (3D)',
+  friendlyName: 'Atom',
   description: 'An orbiting sphere — stack + smooth-union for a molecule.',
   icon: '⚛',
   mode: '3d',

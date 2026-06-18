@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const SUN_3D: CardDef = {
   type: 'sun_3d',
   category: 'effect',
-  friendlyName: 'Sun (3D)',
+  friendlyName: 'Sun',
   description: 'Directional light — diffuse + soft shadow + specular.',
   icon: '☀',
   mode: '3d',

@@ -372,13 +372,27 @@ const Hero = () => (
       <div
         style={{
           marginTop: 38,
+          display: 'flex', alignItems: 'center', gap: 14,
           font: `500 10.5px "Hanken Grotesk", system-ui, sans-serif`,
           letterSpacing: '0.5em', textTransform: 'uppercase',
-          color: 'rgba(232,226,212,0.4)', paddingLeft: '0.5em',
+          color: 'rgba(232,226,212,0.4)',
           animation: 'shadeFadeIn 2.8s ease-out 1.2s both',
         }}
       >
-        Work in progress
+        <span style={{ paddingLeft: '0.5em' }}>Work in progress</span>
+        <span
+          aria-hidden
+          style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(232,226,212,0.28)' }}
+        />
+        <span
+          style={{
+            paddingLeft: '0.4em',
+            letterSpacing: '0.32em',
+            color: SHADE.gold,
+          }}
+        >
+          Version 1.0
+        </span>
       </div>
     </div>
   </section>

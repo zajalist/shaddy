@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const ATMOSPHERE_SKY_3D: CardDef = {
   type: 'atmosphere_sky_3d',
   category: 'effect',
-  friendlyName: 'Atmosphere Sky (3D)',
+  friendlyName: 'Atmosphere Sky',
   description: 'Sky gradient + sun glow along a direction + sky ambient.',
   icon: '🌅',
   mode: '3d',

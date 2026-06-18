@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const TRIPLANAR_3D: CardDef = {
   type: 'triplanar_3d',
   category: 'color',
-  friendlyName: 'Triplanar (3D)',
+  friendlyName: 'Triplanar',
   description: 'Stretch-free fbm detail mask projected across 3 axes.',
   icon: '🧊',
   mode: '3d',

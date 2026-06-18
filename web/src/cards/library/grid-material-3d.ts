@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const GRID_MATERIAL_3D: CardDef = {
   type: 'grid_material_3d',
   category: 'color',
-  friendlyName: 'Grid material (3D)',
+  friendlyName: 'Grid material',
   description: 'Antialiased triplanar grid lines painted onto the surface colour.',
   icon: '🔳',
   mode: '3d',

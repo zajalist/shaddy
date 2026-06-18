@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const MASK_HEIGHT_3D: CardDef = {
   type: 'mask_height_3d',
   category: 'color',
-  friendlyName: 'Mask: height (3D)',
+  friendlyName: 'Mask: height',
   description: 'Layer mask from altitude — drives the next Paint block.',
   icon: '🗻',
   mode: '3d',

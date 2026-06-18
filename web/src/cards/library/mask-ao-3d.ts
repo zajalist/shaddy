@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const MASK_AO_3D: CardDef = {
   type: 'mask_ao_3d',
   category: 'color',
-  friendlyName: 'Mask: AO (3D)',
+  friendlyName: 'Mask: AO',
   description: 'Layer mask from ambient occlusion — drives the next Paint block.',
   icon: '🌑',
   mode: '3d',

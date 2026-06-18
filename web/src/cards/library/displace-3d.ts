@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const DISPLACE_3D: CardDef = {
   type: 'displace_3d',
   category: 'distortion',
-  friendlyName: 'Displace (3D)',
+  friendlyName: 'Displace',
   description: 'Ripple the accumulated surface with a sine lattice.',
   icon: '〰️',
   mode: '3d',

@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const MASK_FRESNEL_3D: CardDef = {
   type: 'mask_fresnel_3d',
   category: 'color',
-  friendlyName: 'Mask: fresnel (3D)',
+  friendlyName: 'Mask: fresnel',
   description: 'Layer mask from grazing angle (edges) — drives the next Paint.',
   icon: '💧',
   mode: '3d',

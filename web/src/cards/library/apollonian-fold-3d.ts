@@ -5,7 +5,7 @@ import type { CardDef } from '../types';
 export const APOLLONIAN_FOLD_3D: CardDef = {
   type: 'apollonian_fold_3d',
   category: 'shape',
-  friendlyName: 'Apollonian (3D)',
+  friendlyName: 'Apollonian',
   description: 'Nested-sphere IFS fractal contribution to the scene.',
   icon: '🫧',
   mode: '3d',

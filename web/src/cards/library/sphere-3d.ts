@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const SPHERE_3D: CardDef = {
   type: 'sphere_3d',
   category: 'shape',
-  friendlyName: 'Sphere (3D)',
+  friendlyName: 'Sphere',
   description: 'Solid sphere contribution to the raymarched scene.',
   icon: '🟣',
   mode: '3d',
