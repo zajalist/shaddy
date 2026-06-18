@@ -4,6 +4,7 @@
 // also states plainly that Shaddy is brand new and actively maintained.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SHADE, TYPE } from './tokens';
 import { CONTACT_EMAIL } from './pages/legal/LegalLayout';
 
@@ -46,7 +47,9 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
 
   const anim = prefersReducedMotion() ? 'none' : 'fbPop 0.22s cubic-bezier(0.16,1,0.3,1) both';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -138,7 +141,8 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
           </>
         )}
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

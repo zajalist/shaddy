@@ -122,5 +122,12 @@ export function createRenderer(): RendererAPI {
     getFps(): number {
       return 60;
     },
+
+    dispose(): void {
+      if (surface?.parentElement) surface.parentElement.removeChild(surface);
+      surface = null;
+      host = null;
+      subscribers.clear();
+    },
   };
 }

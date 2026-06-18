@@ -17,6 +17,7 @@ const rendererSpies = {
   setRenderScale: vi.fn(),
   onCompile: vi.fn(() => () => undefined),
   getFps: vi.fn(() => 37),
+  dispose: vi.fn(),
 };
 
 vi.mock('@/renderer', async () => {

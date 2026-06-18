@@ -14,6 +14,7 @@ import {
   cloneRecipeWithFreshIds,
   compile,
   getPassCards,
+  setPassCards,
   lookupCardDef,
   STARTER_RECIPES,
   resolveExportSize,
@@ -2153,7 +2154,18 @@ const EmptyHero = () => {
                 type="button"
                 title={p.description}
                 onClick={() => {
-                  useCardsStore.getState().setRecipe(cloneRecipeWithFreshIds(p.recipe));
+                  const s = useCardsStore.getState();
+                  const fresh = cloneRecipeWithFreshIds(p.recipe);
+                  if (s.activePassId === 'image') {
+                    // On the image pass an empty canvas means a fresh start —
+                    // load the preset as the whole starter recipe.
+                    s.setRecipe(fresh);
+                  } else {
+                    // On a buffer pass, only fill THAT pass — replacing the
+                    // whole recipe here would wipe the image pass (and other
+                    // buffers) and snap back to Image without saving.
+                    s.setRecipe(setPassCards(s.recipe, s.activePassId, fresh.cards));
+                  }
                 }}
                 style={{
                   padding: '6px 12px', borderRadius: 999,

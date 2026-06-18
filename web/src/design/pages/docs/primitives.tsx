@@ -14,7 +14,6 @@ export type SectionId =
   | 'helpers'
   | 'blending'
   | 'camera'
-  | 'oauth'
   | 'shortcuts';
 
 export type SectionMeta = {
@@ -34,8 +33,7 @@ export const SECTIONS: readonly SectionMeta[] = [
   { id: 'helpers',   number: 5,  title: 'GLSL helpers',         kicker: 'reusable functions' },
   { id: 'blending',  number: 6,  title: 'Blending + alpha',     kicker: 'composition' },
   { id: 'camera',    number: 7,  title: '3D camera',            kicker: 'raymarch viewport' },
-  { id: 'oauth',     number: 8,  title: 'OAuth integration',    kicker: 'sign-in via OIDC' },
-  { id: 'shortcuts', number: 9,  title: 'Keyboard shortcuts',   kicker: 'editor bindings' },
+  { id: 'shortcuts', number: 8,  title: 'Keyboard shortcuts',   kicker: 'editor bindings' },
 ] as const;
 
 // ── H2 anchor ──────────────────────────────────────────────────────────

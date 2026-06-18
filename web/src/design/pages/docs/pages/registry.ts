@@ -34,7 +34,6 @@ import CardsBuildYourOwn from './42-building-your-own-card';
 import CardsHelpers from './43-helpers';
 
 import IntegrationShortcuts from './50-keyboard-shortcuts';
-import IntegrationOauth from './52-oauth';
 import IntegrationShare from './53-share-export';
 
 import TutorialSunset from './60-tutorial-sunset-gradient';
@@ -91,7 +90,7 @@ export const GROUPS: DocGroup[] = [
   {
     id: 'integrations',
     label: 'Integrations',
-    pages: [IntegrationShortcuts, IntegrationOauth, IntegrationShare],
+    pages: [IntegrationShortcuts, IntegrationShare],
   },
   {
     id: 'tutorials',

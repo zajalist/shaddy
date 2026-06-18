@@ -304,6 +304,12 @@ export const RecipeCanvas = forwardRef<RecipeCanvasHandle, RecipeCanvasProps>(({
       host.removeEventListener('pointerleave', onLeave);
       if (ro) ro.disconnect();
       if (mql) mql.removeEventListener?.('change', onDprChange);
+      // Dispose the renderer: stops its internal rAF loop and releases the
+      // WebGL2 context. Without this each mount (e.g. opening the fullscreen
+      // preview) leaks a live context + render loop; after enough of them the
+      // browser's context cap is hit and a heavy 3D shader fails to compile,
+      // leaving the built-in debug "rainbow" shader on screen.
+      r.dispose();
       host.replaceChildren();
       rendererRef.current = null;
       applyDprSizeRef.current = null;

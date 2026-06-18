@@ -651,6 +651,12 @@ class Renderer implements RendererAPI {
   // upload for an FBO reference.
   private bufferSamplerUnits = new Map<string, number>();
 
+  /** Public teardown — cancels the loop, frees GL objects, and releases the
+   *  WebGL2 context. Safe to call multiple times. */
+  dispose(): void {
+    this.teardown();
+  }
+
   private teardown(): void {
     if (this.rafHandle !== null) {
       cancelAnimationFrame(this.rafHandle);
@@ -668,6 +674,14 @@ class Renderer implements RendererAPI {
     this.teardownMultiPass();
     if (this.gl && this.program) this.gl.deleteProgram(this.program);
     if (this.gl && this.vao) this.gl.deleteVertexArray(this.vao);
+    // Proactively release the WebGL2 context. Browsers cap the number of live
+    // contexts; without this, a dropped renderer keeps its context (and GPU
+    // memory) until GC eventually runs — long enough that opening several
+    // heavy 3D previews in a row exhausts the cap and new shaders fail to
+    // compile (the canvas then shows the built-in debug shader instead).
+    if (this.gl) {
+      this.gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
     }

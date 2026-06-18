@@ -3,5 +3,6 @@
 // can import the type without a circular dependency.
 
 export type TemplateVariant =
+  | 'showcase'
   | 'terrain' | 'nebula' | 'dna' | 'ocean' | 'lava' | 'molecule'
   | 'galaxy' | 'aurora' | 'fire' | 'crystals' | 'wormhole' | 'raymarch';

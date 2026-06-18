@@ -489,6 +489,14 @@ function compile3d(recipe: Recipe): CompiledShader {
     spans.push(emit.flush(card.id, lines));
   });
 
+  // End-of-cards boundary. MUST sit immediately after the last card's body so
+  // the reverse parser bounds the final card's span here — everything below
+  // (the scene return, g_sky, and main()) is engine scaffolding, not card
+  // GLSL. Without this the last card's body slice would swallow all of main()
+  // and never self-match → the card would wrongly degrade to a wildcard.
+  lines.push(END_MARKER);
+  lines.push('');
+
   lines.push('  return d;');
   lines.push('}');
   lines.push('');
@@ -556,8 +564,6 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('    col = mix(col, g_sky(rd), smoothstep(55.0, 88.0, t));');
   lines.push('    d = t;');
   lines.push('  }');
-  lines.push('');
-  lines.push(END_MARKER);
   lines.push('');
   lines.push('  col = mix(col, vec3(0.0), vec3(notEqual(col, col)));'); // kill NaN fireflies
   lines.push('  fragColor = vec4(col, 1.0);');

@@ -90,6 +90,12 @@ export interface RendererAPI {
 
   /** Frame-per-second over the last second. UX shows it on debug. */
   getFps(): number;
+
+  /** Permanently tear down the renderer: cancel the render loop, delete GL
+   *  resources, and release the WebGL2 context. Call this when unmounting so
+   *  contexts don't leak — browsers cap the number of live WebGL contexts, and
+   *  a leaked context keeps its rAF loop (and a heavy 3D shader) running. */
+  dispose(): void;
 }
 
 // Lens stack — Tier 2, additive contract.

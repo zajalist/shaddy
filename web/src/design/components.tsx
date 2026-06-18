@@ -325,6 +325,16 @@ export const TopBar = ({ active = 'compose' }: { active?: 'compose' | 'library' 
         >
           <img src="/mascot.svg" alt="Shaddy" style={{ height: 30, width: 'auto', display: 'block' }} />
         </a>
+        <span
+          title="Shaddy is brand new and actively maintained"
+          style={{
+            font: `600 9.5px ${TYPE.body}`, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: SHADE.gold, border: `1px solid ${SHADE.goldDeep}`, borderRadius: 4,
+            padding: '2px 6px', marginRight: 2, whiteSpace: 'nowrap',
+          }}
+        >
+          v1.0 · maintained
+        </span>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <NavLink href="/design" active={active === 'compose'}>Compose</NavLink>
           <NavLink href="/library" active={active === 'library'}>Library</NavLink>

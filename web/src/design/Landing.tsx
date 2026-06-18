@@ -902,6 +902,7 @@ const CodePanel = () => {
 
 // ─── Templates preview grid (12 starter templates teaser) ───────────────
 const TEMPLATES: Template[] = [
+  { name: 'Showcase',  hint: 'morph · orbit · 21 blocks', variant: 'showcase' },
   { name: 'Terrain',   hint: 'fbm · erosion',     variant: 'terrain' },
   { name: 'Nebula',    hint: 'noise · stars',     variant: 'nebula' },
   { name: 'DNA',       hint: 'sin · helix',       variant: 'dna' },

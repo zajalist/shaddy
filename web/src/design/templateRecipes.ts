@@ -191,6 +191,46 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('vignette', { inner: 0.35, outer: 1.2, strength: 0.85 }),
   ], [wormZoom]);
 
+  // ── showcase: the big one. A morphing, twisted SDF sculpture — torus +
+  //    spheres fused with an animated smooth-union, ringed by orbiting atoms —
+  //    painted by slope/noise/height masks, lit by an ORBITING sun, wrapped in
+  //    sky + fog, all seen through a slowly ORBITING, bobbing camera. Pure
+  //    blocks: camera → domain twist → smooth-union → primitives → material →
+  //    mask/paint texturing → bump → sky → sun → fresnel → fog. ~21 blocks,
+  //    6 animation chains driving the camera, the morph, the twist and the sun.
+  const scCamX = chain('sc_camx', 'orbit x', [aTime(0.16), aOsc(1, 0), aRemap(-4.6, 4.6)]);
+  const scCamZ = chain('sc_camz', 'orbit z', [aTime(0.16), aOsc(1, 1.5708), aRemap(-4.6, 4.6)]);
+  const scCamY = chain('sc_camy', 'bob', [aTime(0.1), aOsc(1, 0), aRemap(0.8, 2.6)]);
+  const scMorph = chain('sc_morph', 'morph', [aTime(0.3), aOsc(1, 0), aRemap(0.22, 0.85)]);
+  const scTwist = chain('sc_twist', 'twist', [aTime(0.12), aOsc(1, 0), aRemap(-1.1, 1.1)]);
+  const scSunX = chain('sc_sunx', 'sun x', [aTime(0.4), aOsc(1, 0), aRemap(-0.9, 0.9)]);
+  const scSunZ = chain('sc_sunz', 'sun z', [aTime(0.4), aOsc(1, 1.5708), aRemap(-0.9, 0.9)]);
+  const showcase = recipe([
+    t('camera_3d', { eye_x: 0, eye_y: 1.6, eye_z: 4.6, tgt_x: 0, tgt_y: 0, tgt_z: 0, fov: 1.6 },
+      { eye_x: ref('sc_camx'), eye_z: ref('sc_camz'), eye_y: ref('sc_camy') }),
+    t('twist_3d', { amount: 0.6 }, { amount: ref('sc_twist') }),
+    t('smooth_union_3d', { k: 0.5 }, { k: ref('sc_morph') }),
+    t('torus_3d', { r_major: 1.15, r_minor: 0.42 }),
+    t('sphere_3d', { r: 0.7, cx: 0, cy: 0.85, cz: 0 }),
+    t('sphere_3d', { r: 0.6, cx: 0, cy: -0.8, cz: 0 }),
+    t('atom_3d', { radius: 1.7, size: 0.34, speed: 0.6, phase: 0 }),
+    t('atom_3d', { radius: 1.7, size: 0.34, speed: 0.6, phase: 2.094 }),
+    t('atom_3d', { radius: 1.7, size: 0.34, speed: 0.6, phase: 4.188 }),
+    t('material_color_3d', { color: [0.12, 0.16, 0.34] }),
+    t('mask_slope_3d', { steep: 0.3, flat: 0.75 }),
+    t('paint_3d', { color: [0.92, 0.34, 0.62], strength: 0.9 }),
+    t('mask_noise_3d', { scale: 4, low: 0.42, high: 0.7 }),
+    t('paint_3d', { color: [0.25, 0.85, 0.92], strength: 0.6 }),
+    t('mask_height_3d', { low: 0.4, high: 1.6 }),
+    t('paint_3d', { color: [1.0, 0.86, 0.5], strength: 0.8 }),
+    t('bump_3d', { scale: 7, strength: 0.22 }),
+    t('sky_3d', { horizon: [0.16, 0.10, 0.26], zenith: [0.02, 0.02, 0.07], ambient: [0.30, 0.30, 0.46] }),
+    t('sun_3d', { dir_x: 0.4, dir_y: 0.7, dir_z: 0.4, color: [1.0, 0.92, 0.82], specular: 1.5, shininess: 96, soft: 0.12 },
+      { dir_x: ref('sc_sunx'), dir_z: ref('sc_sunz') }),
+    t('fresnel_3d', { base: 0.04, amount: 0.7 }),
+    t('fog_3d', { color: [0.10, 0.07, 0.18], density: 0.05 }),
+  ], [scCamX, scCamZ, scCamY, scMorph, scTwist, scSunX, scSunZ], '3d');
+
   // ── 3D — twisted torus + spheres, smooth-unioned and lit ──
   const raymarch = recipe([
     t('material_color_3d', { color: [0.95, 0.5, 0.2] }),
@@ -201,5 +241,5 @@ export const TEMPLATE_RECIPES: Record<TemplateVariant, Recipe> = (() => {
     t('sphere_3d', { r: 0.5, cx: 0, cy: -0.65, cz: 0 }),
   ], [], '3d');
 
-  return { terrain, nebula, dna, ocean, lava, molecule, galaxy, aurora, fire, crystals, wormhole, raymarch };
+  return { showcase, terrain, nebula, dna, ocean, lava, molecule, galaxy, aurora, fire, crystals, wormhole, raymarch };
 })();
