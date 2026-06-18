@@ -242,6 +242,22 @@ const ICON_PATHS: Record<string, IconRenderer> = {
       </g>
     </>
   ),
+  // Operators (CSG / boolean) — two overlapping discs, intersection highlighted.
+  'cat3d-operators': ({ c, cream }) => (
+    <>
+      <circle cx="9" cy="12" r="6" fill={c} />
+      <circle cx="15" cy="12" r="6" fill={c} opacity="0.6" />
+      <path d="M12 7.2 A6 6 0 0 1 12 16.8 A6 6 0 0 1 12 7.2 Z" fill={cream} />
+    </>
+  ),
+  // Fractals — a Sierpinski-style recursive triangle.
+  'cat3d-fractal': ({ c, cream }) => (
+    <>
+      <path d="M12 3 L21 20 L3 20 Z" fill={c} />
+      <path d="M12 11.5 L16.5 20 L7.5 20 Z" fill={cream} />
+      <path d="M12 3 L14.2 7.2 L9.8 7.2 Z" fill={cream} opacity="0.6" />
+    </>
+  ),
 
   // ─── UI ICONS — solid duotone so they read on any bar ──────────────────
   'metro': ({ c, cream }) => (

@@ -1,7 +1,9 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 import app.models  # noqa: F401 — register tables on Base.metadata
@@ -32,6 +34,12 @@ app.add_middleware(
 
 app.include_router(shaders.router)
 app.include_router(users.router)
+
+# Serve thumbnails directly from the API. In the full prod overlay Caddy
+# fronts /thumbs from the same volume; when the tunnel dials the API directly
+# (no Caddy), this mount keeps thumbnail URLs (PUBLIC_BASE_URL/thumbs/...) live.
+os.makedirs(settings.thumbs_dir, exist_ok=True)
+app.mount("/thumbs", StaticFiles(directory=settings.thumbs_dir), name="thumbs")
 
 
 @app.get("/healthz")

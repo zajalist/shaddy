@@ -379,8 +379,12 @@ const NavLink = ({ children, active = false, href = '#' }: { children: ReactNode
 );
 
 // ─── Palette item — flat, no glow ────────────────────────────────────────
-const PaletteItem = ({ block }: { block: BlockDef }) => {
+const PaletteItem = ({ block, colorOverride }: { block: BlockDef; colorOverride?: string }) => {
   const cat = CATEGORIES[block.cat];
+  // On the 3D tab the palette is organised by 3D-scene category, not by the
+  // card's underlying 2D register category — so the accent is forced to the
+  // group colour to keep each category visually coherent (no colour mixing).
+  const accent = colorOverride ?? cat.color;
   const insertTypedCard = useCardsStore((s) => s.insertTypedCard);
   const [hover, setHover] = useState(false);
   const fav = isFavorite(block.id);
@@ -422,8 +426,8 @@ const PaletteItem = ({ block }: { block: BlockDef }) => {
         userSelect: 'none',
       }}
     >
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: cat.color }} />
-      <Icon name={block.icon} size={15} color={cat.color} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accent }} />
+      <Icon name={block.icon} size={15} color={accent} />
       <span
         style={{
           font: `500 12px ${TYPE.body}`, color: SHADE.text,
@@ -720,11 +724,14 @@ const VOLUME_3D_IDS: readonly string[] = [
 // a handful of top-level categories (each with its own SVG glyph + colour),
 // each holding named sub-folders of card ids. Any real-3D id not listed
 // falls into an "Other" sub-folder so the palette is never lossy.
+// Each top-level 3D category owns ONE colour + glyph; every block under it is
+// forced to that colour in the palette (see PaletteItem colorOverride) so a
+// category never mixes colours. Distinct hues keep the six groups legible.
 type ThreeDSub = { label: string; ids: readonly string[] };
 type ThreeDCat = { key: string; label: string; color: string; icon: string; subs: ThreeDSub[] };
 const THREED_CATS: ThreeDCat[] = [
   {
-    key: 'geometry', label: 'Geometry', color: SHADE.catShape, icon: 'cat3d-geometry',
+    key: 'shapes', label: 'Shapes', color: SHADE.catShape, icon: 'cat3d-geometry',
     subs: [
       { label: 'Camera', ids: ['camera_3d'] },
       { label: 'Surfaces', ids: ['ground_3d', 'plane_3d', 'sea_surface_3d', 'terrain_surface_3d'] },
@@ -732,16 +739,26 @@ const THREED_CATS: ThreeDCat[] = [
         'sphere_3d', 'box_3d', 'torus_3d', 'atom_3d', 'cylinder_3d', 'cone_3d',
         'ellipsoid_3d', 'octahedron_3d', 'hex_prism_3d', 'tri_prism_3d', 'pyramid_3d',
       ] },
-      { label: 'CSG operators', ids: ['union_3d', 'subtract_3d', 'intersect_3d', 'smooth_union_3d', 'round_3d', 'onion_3d'] },
-      { label: 'Domain & deform', ids: ['repeat_3d', 'twist_3d', 'bend_3d', 'elongate_3d', 'displace_3d', 'noise_displace_3d'] },
-      { label: 'Fractals', ids: ['menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d'] },
     ],
   },
   {
-    key: 'materials', label: 'Materials', color: SHADE.catColor, icon: 'cat3d-materials',
+    key: 'operators', label: 'Operators', color: SHADE.catDistort, icon: 'cat3d-operators',
     subs: [
-      { label: 'Surface', ids: ['material_color_3d', 'checker_material_3d', 'grid_material_3d', 'pbr_ggx_3d', 'orbit_trap_color_3d'] },
-      { label: 'Texturing', ids: ['triplanar_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d', 'mask_fresnel_3d', 'mask_curvature_3d', 'mask_ao_3d', 'paint_3d', 'bump_3d'] },
+      { label: 'CSG (combine)', ids: ['union_3d', 'subtract_3d', 'intersect_3d', 'smooth_union_3d', 'round_3d', 'onion_3d'] },
+      { label: 'Domain & deform', ids: ['repeat_3d', 'twist_3d', 'bend_3d', 'elongate_3d', 'displace_3d', 'noise_displace_3d'] },
+    ],
+  },
+  {
+    key: 'fractals', label: 'Fractals', color: SHADE.ember, icon: 'cat3d-fractal',
+    subs: [
+      { label: 'Distance estimators', ids: ['menger_fold_3d', 'mandelbulb_3d', 'apollonian_fold_3d', 'sierpinski_fold_3d'] },
+    ],
+  },
+  {
+    key: 'texture', label: 'Texture', color: SHADE.catColor, icon: 'cat3d-materials',
+    subs: [
+      { label: 'Materials', ids: ['material_color_3d', 'checker_material_3d', 'grid_material_3d', 'pbr_ggx_3d', 'orbit_trap_color_3d'] },
+      { label: 'Masks & paint', ids: ['triplanar_3d', 'mask_height_3d', 'mask_slope_3d', 'mask_noise_3d', 'mask_fresnel_3d', 'mask_curvature_3d', 'mask_ao_3d', 'paint_3d', 'bump_3d'] },
     ],
   },
   {
@@ -751,7 +768,7 @@ const THREED_CATS: ThreeDCat[] = [
     ],
   },
   {
-    key: 'atmosphere', label: 'Atmosphere & volume', color: SHADE.catDistort, icon: 'cat3d-atmosphere',
+    key: 'atmosphere', label: 'Atmosphere & volume', color: SHADE.reroute, icon: 'cat3d-atmosphere',
     subs: [
       { label: 'Sky & fog', ids: ['sky_3d', 'atmosphere_sky_3d', 'fog_3d'] },
       { label: 'Volumetric', ids: VOLUME_3D_IDS },
@@ -1443,7 +1460,7 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
                         />
                         {subO && (
                           <div style={{ paddingLeft: 30, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {blocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                            {blocks.map((b) => <PaletteItem key={b.id} block={b} colorOverride={color} />)}
                           </div>
                         )}
                       </div>
@@ -1465,7 +1482,7 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
                   />
                   {catOpen && (
                     <div style={{ paddingLeft: 30, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} />)}
+                      {hybrid3dBlocks.map((b) => <PaletteItem key={b.id} block={b} colorOverride={SHADE.textDim} />)}
                     </div>
                   )}
                 </div>

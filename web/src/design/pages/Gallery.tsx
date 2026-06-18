@@ -6,7 +6,7 @@
 // grid (a grid of WebGL contexts was the old perf bug). Flat & minimal.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+// (Link removed — gallery now uses the shared TopBar)
 
 import {
   isApiError,
@@ -21,6 +21,7 @@ const errMsg = (err: unknown): string =>
   isApiError(err) ? err.message : err instanceof Error ? err.message : String(err);
 
 import { SHADE, TYPE } from '../tokens';
+import { TopBar } from '../components';
 import { useGalleryChrome } from './gallery/chrome';
 import { Chip, Eyebrow } from './gallery/atoms';
 import { GalleryGrid } from './gallery/GalleryGrid';
@@ -120,15 +121,13 @@ export default function Gallery() {
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 24px 80px' }}>
+    <>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 80 }}>
+      <TopBar active="gallery" />
+    </div>
+    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '96px 24px 80px' }}>
       {/* hero */}
       <header style={{ marginBottom: 28 }}>
-        <Link to="/" className="gal-back" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8,
-          color: SHADE.textDim, textDecoration: 'none', fontFamily: TYPE.bodyMono, fontSize: 12, marginBottom: 16,
-        }}>
-          ← Home
-        </Link>
         <Eyebrow>Gallery</Eyebrow>
         <h1 style={{ font: `700 40px ${TYPE.display}`, color: SHADE.text, margin: '8px 0 6px', letterSpacing: TYPE.trackTighter }}>
           Made with Shaddy
@@ -189,5 +188,6 @@ export default function Gallery() {
         emptyLabel={q || tags.length || mode !== 'all' ? 'No shaders match those filters.' : 'No shaders published yet.'}
       />
     </div>
+    </>
   );
 }
