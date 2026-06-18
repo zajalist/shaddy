@@ -525,10 +525,13 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('    vec3 p = ro + rd * t;');
   lines.push('    float dh = sdScene(p);');
   lines.push('    if (dh < 0.0008 * t) { hit = true; break; }'); // distance-relative hit threshold
-  // Capped + under-relaxed step: can't skip past steep height-field slopes
-  // (which would let the sky show THROUGH the surface as speckles).
-  lines.push('    t += clamp(dh * 0.5, 0.01, 0.5);');
-  lines.push('    if (t > 70.0) break;');
+  // Under-relaxed step whose floor AND cap GROW with distance. Near the camera
+  // the cap stays small so the ray can't skip steep height-field slopes (sky
+  // speckling through the surface); far out — at the horizon — the floor lets
+  // each pixel advance in larger, consistent strides so they converge within
+  // the iteration budget instead of diverging into noise.
+  lines.push('    t += clamp(dh * 0.5, 0.01 + t * 0.004, 0.5 + t * 0.05);');
+  lines.push('    if (t > 90.0) break;');
   lines.push('  }');
   lines.push('  vec3 col = g_sky(rd);');
   lines.push('  float d = 0.0;');
@@ -536,7 +539,7 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('    vec3 p = ro + rd * t;');
   // Distance-scaled normal epsilon — kills firefly sparkle on height-fields as
   // the surface recedes (matches the Seascape technique).
-  lines.push('    vec3 n = sceneNormal3(p, max(0.0015, t * 0.0022));');
+  lines.push('    vec3 n = sceneNormal3(p, max(0.0015, t * 0.0032));');
   lines.push(`    vec3 alb = ${albedo};`);
   // `mask` is the UE5-style layer mask: Mask blocks set it (0..1 from slope /
   // height / noise / fresnel), Paint blocks blend a colour through it.
@@ -547,6 +550,10 @@ function compile3d(recipe: Recipe): CompiledShader {
   lines.push('    vec3 lcol = vec3(0.0);');
   for (const l of shadeLines) lines.push(l);
   lines.push('    col = lcol;');
+  // Atmospheric fade: dissolve the surface into the sky as it approaches the
+  // far plane. Gives depth and cleanly hides any residual horizon shimmer on
+  // large height-fields. Distance-proportional, so near scenes never trigger.
+  lines.push('    col = mix(col, g_sky(rd), smoothstep(55.0, 88.0, t));');
   lines.push('    d = t;');
   lines.push('  }');
   lines.push('');

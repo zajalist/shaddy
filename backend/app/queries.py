@@ -3,6 +3,7 @@ import json
 import uuid
 from datetime import datetime
 
+from fastapi import HTTPException
 from sqlalchemy import select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -60,21 +61,25 @@ async def shader_page(
 
     if sort == "popular":
         if cursor:
-            lc, ca, cid = decode_cursor(cursor)
+            try:
+                lc, ca, cid = decode_cursor(cursor)
+                bound = tuple_(lc, datetime.fromisoformat(ca), uuid.UUID(cid))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                raise HTTPException(status_code=400, detail="invalid cursor")
             stmt = stmt.where(
-                tuple_(Shader.like_count, Shader.created_at, Shader.id)
-                < tuple_(lc, datetime.fromisoformat(ca), uuid.UUID(cid))
+                tuple_(Shader.like_count, Shader.created_at, Shader.id) < bound
             )
         stmt = stmt.order_by(
             Shader.like_count.desc(), Shader.created_at.desc(), Shader.id.desc()
         )
     else:
         if cursor:
-            ca, cid = decode_cursor(cursor)
-            stmt = stmt.where(
-                tuple_(Shader.created_at, Shader.id)
-                < tuple_(datetime.fromisoformat(ca), uuid.UUID(cid))
-            )
+            try:
+                ca, cid = decode_cursor(cursor)
+                bound = tuple_(datetime.fromisoformat(ca), uuid.UUID(cid))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                raise HTTPException(status_code=400, detail="invalid cursor")
+            stmt = stmt.where(tuple_(Shader.created_at, Shader.id) < bound)
         stmt = stmt.order_by(Shader.created_at.desc(), Shader.id.desc())
 
     rows = list((await session.execute(stmt.limit(limit + 1))).scalars().all())

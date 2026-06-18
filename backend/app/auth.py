@@ -24,6 +24,11 @@ class CurrentUser:
 # kid -> (fetched_at_monotonic, jwks) keyed by issuer URL
 _JWKS_CACHE: dict[str, tuple[float, dict]] = {}
 _JWKS_TTL = 600.0
+# Minimum gap between forced refetches. Without this, a token bearing an
+# unknown `kid` would trigger a fresh (blocking) JWKS fetch on every request —
+# an attacker-controlled amplification against the auth path and Supabase.
+_JWKS_FORCE_COOLDOWN = 60.0
+_JWKS_LAST_FORCE: dict[str, float] = {}
 
 
 def _fetch_jwks(settings: Settings) -> dict:
@@ -38,6 +43,13 @@ def _get_jwks(settings: Settings, *, force: bool = False) -> dict:
     cached = _JWKS_CACHE.get(settings.supabase_url)
     if cached and not force and now - cached[0] < _JWKS_TTL:
         return cached[1]
+    if force and cached is not None:
+        # Rate-limit forced refetches so a stream of bogus `kid`s can't make
+        # us hammer the JWKS endpoint (or block the event loop) per request.
+        last = _JWKS_LAST_FORCE.get(settings.supabase_url, 0.0)
+        if now - last < _JWKS_FORCE_COOLDOWN:
+            return cached[1]
+        _JWKS_LAST_FORCE[settings.supabase_url] = now
     jwks = _fetch_jwks(settings)
     _JWKS_CACHE[settings.supabase_url] = (now, jwks)
     return jwks
