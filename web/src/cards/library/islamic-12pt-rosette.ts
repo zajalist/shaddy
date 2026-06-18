@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const ISLAMIC_12PT_ROSETTE: CardDef = {
   type: 'islamic_12pt_rosette',
   category: 'shape',
-  friendlyName: 'Islamic 12-pt rosette',
+  friendlyName: 'Dodecagram',
   description: '12-fold rosette — Iznik medallion.',
   icon: '✦',
   params: {

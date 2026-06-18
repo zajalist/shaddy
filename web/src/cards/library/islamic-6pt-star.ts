@@ -6,7 +6,7 @@ import type { CardDef } from '../types';
 export const ISLAMIC_6PT_STAR: CardDef = {
   type: 'islamic_6pt_star',
   category: 'shape',
-  friendlyName: 'Islamic 6-pt star',
+  friendlyName: 'Hexagram',
   description: 'Hexagonal 6-fold star rosette.',
   icon: '✡',
   params: {

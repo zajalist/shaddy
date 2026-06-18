@@ -7,7 +7,7 @@ import type { CardDef } from '../types';
 export const ISLAMIC_8PT_STAR: CardDef = {
   type: 'islamic_8pt_star',
   category: 'shape',
-  friendlyName: 'Islamic 8-pt star',
+  friendlyName: 'Octagram',
   description: 'Tiled 8-point star with square infill — octagram.',
   icon: '✶',
   params: {

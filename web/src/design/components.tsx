@@ -538,7 +538,7 @@ const SUBGROUPS: Record<keyof typeof CATEGORIES, SubgroupDef[]> = {
     { label: 'Patterns', ids: [
       'stripes', 'wavy_stripes', 'radial_stripes', 'cross_hatch', 'moire',
     ] },
-    { label: 'Tiling / Islamic', ids: [
+    { label: 'Tiling', ids: [
       'hex_grid', 'triangle_grid', 'triangular_tiles', 'brick_wall', 'random_squares',
       'truchet', 'truchet_tris', 'islamic_8pt_star', 'islamic_6pt_star',
       'islamic_12pt_rosette', 'zellige_grid', 'kufic_grid', 'arabesque_curls',
