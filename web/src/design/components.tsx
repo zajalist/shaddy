@@ -788,6 +788,11 @@ const HYBRID_3D_IDS: readonly string[] = [
   'rim_light',
 ];
 
+// Every id that belongs to the 3D pipeline (real SDF scene cards + volume).
+// Used to keep them OUT of the 2D palette, where they'd otherwise pool into
+// the "Other" bucket of each category.
+const THREE_D_ID_SET = new Set<string>([...REAL_3D_IDS, ...VOLUME_3D_IDS]);
+
 type PaletteTab = '2d' | '3d' | 'anim';
 
 // Single tab button — matches the topbar NavLink idiom (animated underline,
@@ -1067,7 +1072,7 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
     return cats;
   }, [blocksById, real3dBlocks]);
   const activeBlocks = useMemo(() => {
-    if (tab === '2d') return BLOCK_LIB;
+    if (tab === '2d') return BLOCK_LIB.filter((b) => !THREE_D_ID_SET.has(b.id));
     const seen = new Set<string>();
     const all = [
       ...real3dBlocks,
@@ -1104,8 +1109,8 @@ export const Palette = ({ width = 240 }: { width?: number }) => {
   const grouped = useMemo(() => (
     (Object.keys(CATEGORIES) as Array<keyof typeof CATEGORIES>).map((k) => ({
       k,
-      buckets: bucketize(k, BLOCK_LIB.filter((b) => b.cat === k)),
-      count: BLOCK_LIB.filter((b) => b.cat === k).length,
+      buckets: bucketize(k, BLOCK_LIB.filter((b) => b.cat === k && !THREE_D_ID_SET.has(b.id))),
+      count: BLOCK_LIB.filter((b) => b.cat === k && !THREE_D_ID_SET.has(b.id)).length,
     }))
   ), []);
 

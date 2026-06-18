@@ -12,7 +12,9 @@ async def store_thumbnail(file: UploadFile, thumbs_dir: str) -> str:
 
     Returns the relative path (``<ab>/<sha256>.png``) to store in the DB.
     """
-    data = await file.read()
+    # Bounded read: pull at most MAX+1 bytes so an oversized (or unbounded)
+    # upload can't be slurped fully into memory before we reject it.
+    data = await file.read(MAX_THUMB_BYTES + 1)
     if len(data) > MAX_THUMB_BYTES:
         raise HTTPException(status_code=413, detail="thumbnail too large")
     if data[:8] != PNG_MAGIC:
